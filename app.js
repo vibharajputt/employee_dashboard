@@ -1729,6 +1729,7 @@ function handleCreateTask(e) {
 // --------------------------------------------------------------------------
 
 let currentDetailedTaskId = null;
+let currentUploadedDeliverables = [];
 
 window.openTaskDetails = function(taskId) {
   currentDetailedTaskId = taskId;
@@ -1764,14 +1765,66 @@ window.openTaskDetails = function(taskId) {
 
   // Set Deliverable Link
   const delLinkContainer = document.getElementById("detail-deliverable-link-container");
+  const deliverables = task.submittedDeliverables || [];
+  if (deliverables.length === 0 && task.deliverableLink) {
+    // Backwards compatibility migration
+    deliverables.push({
+      id: 'del-migrated',
+      type: 'link',
+      name: task.deliverableLink.replace(/https?:\/\/(www\.)?/, '').substring(0, 20) + '...',
+      value: task.deliverableLink
+    });
+  }
+
   if (currentUser.role === "Employee" && task.status === "In Progress") {
-    // Input field so employee can submit/change deliverable URL
-    delLinkContainer.innerHTML = `
-      <input type="url" id="detail-deliverable-input" value="${task.deliverableLink || ''}" placeholder="https://github.com/..." style="width:100%; padding: 8px 10px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); color: var(--text-primary); background: transparent; font-family: var(--font-body); font-size: 0.85rem;">
-    `;
+    currentUploadedDeliverables = [...deliverables];
+    let initialTab = 'photo';
+    if (currentUploadedDeliverables.length > 1) {
+      initialTab = 'multiple';
+    } else if (currentUploadedDeliverables.length === 1) {
+      initialTab = currentUploadedDeliverables[0].type;
+    }
+    setTimeout(() => {
+      renderDeliverableInputs(initialTab);
+    }, 50);
   } else {
-    if (task.deliverableLink) {
-      delLinkContainer.innerHTML = `<a href="${task.deliverableLink}" target="_blank" style="color:var(--color-success); display:inline-flex; align-items:center; gap:4px; font-weight:600;"><i data-lucide="external-link" style="width:14px; height:14px;"></i> View Deliverable</a>`;
+    if (deliverables.length > 0) {
+      let deliverablesHtml = `<div style="display:flex; flex-direction:column; gap:8px;">`;
+      deliverables.forEach(item => {
+        if (item.type === 'photo') {
+          deliverablesHtml += `
+            <div style="border: 1px solid var(--border-color); border-radius: 6px; padding: 6px; background: rgba(0,0,0,0.02); display: flex; flex-direction: column; gap: 4px;">
+              <img src="${item.value}" alt="${item.name}" style="max-width: 100%; max-height: 120px; object-fit: contain; border-radius: 4px; display: block; cursor: zoom-in;" onclick="openDeliverableImageLightbox('${item.value}')">
+              <div style="font-size: 0.7rem; color: var(--text-secondary); text-overflow: ellipsis; overflow: hidden; white-space: nowrap; font-weight: 500;">
+                📷 ${item.name} ${item.size ? `(${item.size})` : ''}
+              </div>
+            </div>
+          `;
+        } else if (item.type === 'video') {
+          deliverablesHtml += `
+            <div style="border: 1px solid var(--border-color); border-radius: 6px; padding: 6px; background: rgba(0,0,0,0.02); display: flex; flex-direction: column; gap: 4px;">
+              <video src="${item.value}" controls style="max-width: 100%; max-height: 120px; border-radius: 4px; background: #000;"></video>
+              <div style="font-size: 0.7rem; color: var(--text-secondary); text-overflow: ellipsis; overflow: hidden; white-space: nowrap; font-weight: 500;">
+                🎥 ${item.name} ${item.size ? `(${item.size})` : ''}
+              </div>
+            </div>
+          `;
+        } else if (item.type === 'link') {
+          deliverablesHtml += `
+            <div style="display: flex; align-items: center; justify-content: space-between; border: 1px solid var(--border-color); border-radius: 6px; padding: 6px 8px; background: rgba(0,0,0,0.02); font-size: 0.8rem;">
+              <div style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; display: flex; align-items: center; gap: 4px; flex-grow:1; min-width:0; margin-right:8px;">
+                <i data-lucide="link" style="width:12px; height:12px; color:var(--color-primary); flex-shrink:0;"></i>
+                <span style="overflow:hidden; text-overflow:ellipsis;">${item.name}</span>
+              </div>
+              <a href="${item.value}" target="_blank" class="btn btn-secondary btn-sm" style="padding: 2px 6px; font-size: 0.7rem; display: inline-flex; align-items: center; gap: 2px; flex-shrink:0;">
+                <i data-lucide="external-link" style="width: 10px; height: 10px;"></i> Open
+              </a>
+            </div>
+          `;
+        }
+      });
+      deliverablesHtml += `</div>`;
+      delLinkContainer.innerHTML = deliverablesHtml;
     } else {
       delLinkContainer.innerHTML = `<span class="text-muted">No deliverable submitted</span>`;
     }
@@ -1916,11 +1969,8 @@ window.updateTaskStatusInModal = function(taskId, newStatus) {
 
 // Employee submission inside modal
 window.submitTaskForReviewInModal = function(taskId) {
-  const delInput = document.getElementById("detail-deliverable-input");
-  const deliverableUrl = delInput ? delInput.value.trim() : "";
-  
-  if (!deliverableUrl) {
-    showToast("Please provide a deliverable link before submitting.", "error");
+  if (!currentUploadedDeliverables || currentUploadedDeliverables.length === 0) {
+    showToast("Please attach at least one deliverable (photo, video, or link) before submitting.", "error");
     return;
   }
 
@@ -1928,12 +1978,23 @@ window.submitTaskForReviewInModal = function(taskId) {
   const taskIndex = tasks.findIndex(t => t.id === taskId);
   if (taskIndex !== -1) {
     tasks[taskIndex].status = "Under Review";
-    tasks[taskIndex].deliverableLink = deliverableUrl;
+    tasks[taskIndex].submittedDeliverables = currentUploadedDeliverables;
+    
+    // Set first link or file name as fallback deliverableLink for compatibility
+    const linkItem = currentUploadedDeliverables.find(item => item.type === 'link');
+    if (linkItem) {
+      tasks[taskIndex].deliverableLink = linkItem.value;
+    } else {
+      tasks[taskIndex].deliverableLink = currentUploadedDeliverables[0].name;
+    }
+    
     tasks[taskIndex].feedback = ""; // clear any previous feedback
     
     db.saveTasks(tasks);
     db.logActivity(`Task '${tasks[taskIndex].title}' submitted for review by ${currentUser.fullname}.`, "info");
     showToast("Task submitted successfully for review!", "success");
+
+    currentUploadedDeliverables = [];
 
     // Refresh modal and main tab
     openTaskDetails(taskId);
