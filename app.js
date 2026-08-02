@@ -1779,9 +1779,7 @@ window.openTaskDetails = function(taskId) {
   if (currentUser.role === "Employee" && task.status === "In Progress") {
     currentUploadedDeliverables = [...deliverables];
     let initialTab = 'photo';
-    if (currentUploadedDeliverables.length > 1) {
-      initialTab = 'multiple';
-    } else if (currentUploadedDeliverables.length === 1) {
+    if (currentUploadedDeliverables.length > 0) {
       initialTab = currentUploadedDeliverables[0].type;
     }
     setTimeout(() => {
@@ -2631,7 +2629,7 @@ document.addEventListener("DOMContentLoaded", () => {
   checkAuth();
 });
 
-// ── Deliverable Selector Helpers (Photo / Video / Link / Multiple) ──────
+// ── Deliverable Selector Helpers (Photo / Video / Link) ──────
 window.renderDeliverableInputs = function(activeTab = 'photo') {
   const container = document.getElementById("detail-deliverable-link-container");
   if (!container) return;
@@ -2641,7 +2639,6 @@ window.renderDeliverableInputs = function(activeTab = 'photo') {
       <button type="button" class="del-tab-btn" id="btn-tab-photo" onclick="renderDeliverableInputs('photo')" style="flex: 1; padding: 6px; font-size: 0.72rem; border: none; border-radius: 4px; background: ${activeTab === 'photo' ? '#fff' : 'transparent'}; font-weight: 600; cursor: pointer; color: ${activeTab === 'photo' ? 'var(--color-primary)' : 'var(--text-secondary)'}; box-shadow: ${activeTab === 'photo' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'};">📷 Image</button>
       <button type="button" class="del-tab-btn" id="btn-tab-video" onclick="renderDeliverableInputs('video')" style="flex: 1; padding: 6px; font-size: 0.72rem; border: none; border-radius: 4px; background: ${activeTab === 'video' ? '#fff' : 'transparent'}; font-weight: 600; cursor: pointer; color: ${activeTab === 'video' ? 'var(--color-primary)' : 'var(--text-secondary)'}; box-shadow: ${activeTab === 'video' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'};">🎥 Video</button>
       <button type="button" class="del-tab-btn" id="btn-tab-link" onclick="renderDeliverableInputs('link')" style="flex: 1; padding: 6px; font-size: 0.72rem; border: none; border-radius: 4px; background: ${activeTab === 'link' ? '#fff' : 'transparent'}; font-weight: 600; cursor: pointer; color: ${activeTab === 'link' ? 'var(--color-primary)' : 'var(--text-secondary)'}; box-shadow: ${activeTab === 'link' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'};">🔗 Link</button>
-      <button type="button" class="del-tab-btn" id="btn-tab-multiple" onclick="renderDeliverableInputs('multiple')" style="flex: 1; padding: 6px; font-size: 0.72rem; border: none; border-radius: 4px; background: ${activeTab === 'multiple' ? '#fff' : 'transparent'}; font-weight: 600; cursor: pointer; color: ${activeTab === 'multiple' ? 'var(--color-primary)' : 'var(--text-secondary)'}; box-shadow: ${activeTab === 'multiple' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'};">📁 Multiple</button>
     </div>
     
     <div class="deliverable-inputs" style="margin-bottom: 8px;">
@@ -2650,18 +2647,18 @@ window.renderDeliverableInputs = function(activeTab = 'photo') {
   if (activeTab === 'photo') {
     html += `
       <div style="display: flex; flex-direction: column; gap: 8px;">
-        <input type="file" id="del-file-photo" accept="image/*" onchange="handleDeliverableFileSelect(event, 'photo')" style="display: none;">
+        <input type="file" id="del-file-photo" accept="image/*" multiple onchange="handleDeliverableFileSelect(event, 'photo')" style="display: none;">
         <button type="button" class="btn btn-secondary" onclick="document.getElementById('del-file-photo').click()" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 0.8rem; padding: 6px;">
-          <i data-lucide="image" style="width:14px; height:14px;"></i> Choose Photo
+          <i data-lucide="image" style="width:14px; height:14px;"></i> Choose Images (Multiple)
         </button>
       </div>
     `;
   } else if (activeTab === 'video') {
     html += `
       <div style="display: flex; flex-direction: column; gap: 8px;">
-        <input type="file" id="del-file-video" accept="video/*" onchange="handleDeliverableFileSelect(event, 'video')" style="display: none;">
+        <input type="file" id="del-file-video" accept="video/*" multiple onchange="handleDeliverableFileSelect(event, 'video')" style="display: none;">
         <button type="button" class="btn btn-secondary" onclick="document.getElementById('del-file-video').click()" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 0.8rem; padding: 6px;">
-          <i data-lucide="video" style="width:14px; height:14px;"></i> Choose Video
+          <i data-lucide="video" style="width:14px; height:14px;"></i> Choose Videos (Multiple)
         </button>
       </div>
     `;
@@ -2669,22 +2666,7 @@ window.renderDeliverableInputs = function(activeTab = 'photo') {
     html += `
       <div style="display: flex; gap: 6px;">
         <input type="url" id="del-text-link" placeholder="https://example.com/..." style="flex-grow: 1; padding: 6px 8px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); color: var(--text-primary); background: transparent; font-size: 0.8rem; height: 32px;">
-        <button type="button" class="btn btn-primary" onclick="addDeliverableLink(false)" style="padding: 6px 12px; font-size: 0.8rem; height: 32px;">Add</button>
-      </div>
-    `;
-  } else if (activeTab === 'multiple') {
-    html += `
-      <div style="display: flex; flex-direction: column; gap: 6px; border: 1px dashed var(--border-color); padding: 8px; border-radius: 6px; background: rgba(0,0,0,0.01);">
-        <div style="display: flex; gap: 4px; justify-content: center;">
-          <input type="file" id="del-file-multi" accept="image/*,video/*" multiple onchange="handleDeliverableFileSelect(event, 'multiple')" style="display: none;">
-          <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('del-file-multi').click()" style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 4px; font-size: 0.75rem; padding: 4px 6px;">
-            <i data-lucide="paperclip" style="width:12px; height:12px;"></i> Upload Files
-          </button>
-        </div>
-        <div style="display: flex; gap: 4px; margin-top: 2px;">
-          <input type="url" id="del-text-link-multi" placeholder="Add web URL..." style="flex-grow: 1; padding: 4px 6px; border-radius: 4px; border: 1px solid var(--border-color); color: var(--text-primary); background: transparent; font-size: 0.75rem; height: 28px;">
-          <button type="button" class="btn btn-primary btn-sm" onclick="addDeliverableLink(true)" style="padding: 4px 8px; font-size: 0.75rem; height: 28px;">Add</button>
-        </div>
+        <button type="button" class="btn btn-primary" onclick="addDeliverableLink()" style="padding: 6px 12px; font-size: 0.8rem; height: 32px;">Add Link</button>
       </div>
     `;
   }
@@ -2712,10 +2694,6 @@ window.handleDeliverableFileSelect = function(event, tabType) {
       const val = e.target.result;
       const type = file.type.startsWith('image/') ? 'photo' : 'video';
 
-      if (tabType !== 'multiple') {
-        currentUploadedDeliverables = [];
-      }
-
       currentUploadedDeliverables.push({
         id: 'del-' + Date.now() + '-' + Math.floor(Math.random() * 1000),
         type: type,
@@ -2733,17 +2711,12 @@ window.handleDeliverableFileSelect = function(event, tabType) {
   }
 };
 
-window.addDeliverableLink = function(isMulti = false) {
-  const inputId = isMulti ? 'del-text-link-multi' : 'del-text-link';
-  const input = document.getElementById(inputId);
+window.addDeliverableLink = function() {
+  const input = document.getElementById('del-text-link');
   const val = input ? input.value.trim() : "";
   if (!val) {
     showToast("Please enter a valid URL.", "error");
     return;
-  }
-
-  if (!isMulti) {
-    currentUploadedDeliverables = [];
   }
 
   currentUploadedDeliverables.push({
@@ -2754,7 +2727,7 @@ window.addDeliverableLink = function(isMulti = false) {
   });
 
   input.value = "";
-  renderDeliverablePreviewList(isMulti ? 'multiple' : 'link');
+  renderDeliverablePreviewList('link');
 };
 
 window.renderDeliverablePreviewList = function(activeTab) {
