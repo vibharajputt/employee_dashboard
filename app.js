@@ -2072,13 +2072,9 @@ function renderSettingsTab() {
   const passCard = document.getElementById("change-password-card");
   const statusCard = document.getElementById("duty-status-card");
   
-  if (currentUser.role === "Employee") {
-    passCard.classList.add("hidden");
-    statusCard.style.gridColumn = "span 2";
-  } else {
-    passCard.classList.remove("hidden");
-    statusCard.style.gridColumn = "";
-  }
+  // Allow all users (including lower-level Employee/Manager) to change their password
+  passCard.classList.remove("hidden");
+  statusCard.style.gridColumn = "";
 
   // Set selected value in dropdown
   document.getElementById("settings-status-select").value = curStatus;
