@@ -236,7 +236,8 @@ const db = {
       id: "act-" + Date.now(),
       timestamp: new Date().toISOString(),
       type,
-      message
+      message,
+      userId: (typeof currentUser !== 'undefined' && currentUser) ? currentUser.id : "system"
     });
     db.saveActivities(acts.slice(0, 30)); // Cap logs to last 30
   }
@@ -492,6 +493,7 @@ function switchTab(tabId) {
 
   // Specific render controllers for each tab
   if (tabId === "overview") renderOverviewTab();
+  else if (tabId === "profile") renderOverviewTab();
   else if (tabId === "hierarchy") renderHierarchyTab();
   else if (tabId === "employees" && currentUser.role === "Admin") renderEmployeesTab();
   else if (tabId === "tasks") renderTasksTab();
@@ -504,6 +506,31 @@ function switchTab(tabId) {
 // --------------------------------------------------------------------------
 // 4. Tab 1: Overview Dashboard rendering
 // --------------------------------------------------------------------------
+
+
+function getVisibleActivities(currentUser, users, activities) {
+  if (!currentUser) return [];
+  if (currentUser.role === "Admin") {
+    return activities;
+  }
+  
+  // Get all subordinates (hierarchy mapping)
+  const subordinates = getSubordinates(currentUser.id, users);
+  const subordinateIds = subordinates.map(s => s.id);
+  
+  return activities.filter(act => {
+    // If it's a system activity or doesn't have userId, fallback to name parsing for backwards compatibility
+    if (!act.userId) {
+      const mentionsUser = (msg, name) => msg && name && msg.toLowerCase().includes(name.toLowerCase());
+      if (mentionsUser(act.message, currentUser.fullname)) {
+        return true;
+      }
+      return subordinates.some(sub => mentionsUser(act.message, sub.fullname));
+    }
+    
+    return act.userId === currentUser.id || subordinateIds.includes(act.userId);
+  });
+}
 
 function renderOverviewTab() {
   const users = db.getUsers();
@@ -632,21 +659,28 @@ function renderOverviewTab() {
 
   statsContainer.innerHTML = statsHTML;
 
-  // Render recent activities
+  // Render recent activities (Filtered by hierarchy)
   const timeline = document.getElementById("activity-timeline-container");
   timeline.innerHTML = "";
-  activities.forEach(act => {
-    const actTime = new Date(act.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    const actDate = new Date(act.timestamp).toLocaleDateString([], { month: 'short', day: 'numeric' });
-    
-    const div = document.createElement("div");
-    div.className = `activity-item ${act.type}-activity`;
-    div.innerHTML = `
-      <span class="activity-time">${actDate} at ${actTime}</span>
-      <p class="activity-desc">${act.message}</p>
-    `;
-    timeline.appendChild(div);
-  });
+  
+  const visibleActivities = getVisibleActivities(currentUser, users, activities);
+  
+  if (visibleActivities.length === 0) {
+    timeline.innerHTML = `<span class="text-muted" style="font-size:0.85rem; text-align:center; display:block; padding:16px;">No recent activities logged</span>`;
+  } else {
+    visibleActivities.forEach(act => {
+      const actTime = new Date(act.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const actDate = new Date(act.timestamp).toLocaleDateString([], { month: 'short', day: 'numeric' });
+      
+      const div = document.createElement("div");
+      div.className = `activity-item ${act.type}-activity`;
+      div.innerHTML = `
+        <span class="activity-time">${actDate} at ${actTime}</span>
+        <p class="activity-desc">${act.message}</p>
+      `;
+      timeline.appendChild(div);
+    });
+  }
 
   // Render security card details
   document.getElementById("profile-full-name").textContent = currentUser.fullname;

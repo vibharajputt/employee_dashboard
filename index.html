@@ -1,217 +1,441 @@
 <!DOCTYPE html>
+
 <html lang="en" data-theme="light">
+
 <head>
+
   <meta charset="UTF-8">
+
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
   <title>MedAstraX - Employee Workspace Portal</title>
+
   
+
   <!-- Fonts -->
+
   <link rel="preconnect" href="https://fonts.googleapis.com">
+
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
   
+
   <!-- Icons -->
+
   <script src="https://unpkg.com/lucide@latest"></script>
+
   
+
   <!-- Custom Stylesheet -->
+
   <link rel="stylesheet" href="styles.css?v=2.2">
+
   
+
   <!-- Chart.js CDN -->
+
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 </head>
+
 <body>
 
+
+
   <!-- Theme and Toast notifications container -->
+
   <div id="toast-container" class="toast-container"></div>
 
+
+
   <!-- Global Live ECG Background Canvas -->
+
   <canvas id="ecg-canvas"></canvas>
 
+
+
   <!-- ==================== LOGIN CONTAINER ==================== -->
+
   <div id="login-container" class="login-wrapper">
+
     <div class="login-background-glow"></div>
+
     
+
     <!-- Portal Select Grid -->
+
     <div id="portal-selector" class="portal-select-container">
+
       <div class="portal-select-header">
+
         <img src="medastrax_logo.png" alt="MedAstraX Logo" class="brand-logo-large">
+
         <h1>MedAstraX</h1>
+
         <p class="subtitle">Innovate • Heal • Evolve •</p>
+
         <p class="portal-instruction">Please select a portal to access your workspace</p>
+
       </div>
+
       
+
       <div class="portal-cards-grid">
+
         <!-- Admin Portal Card -->
+
         <div class="portal-card" onclick="selectPortal('admin')">
+
           <div class="portal-card-icon admin-icon">
+
             <i data-lucide="shield-check"></i>
+
           </div>
+
           <h3>Admin Portal</h3>
+
           <p>Access credentials administration, manage employee roster, configure hierarchies, and audit task logs.</p>
+
           <button class="btn btn-primary btn-block">Login Now</button>
+
         </div>
+
         
+
         <!-- Staff Portal Card -->
+
         <div class="portal-card" onclick="selectPortal('staff')">
+
           <div class="portal-card-icon staff-icon">
+
             <i data-lucide="users"></i>
+
           </div>
+
           <h3>Staff Portal</h3>
+
           <p>Access Manager and Employee workspaces. Manage team tasks, update deliverables, and check hierarchy.</p>
+
           <button class="btn btn-primary btn-block">Login Now</button>
+
         </div>
+
       </div>
+
     </div>
+
     
+
     <!-- Actual Login Card (Hidden initially, shown after portal selection) -->
+
     <div id="login-card-wrapper" class="login-card hidden">
+
       <div class="login-header">
+
         <button type="button" id="back-to-portals" class="btn btn-secondary back-btn-top">
+
           <i data-lucide="arrow-left"></i> Back to Portals
+
         </button>
+
         <img src="medastrax_logo.png" alt="MedAstraX Logo" class="brand-logo-medium">
+
         <h2 id="login-portal-title">ADMIN PORTAL LOGIN</h2>
+
         <p class="subtitle">Innovate • Heal • Evolve •</p>
+
       </div>
+
       
+
       <form id="login-form">
+
         <input type="hidden" id="login-portal-type" value="admin">
+
         
+
         <div class="form-group">
+
           <label for="username"><i data-lucide="user"></i> Username or Email</label>
+
           <input type="text" id="username" placeholder="Enter username" required autocomplete="username">
+
         </div>
+
         
+
         <div class="form-group">
+
           <label for="password"><i data-lucide="lock"></i> Password</label>
+
           <div class="password-input-wrapper">
+
             <input type="password" id="password" placeholder="••••••••" required autocomplete="current-password">
+
             <button type="button" id="toggle-password" class="icon-btn-toggle" aria-label="Toggle Password Visibility">
+
               <i data-lucide="eye"></i>
+
             </button>
+
           </div>
+
         </div>
+
         
+
         <div class="form-group remember-me-group">
+
           <label class="checkbox-container">
+
             <input type="checkbox" id="remember-me">
+
             <span class="checkbox-checkmark"></span>
+
             Remember me on this device
+
           </label>
+
         </div>
+
         
+
         <button type="submit" class="btn btn-primary btn-block glow-btn">
+
           <span>Log In</span> <i data-lucide="arrow-right"></i>
+
         </button>
+
       </form>
+
       
+
       <div class="login-footer">
+
         <p>Demo accounts (Username / Password):</p>
+
         <div class="demo-credentials" id="demo-credentials-hint">
+
           <!-- Populated dynamically based on portal choice -->
+
         </div>
+
       </div>
+
     </div>
+
   </div>
 
+
+
   <!-- ==================== MAIN WORKSPACE CONTAINER ==================== -->
+
   <div id="workspace-container" class="workspace-wrapper hidden">
+
     <!-- Toggle Button (Floating/Sliding) -->
+
     <button id="sidebar-toggle-btn" class="btn-icon-only" title="Toggle Sidebar">
+
       <i data-lucide="menu"></i>
+
     </button>
+
     
+
     <!-- Sidebar Navigation -->
+
     <aside class="sidebar">
+
       <!-- Sidebar Inner Content (hidden when collapsed) -->
+
       <div class="sidebar-content">
+
         <div class="sidebar-brand">
+
           <img src="medastrax_logo.png" alt="Medastrax Logo" class="brand-logo-small">
+
           <span class="brand-name">MedAstraX</span>
+
         </div>
+
         
+
         <div class="user-profile-summary">
+
           <div class="avatar-container">
+
             <div class="avatar-placeholder" id="user-avatar-char">U</div>
+
             <span class="status-indicator online"></span>
+
           </div>
+
           <div class="user-details">
+
             <h4 id="user-display-name">Loading...</h4>
+
             <span id="user-display-role" class="badge">Loading...</span>
+
           </div>
+
         </div>
+
+
 
         <nav class="sidebar-nav">
+
           <ul>
+
             <li>
+
               <a href="#" class="nav-link active" data-tab="overview">
+
                 <i data-lucide="layout-dashboard"></i> <span>Overview</span>
+
               </a>
+
             </li>
+
             <li>
+
+              <a href="#" class="nav-link" data-tab="profile">
+
+                <i data-lucide="user"></i> <span>My Profile</span>
+
+              </a>
+
+            </li>
+
+            <li>
+
               <a href="#" class="nav-link" data-tab="hierarchy">
+
                 <i data-lucide="git-branch"></i> <span>Team Hierarchy</span>
+
               </a>
+
             </li>
+
             <li id="nav-item-performance">
+
               <a href="#" class="nav-link" data-tab="performance">
+
                 <i data-lucide="bar-chart-3"></i> <span>Team Performance</span>
+
               </a>
+
             </li>
+
             <li id="nav-item-manage-employees">
+
               <a href="#" class="nav-link" data-tab="employees">
+
                 <i data-lucide="users"></i> <span>Manage Directory</span>
+
               </a>
+
             </li>
+
             <li>
+
               <a href="#" class="nav-link" data-tab="tasks">
+
                 <i data-lucide="check-square"></i> <span>Tasks Board</span>
+
               </a>
+
             </li>
+
             <li>
+
               <a href="#" class="nav-link" data-tab="settings">
+
                 <i data-lucide="settings"></i> <span>Settings</span>
+
               </a>
+
             </li>
+
           </ul>
+
         </nav>
 
+
+
         <div class="sidebar-footer">
+
           <button id="theme-toggle" class="btn btn-secondary btn-icon-only" title="Toggle Theme">
+
             <i data-lucide="sun" id="theme-icon-sun"></i>
+
             <i data-lucide="moon" id="theme-icon-moon" class="hidden"></i>
+
           </button>
+
           <button id="logout-btn" class="btn btn-danger btn-logout">
+
             <i data-lucide="log-out"></i> <span>Logout</span>
+
           </button>
+
         </div>
+
       </div>
+
     </aside>
 
+
+
     <!-- Main Content Area -->
+
     <main class="main-content">
+
       <!-- Top header bar -->
+
       <header class="top-bar">
+
         <div class="welcome-message">
+
           <h2 id="welcome-title">Welcome back, User</h2>
+
           <p id="current-date" class="text-muted">Thursday, June 25, 2026</p>
+
         </div>
+
         <div class="top-bar-actions">
+
           <div class="quick-stats">
+
             <div class="stat-mini">
+
               <span class="label">Your Role:</span>
+
               <span id="header-role-badge" class="value text-accent">Employee</span>
+
             </div>
+
             <div class="stat-mini" id="manager-info-mini">
+
               <span class="label">Reports To:</span>
+
               <span id="header-manager-name" class="value">N/A</span>
+
             </div>
+
           </div>
+
         </div>
+
       </header>
 
+
+
       <div class="content-wrapper">
+
         
+
         <!-- ==================== TAB: OVERVIEW ==================== -->
         <section id="tab-overview" class="tab-pane active">
           <!-- Overview Summary Cards -->
@@ -219,17 +443,28 @@
             <!-- Dynamic stats generated here based on role -->
           </div>
 
-          <div class="overview-layout">
+          <div class="overview-layout" style="grid-template-columns: 1fr;">
             <!-- Recent Activities / Notifications -->
-            <div class="dashboard-card recent-activities">
+            <div class="dashboard-card recent-activities" style="width: 100%;">
               <h3><i data-lucide="bell" class="text-accent"></i> Recent Activity Log</h3>
               <div class="activity-timeline" id="activity-timeline-container">
                 <!-- Dynamically rendered activities -->
               </div>
             </div>
+          </div>
+        </section>
 
-            <!-- Profile Summary Card -->
-            <div class="dashboard-card profile-details-card">
+        <!-- ==================== TAB: MY PROFILE ==================== -->
+        <section id="tab-profile" class="tab-pane hidden">
+          <div class="section-header">
+            <div>
+              <h2>My Profile</h2>
+              <p class="section-desc">View and verify your registered security profile details.</p>
+            </div>
+          </div>
+
+          <div style="max-width: 600px; margin: 20px auto;">
+            <div class="dashboard-card profile-details-card" style="margin-top: 0;">
               <h3><i data-lucide="shield-check" class="text-accent"></i> Your Security Profile</h3>
               <div class="profile-info-grid">
                 <div class="info-row">
@@ -270,640 +505,1274 @@
                 </div>
               </div>
             </div>
-            
           </div>
         </section>
+
+
 
         <!-- ==================== TAB: TEAM PERFORMANCE ==================== -->
+
         <section id="tab-performance" class="tab-pane hidden">
+
           <div class="section-header">
+
             <div>
+
               <h2>Team Performance Analytics</h2>
+
               <p class="section-desc">Visual analytics tracking task completion metrics across your reporting staff hierarchy.</p>
+
             </div>
+
           </div>
+
+
 
           <!-- Controls for Performance Chart -->
+
           <div class="dashboard-card" style="margin-bottom: 24px; padding: 16px 24px; display: flex; flex-wrap: wrap; gap: 20px; align-items: center;">
+
             <div class="filter-box" style="margin-bottom: 0;">
+
               <label for="perf-role-filter" style="font-weight:600; font-size:0.85rem; margin-right:8px;">Filter by Role:</label>
+
               <select id="perf-role-filter" style="padding: 6px 12px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--bg-secondary); color: var(--text-primary);">
+
                 <option value="all">All Roles</option>
+
                 <option value="Manager">Managers Only</option>
+
                 <option value="Employee">Employees Only</option>
+
               </select>
+
             </div>
 
+
+
             <div class="filter-box" style="margin-bottom: 0;">
+
               <label for="perf-priority-filter" style="font-weight:600; font-size:0.85rem; margin-right:8px;">Task Priority:</label>
+
               <select id="perf-priority-filter" style="padding: 6px 12px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--bg-secondary); color: var(--text-primary);">
+
                 <option value="all">All Priorities</option>
+
                 <option value="Critical">Critical</option>
+
                 <option value="High">High</option>
+
                 <option value="Medium">Medium</option>
+
                 <option value="Low">Low</option>
+
               </select>
+
             </div>
 
+
+
             <div class="filter-box" style="margin-bottom: 0;">
+
               <label for="perf-date-filter" style="font-weight:600; font-size:0.85rem; margin-right:8px;">Due Date Range:</label>
+
               <select id="perf-date-filter" style="padding: 6px 12px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--bg-secondary); color: var(--text-primary);">
+
                 <option value="all">All Time</option>
+
                 <option value="week">Due This Week</option>
+
                 <option value="month">Due This Month</option>
+
                 <option value="overdue">Overdue Tasks</option>
+
               </select>
+
             </div>
+
           </div>
+
           
+
           <div class="dashboard-card" style="width: 100%; min-height: 480px; padding: 28px;">
+
             <h3><i data-lucide="bar-chart-3" class="text-accent"></i> Completion Scores by Subordinate</h3>
+
             <p class="text-muted" style="font-size: 0.85rem; margin-bottom: 24px;">
+
               Teal bars represent standard Employees; Indigo bars represent Managers. Hover over bars to inspect details.
+
             </p>
+
             <div class="chart-container" style="position: relative; height: 350px; width: 100%;">
+
               <canvas id="team-performance-chart"></canvas>
+
             </div>
+
           </div>
+
         </section>
+
+
 
         <!-- ==================== TAB: TEAM HIERARCHY ==================== -->
+
         <section id="tab-hierarchy" class="tab-pane hidden">
+
           <div class="section-header">
+
             <div>
+
               <h2>MedAstraX Organization Hierarchy</h2>
+
               <p class="section-desc">Interactive organization tree mapping reporting structures from Admin to Executives, Managers, and Employees.</p>
+
             </div>
+
             <div class="hierarchy-legend">
+
               <span class="legend-item"><span class="color-dot admin-dot"></span> Admin</span>
+
               <span class="legend-item"><span class="color-dot manager-dot"></span> Manager</span>
+
               <span class="legend-item"><span class="color-dot employee-dot"></span> Employee</span>
+
             </div>
+
           </div>
+
+
 
           <div class="dashboard-card org-chart-card">
+
             <!-- Organization Chart Container -->
+
             <div class="org-chart-wrapper" id="org-chart-container">
+
               <!-- Dynamically rendered hierarchy nodes -->
+
             </div>
+
           </div>
+
         </section>
+
+
 
         <!-- ==================== TAB: MANAGE DIRECTORY (ADMIN ONLY) ==================== -->
+
         <section id="tab-employees" class="tab-pane hidden">
+
           <div class="section-header">
+
             <div>
+
               <h2>Employee Management Directory</h2>
+
               <p class="section-desc">Add new employees, provision workspace credentials, assign manager hierarchies, and manage staff credentials.</p>
+
             </div>
+
             <button class="btn btn-primary" id="open-add-employee-modal">
+
               <i data-lucide="user-plus"></i> Add New Employee
+
             </button>
+
           </div>
+
+
 
           <div class="dashboard-card table-card">
+
             <div class="table-actions">
+
               <div class="search-box">
+
                 <i data-lucide="search"></i>
+
                 <input type="text" id="employee-search" placeholder="Search employees by name, username, or role...">
+
               </div>
+
               <div class="filter-box">
+
                 <label for="filter-role-select">Role:</label>
+
                 <select id="filter-role-select">
+
                   <option value="all">All Roles</option>
+
                   <option value="Admin">Admin</option>
+
                   <option value="Manager">Manager</option>
+
                   <option value="Technical Lead">Technical Lead</option>
+
                   <option value="Team Lead">Team Lead</option>
+
                   <option value="Employee">Employee</option>
+
                 </select>
+
               </div>
+
             </div>
+
+
 
             <div class="table-wrapper">
+
               <table id="employees-table">
+
                 <thead>
+
                   <tr>
+
                     <th>Employee ID</th>
+
                     <th>Name</th>
+
                     <th>Gmail</th>
+
                     <th>Phone</th>
+
                     <th>Domain</th>
+
                     <th>Aadhar Card</th>
+
                     <th>Role</th>
+
                     <th>Reporting Manager</th>
+
                     <th>Status</th>
+
                     <th>Actions</th>
+
                   </tr>
+
                 </thead>
+
                 <tbody id="employees-table-body">
+
                   <!-- Dynamically populated employee records -->
+
                 </tbody>
+
               </table>
+
             </div>
+
           </div>
+
         </section>
+
+
 
         <!-- ==================== TAB: TASKS BOARD ==================== -->
+
         <section id="tab-tasks" class="tab-pane hidden">
+
           <div class="section-header">
+
             <div>
+
               <h2>Workspace Tasks Board</h2>
+
               <p class="section-desc" id="tasks-board-desc">Track, organize, and transition project tasks and deliverables.</p>
+
             </div>
+
             <button class="btn btn-primary hidden" id="open-create-task-modal">
+
               <i data-lucide="plus-circle"></i> Create & Assign Task
+
             </button>
+
           </div>
+
+
 
           <!-- Controls: Search, Sort and Filters -->
+
           <div class="dashboard-card tasks-control-bar" style="margin-bottom: 24px; padding: 16px 24px; display: flex; flex-wrap: wrap; gap: 16px; align-items: center; justify-content: space-between;">
+
             <div class="search-box" style="width: 280px; margin-bottom: 0;">
+
               <i data-lucide="search"></i>
+
               <input type="text" id="task-search-input" placeholder="Search tasks by title/desc...">
+
             </div>
+
             
+
             <div style="display: flex; gap: 16px; align-items: center; flex-wrap: wrap;">
+
               <div class="filter-box">
+
                 <label for="task-priority-filter">Priority:</label>
+
                 <select id="task-priority-filter">
+
                   <option value="all">All Priorities</option>
+
                   <option value="Critical">Critical</option>
+
                   <option value="High">High</option>
+
                   <option value="Medium">Medium</option>
+
                   <option value="Low">Low</option>
+
                 </select>
+
               </div>
+
               
+
               <div class="filter-box">
+
                 <label for="task-sort-select">Sort by:</label>
+
                 <select id="task-sort-select">
+
                   <option value="none">No Sorting</option>
+
                   <option value="dueDate">Due Date (Soonest)</option>
+
                   <option value="priority">Priority Rank (High -> Low)</option>
+
                 </select>
+
               </div>
+
             </div>
+
           </div>
+
+
 
           <!-- Dynamic tasks board layouts -->
+
           
+
           <!-- MANAGER/ADMIN VIEW: List of Assigned Tasks with progress tracks -->
+
           <div id="admin-manager-tasks-view" class="hidden">
+
             <div class="dashboard-card table-card">
+
               <div class="table-actions">
+
                 <h3>Assigned Team Tasks</h3>
+
                 <div class="filter-box">
+
                   <label for="task-assignee-filter">Filter by Assignee:</label>
+
                   <select id="task-assignee-filter">
+
                     <option value="all">All Assignees</option>
+
                   </select>
+
                 </div>
+
               </div>
+
               <div class="table-wrapper">
+
                 <table id="tasks-table">
+
                   <thead>
+
                     <tr>
+
                       <th>Task Title</th>
+
                       <th>Assignee</th>
+
                       <th>Priority</th>
+
                       <th>Due Date</th>
+
                       <th>Status</th>
+
                       <th>Reporting Line</th>
+
                       <th>Actions</th>
+
                     </tr>
+
                   </thead>
+
                   <tbody id="tasks-table-body">
+
                     <!-- Dynamically populated team tasks -->
+
                   </tbody>
+
                 </table>
+
               </div>
+
             </div>
+
           </div>
+
+
 
           <!-- EMPLOYEE VIEW: Kanban Board style -->
+
           <div id="employee-tasks-view" class="kanban-board hidden">
+
             <!-- Column: Pending -->
+
             <div class="kanban-column" id="col-pending" data-status="Pending">
+
               <div class="kanban-column-header">
+
                 <h3>Pending</h3>
+
                 <span class="count-badge" id="count-pending">0</span>
+
               </div>
+
               <div class="kanban-cards-container" id="cards-pending"></div>
+
             </div>
+
+
 
             <!-- Column: In Progress -->
+
             <div class="kanban-column" id="col-in-progress" data-status="In Progress">
+
               <div class="kanban-column-header">
+
                 <h3>In Progress</h3>
+
                 <span class="count-badge" id="count-in-progress">0</span>
+
               </div>
+
               <div class="kanban-cards-container" id="cards-in-progress"></div>
+
             </div>
+
+
 
             <!-- Column: Under Review -->
+
             <div class="kanban-column" id="col-review" data-status="Under Review">
+
               <div class="kanban-column-header">
+
                 <h3>Under Review</h3>
+
                 <span class="count-badge" id="count-review">0</span>
+
               </div>
+
               <div class="kanban-cards-container" id="cards-review"></div>
+
             </div>
+
+
 
             <!-- Column: Completed -->
+
             <div class="kanban-column" id="col-completed" data-status="Completed">
+
               <div class="kanban-column-header">
+
                 <h3>Completed</h3>
+
                 <span class="count-badge" id="count-completed">0</span>
+
               </div>
+
               <div class="kanban-cards-container" id="cards-completed"></div>
+
             </div>
+
           </div>
 
+
+
         </section>
+
+
 
         <!-- ==================== TAB: SETTINGS ==================== -->
+
         <section id="tab-settings" class="tab-pane hidden">
+
           <div class="section-header">
+
             <div>
+
               <h2>Profile & Portal Settings</h2>
+
               <p class="section-desc">Manage your workspace account password and availability status configurations.</p>
+
             </div>
+
           </div>
+
+
 
           <div class="overview-layout">
+
             <!-- Account Settings Card -->
+
             <div class="dashboard-card" id="change-password-card">
+
               <h3><i data-lucide="key" class="text-accent"></i> Change Password</h3>
+
               <form id="change-password-form" style="margin-top: 15px;">
+
                 <div class="form-group">
+
                   <label for="settings-current-pass">Current Password</label>
+
                   <input type="password" id="settings-current-pass" required placeholder="••••••••">
+
                 </div>
+
                 <div class="form-group">
+
                   <label for="settings-new-pass">New Password</label>
+
                   <input type="password" id="settings-new-pass" required placeholder="••••••••">
+
                 </div>
+
                 <div class="form-group">
+
                   <label for="settings-confirm-pass">Confirm New Password</label>
+
                   <input type="password" id="settings-confirm-pass" required placeholder="••••••••">
+
                 </div>
+
                 <button type="submit" class="btn btn-primary glow-btn" style="width: 100%;">Change Password</button>
+
               </form>
+
             </div>
+
+
 
             <!-- Status Customization Card -->
+
             <div class="dashboard-card" id="duty-status-card">
+
               <h3><i data-lucide="user-check" class="text-accent"></i> Duty Status</h3>
+
               <p class="text-muted" style="font-size: 0.9rem; margin-bottom: 20px;">
+
                 Toggle your duty status. This lets your manager and team know your current availability.
+
               </p>
+
               
+
               <div class="form-group">
+
                 <label for="settings-status-select">Select Availability</label>
+
                 <select id="settings-status-select">
+
                   <option value="Active">🟢 Active / On Duty</option>
+
                   <option value="On Leave">🟡 On Leave</option>
+
                   <option value="Out of Office">🔴 Out of Office</option>
+
                 </select>
+
               </div>
+
+
 
               <div class="info-row" style="margin-top: 24px;">
+
                 <span class="info-label">Current Status Display:</span>
+
                 <span id="settings-current-status-badge" class="badge">Active</span>
+
               </div>
+
             </div>
+
           </div>
+
         </section>
 
+
+
       </div>
+
     </main>
+
   </div>
+
+
 
   <!-- ==================== MODAL: ADD EMPLOYEE (ADMIN ONLY) ==================== -->
+
   <div id="add-employee-modal" class="modal-overlay hidden">
+
     <div class="modal-card">
+
       <div class="modal-header">
+
         <h2><i data-lucide="user-plus"></i> Add New Employee</h2>
+
         <button class="close-modal-btn" id="close-employee-modal">&times;</button>
+
       </div>
+
       <form id="add-employee-form">
+
         <div class="form-group">
+
           <label for="new-fullname">Full Name</label>
+
           <input type="text" id="new-fullname" placeholder="e.g. Rahul Sharma" required>
+
         </div>
+
         
+
         <div class="form-row">
+
           <div class="form-group">
+
             <label for="new-username">Username</label>
+
             <input type="text" id="new-username" placeholder="e.g. rahul_s" required>
+
           </div>
+
           <div class="form-group">
+
             <label for="new-password">Initial Password</label>
+
             <div class="password-input-wrapper">
+
               <input type="password" id="new-password" placeholder="e.g. temp123" required>
+
               <button type="button" id="toggle-new-password" class="icon-btn-toggle" aria-label="Toggle Password Visibility">
+
                 <i data-lucide="eye"></i>
+
               </button>
+
             </div>
+
           </div>
+
         </div>
 
+
+
         <div class="form-row">
+
           <div class="form-group">
+
             <label for="new-role">Hierarchy Role</label>
+
             <select id="new-role" required>
+
               <option value="">Select Role...</option>
+
               <option value="Manager">Manager</option>
+
               <option value="Technical Lead">Technical Lead</option>
+
               <option value="Team Lead">Team Lead</option>
+
               <option value="Employee">Employee</option>
+
             </select>
+
           </div>
+
           <div class="form-group">
+
             <label for="new-manager">Reporting Manager</label>
+
             <select id="new-manager" required>
+
               <!-- Populated dynamically: Admin + Managers -->
+
             </select>
+
           </div>
+
         </div>
 
+
+
         <div class="form-row">
+
           <div class="form-group">
+
             <label for="new-gmail">Gmail Address</label>
+
             <input type="email" id="new-gmail" placeholder="e.g. rahul@gmail.com" required>
+
           </div>
+
           <div class="form-group">
+
             <label for="new-phone">Phone Number</label>
+
             <input type="tel" id="new-phone" placeholder="e.g. +91 98765 43210" required>
+
           </div>
+
         </div>
 
+
+
         <div class="form-row">
+
           <div class="form-group">
+
             <label for="new-domain">Domain</label>
+
             <select id="new-domain" required>
+
               <option value="">Select Domain...</option>
+
               <option value="Tech">Tech</option>
+
               <option value="Marketing">Marketing</option>
+
               <option value="R&D">R&D</option>
+
               <option value="Other">Other</option>
+
             </select>
+
           </div>
+
           <div class="form-group">
+
             <label for="new-aadhar">Aadhar Card</label>
+
             <input type="text" id="new-aadhar" placeholder="e.g. 1234 5678 9012" pattern="\d{4}\s?\d{4}\s?\d{4}|\d{12}" title="Aadhar card number must be a 12-digit number" required>
+
           </div>
+
         </div>
+
+
 
         <div class="form-group hidden" id="custom-domain-wrapper">
+
           <label for="new-custom-domain">Specify Custom Domain</label>
+
           <input type="text" id="new-custom-domain" placeholder="e.g. Human Resources, Finance, Sales">
+
         </div>
 
+
+
         <div class="modal-footer">
+
           <button type="button" class="btn btn-secondary" id="cancel-employee-btn">Cancel</button>
+
           <button type="submit" class="btn btn-primary">Create Account</button>
+
         </div>
+
       </form>
+
     </div>
+
   </div>
+
+
 
   <!-- ==================== MODAL: EDIT EMPLOYEE (HEADS ONLY) ==================== -->
+
   <div id="edit-employee-modal" class="modal-overlay hidden">
+
     <div class="modal-card">
+
       <div class="modal-header">
+
         <h2><i data-lucide="user-cog"></i> Edit Employee Profile</h2>
+
         <button class="close-modal-btn" id="close-edit-modal">&times;</button>
+
       </div>
+
       <form id="edit-employee-form">
+
         <input type="hidden" id="edit-user-id">
+
         
+
         <div class="form-group">
+
           <label for="edit-fullname">Full Name</label>
+
           <input type="text" id="edit-fullname" placeholder="e.g. Rahul Sharma" required>
+
         </div>
+
         
+
         <div class="form-group">
+
           <label for="edit-username">Username</label>
+
           <input type="text" id="edit-username" placeholder="e.g. rahul_s" required>
+
         </div>
 
+
+
         <div class="form-row">
+
           <div class="form-group">
+
             <label for="edit-role">Hierarchy Role</label>
+
             <select id="edit-role" required>
+
               <option value="">Select Role...</option>
+
               <option value="Admin">Admin</option>
+
               <option value="Manager">Manager</option>
+
               <option value="Technical Lead">Technical Lead</option>
+
               <option value="Team Lead">Team Lead</option>
+
               <option value="Employee">Employee</option>
+
             </select>
+
           </div>
+
           <div class="form-group">
+
             <label for="edit-manager">Reporting Manager</label>
+
             <select id="edit-manager" required>
+
               <!-- Populated dynamically: Admin + Managers -->
+
             </select>
+
           </div>
+
         </div>
 
+
+
         <div class="form-row">
+
           <div class="form-group">
+
             <label for="edit-gmail">Gmail Address</label>
+
             <input type="email" id="edit-gmail" placeholder="e.g. rahul@gmail.com" required>
+
           </div>
+
           <div class="form-group">
+
             <label for="edit-phone">Phone Number</label>
+
             <input type="tel" id="edit-phone" placeholder="e.g. +91 98765 43210" required>
+
           </div>
+
         </div>
 
+
+
         <div class="form-row">
+
           <div class="form-group">
+
             <label for="edit-domain">Domain</label>
+
             <select id="edit-domain" required>
+
               <option value="">Select Domain...</option>
+
               <option value="Tech">Tech</option>
+
               <option value="Marketing">Marketing</option>
+
               <option value="R&D">R&D</option>
+
               <option value="Other">Other</option>
+
             </select>
+
           </div>
+
           <div class="form-group">
+
             <label for="edit-aadhar">Aadhar Card</label>
+
             <input type="text" id="edit-aadhar" placeholder="e.g. 1234 5678 9012" pattern="\d{4}\s?\d{4}\s?\d{4}|\d{12}" title="Aadhar card number must be a 12-digit number" required>
+
           </div>
+
         </div>
+
+
 
         <div class="form-group hidden" id="edit-custom-domain-wrapper">
+
           <label for="edit-custom-domain">Specify Custom Domain</label>
+
           <input type="text" id="edit-custom-domain" placeholder="e.g. Human Resources, Finance, Sales">
+
         </div>
 
+
+
         <div class="modal-footer">
+
           <button type="button" class="btn btn-secondary" id="cancel-edit-btn">Cancel</button>
+
           <button type="submit" class="btn btn-primary">Save Changes</button>
+
         </div>
+
       </form>
+
     </div>
+
   </div>
+
+
 
   <!-- ==================== MODAL: CREATE TASK (ADMIN/MANAGER) ==================== -->
+
   <div id="create-task-modal" class="modal-overlay hidden">
+
     <div class="modal-card">
+
       <div class="modal-header">
+
         <h2><i data-lucide="clipboard-list"></i> Create & Assign Task</h2>
+
         <button class="close-modal-btn" id="close-task-modal">&times;</button>
+
       </div>
+
       <form id="create-task-form">
-        <div class="form-group">
-          <label for="task-title">Task Title</label>
-          <input type="text" id="task-title" placeholder="e.g. Review Medical Imaging Pipeline" required>
-        </div>
 
         <div class="form-group">
-          <label for="task-desc">Task Description</label>
-          <textarea id="task-desc" placeholder="Details of the task..." rows="3" required></textarea>
+
+          <label for="task-title">Task Title</label>
+
+          <input type="text" id="task-title" placeholder="e.g. Review Medical Imaging Pipeline" required>
+
         </div>
+
+
+
+        <div class="form-group">
+
+          <label for="task-desc">Task Description</label>
+
+          <textarea id="task-desc" placeholder="Details of the task..." rows="3" required></textarea>
+
+        </div>
+
+
 
         <div class="form-row">
+
           <div class="form-group">
+
             <label for="task-assignee">Assignee</label>
+
             <select id="task-assignee" required>
+
               <!-- Populate based on who this admin/manager can see -->
+
             </select>
+
           </div>
+
           <div class="form-group">
+
             <label for="task-priority">Priority</label>
+
             <select id="task-priority" required>
+
               <option value="Low">Low</option>
+
               <option value="Medium" selected>Medium</option>
+
               <option value="High">High</option>
+
               <option value="Critical">Critical</option>
+
             </select>
+
           </div>
+
         </div>
 
+
+
         <div class="form-group">
+
           <label for="task-reference-link">Reference Link (Optional)</label>
+
           <input type="url" id="task-reference-link" placeholder="e.g. https://docs.google.com/... (optional)">
+
         </div>
 
+
+
         <div class="form-group">
+
           <label for="task-duedate">Due Date</label>
+
           <input type="date" id="task-duedate" required>
+
         </div>
+
+
 
         <div class="modal-footer">
+
           <button type="button" class="btn btn-secondary" id="cancel-task-btn">Cancel</button>
+
           <button type="submit" class="btn btn-primary">Assign Task</button>
+
         </div>
+
       </form>
+
     </div>
+
   </div>
+
+
 
   <!-- ==================== MODAL: TASK DETAILS & WORKFLOW ==================== -->
+
   <div id="task-details-modal" class="modal-overlay hidden">
+
     <div class="modal-card" style="max-width: 650px; width: 90%; max-height: 90vh; overflow-y: auto;">
+
       <div class="modal-header">
+
         <h2 id="detail-task-title">Task Details</h2>
+
         <button type="button" class="close-modal-btn" id="close-detail-modal">&times;</button>
+
       </div>
+
       
+
       <div class="task-details-body" style="display: flex; flex-direction: column; gap: 20px; text-align: left;">
+
         <!-- Description -->
+
         <div>
+
           <h4 class="text-muted" style="font-size: 0.8rem; text-transform: uppercase;">Description</h4>
+
           <p id="detail-task-desc" style="margin-top: 4px; font-size: 0.95rem; line-height: 1.5; color: var(--text-primary);"></p>
+
         </div>
+
+
 
         <!-- Details Grid -->
+
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; background-color: rgba(5,47,95,0.03); padding: 16px; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+
           <div>
+
             <span class="text-muted" style="font-size: 0.8rem;">Priority:</span>
+
             <span id="detail-task-priority" class="task-priority-badge" style="margin-left: 6px;">MEDIUM</span>
+
           </div>
+
           <div>
+
             <span class="text-muted" style="font-size: 0.8rem;">Due Date:</span>
+
             <span id="detail-task-duedate" style="margin-left: 6px; font-weight: 600;">YYYY-MM-DD</span>
+
           </div>
+
           <div>
+
             <span class="text-muted" style="font-size: 0.8rem;">Assignee:</span>
+
             <strong id="detail-task-assignee" style="margin-left: 6px; color: var(--text-primary);">Name</strong>
+
           </div>
+
           <div>
+
             <span class="text-muted" style="font-size: 0.8rem;">Assigned By:</span>
+
             <strong id="detail-task-creator" style="margin-left: 6px; color: var(--text-primary);">Name</strong>
+
           </div>
+
         </div>
+
+
 
         <!-- Links (Attachments) Section -->
+
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+
           <div>
+
             <h4 class="text-muted" style="font-size: 0.8rem; text-transform: uppercase;">Reference Link</h4>
+
             <div id="detail-reference-link-container" style="margin-top: 4px; font-size: 0.9rem;">
+
               <!-- Handled in JS -->
+
             </div>
+
           </div>
+
           <div>
+
             <h4 class="text-muted" style="font-size: 0.8rem; text-transform: uppercase;">Deliverable Link</h4>
+
             <div id="detail-deliverable-link-container" style="margin-top: 4px; font-size: 0.9rem;">
+
               <!-- Handled in JS -->
+
             </div>
+
           </div>
+
         </div>
+
+
 
         <!-- Manager Rejection Feedback -->
+
         <div id="detail-feedback-alert" class="hidden" style="background-color: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: var(--radius-sm); padding: 12px 16px;">
+
           <h4 style="color: var(--color-danger); font-size: 0.85rem; display: flex; align-items: center; gap: 6px;">
+
             <i data-lucide="alert-triangle"></i> Manager Feedback (Changes Requested)
+
           </h4>
+
           <p id="detail-feedback-text" style="font-size: 0.9rem; color: var(--text-primary); margin-top: 6px;"></p>
+
         </div>
+
+
 
         <!-- Workflow Actions (Approve / Reject / Submit review) -->
+
         <div id="detail-workflow-actions" style="border-top: 1px solid var(--border-color); padding-top: 16px;">
+
           <!-- Handled in JS based on role and status -->
+
         </div>
+
+
 
         <!-- Manager Request Feedback text area (shows when reject is clicked) -->
+
         <div id="detail-reject-textarea-container" class="hidden" style="display: flex; flex-direction: column; gap: 8px;">
+
           <label for="detail-reject-feedback" style="font-weight: 600; font-size: 0.85rem;">Provide Feedback for Rejection</label>
+
           <textarea id="detail-reject-feedback" rows="2" placeholder="Explain what changes are needed..." style="width:100%; padding: 10px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); color: var(--text-primary); background: transparent;"></textarea>
+
           <div style="display:flex; justify-content: flex-end; gap:8px;">
+
             <button type="button" class="btn btn-secondary" id="cancel-reject-submit-btn">Cancel</button>
+
             <button type="button" class="btn btn-danger" id="confirm-reject-submit-btn">Confirm Rejection</button>
+
           </div>
+
         </div>
+
+
 
         <!-- Comments & Updates Discussion -->
+
         <div style="border-top: 1px solid var(--border-color); padding-top: 16px;">
+
           <h3 style="font-size: 1rem; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+
             <i data-lucide="message-square" class="text-accent"></i> Task Updates & Comments
+
           </h3>
+
           
+
           <!-- Comments scroll list -->
+
           <div id="detail-comments-list" style="max-height: 150px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; padding-right: 4px;">
+
             <!-- Rendered in JS -->
+
           </div>
 
+
+
           <!-- Add comment form -->
+
           <form id="add-comment-form" style="display: flex; gap: 10px;">
+
             <input type="text" id="new-comment-input" required placeholder="Post a progress update or comment..." style="flex-grow: 1; padding: 10px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: transparent; color: var(--text-primary);">
+
             <button type="submit" class="btn btn-primary" style="padding: 10px 16px;"><i data-lucide="send"></i></button>
+
           </form>
+
         </div>
+
       </div>
+
       
+
       <div class="modal-footer" style="margin-top: 20px;">
+
         <button type="button" class="btn btn-secondary" id="close-detail-modal-footer">Close</button>
+
       </div>
+
     </div>
+
   </div>
 
+
+
   <!-- ==================== SCRIPTS ==================== -->
+
   <script src="app.js?v=2.2"></script>
+
 </body>
+
 </html>
+
