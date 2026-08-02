@@ -14,7 +14,7 @@
   <script src="https://unpkg.com/lucide@latest"></script>
   
   <!-- Custom Stylesheet -->
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=2.2">
   
   <!-- Chart.js CDN -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -92,6 +92,14 @@
           </div>
         </div>
         
+        <div class="form-group remember-me-group">
+          <label class="checkbox-container">
+            <input type="checkbox" id="remember-me">
+            <span class="checkbox-checkmark"></span>
+            Remember me on this device
+          </label>
+        </div>
+        
         <button type="submit" class="btn btn-primary btn-block glow-btn">
           <span>Log In</span> <i data-lucide="arrow-right"></i>
         </button>
@@ -108,67 +116,75 @@
 
   <!-- ==================== MAIN WORKSPACE CONTAINER ==================== -->
   <div id="workspace-container" class="workspace-wrapper hidden">
+    <!-- Toggle Button (Floating/Sliding) -->
+    <button id="sidebar-toggle-btn" class="btn-icon-only" title="Toggle Sidebar">
+      <i data-lucide="menu"></i>
+    </button>
+    
     <!-- Sidebar Navigation -->
     <aside class="sidebar">
-      <div class="sidebar-brand">
-        <img src="medastrax_logo.png" alt="Medastrax Logo" class="brand-logo-small">
-        <span class="brand-name">MedAstraX</span>
-      </div>
-      
-      <div class="user-profile-summary">
-        <div class="avatar-container">
-          <div class="avatar-placeholder" id="user-avatar-char">U</div>
-          <span class="status-indicator online"></span>
+      <!-- Sidebar Inner Content (hidden when collapsed) -->
+      <div class="sidebar-content">
+        <div class="sidebar-brand">
+          <img src="medastrax_logo.png" alt="Medastrax Logo" class="brand-logo-small">
+          <span class="brand-name">MedAstraX</span>
         </div>
-        <div class="user-details">
-          <h4 id="user-display-name">Loading...</h4>
-          <span id="user-display-role" class="badge">Loading...</span>
+        
+        <div class="user-profile-summary">
+          <div class="avatar-container">
+            <div class="avatar-placeholder" id="user-avatar-char">U</div>
+            <span class="status-indicator online"></span>
+          </div>
+          <div class="user-details">
+            <h4 id="user-display-name">Loading...</h4>
+            <span id="user-display-role" class="badge">Loading...</span>
+          </div>
         </div>
-      </div>
 
-      <nav class="sidebar-nav">
-        <ul>
-          <li>
-            <a href="#" class="nav-link active" data-tab="overview">
-              <i data-lucide="layout-dashboard"></i> <span>Overview</span>
-            </a>
-          </li>
-          <li>
-            <a href="#" class="nav-link" data-tab="hierarchy">
-              <i data-lucide="git-branch"></i> <span>Team Hierarchy</span>
-            </a>
-          </li>
-          <li id="nav-item-performance">
-            <a href="#" class="nav-link" data-tab="performance">
-              <i data-lucide="bar-chart-3"></i> <span>Team Performance</span>
-            </a>
-          </li>
-          <li id="nav-item-manage-employees">
-            <a href="#" class="nav-link" data-tab="employees">
-              <i data-lucide="users"></i> <span>Manage Directory</span>
-            </a>
-          </li>
-          <li>
-            <a href="#" class="nav-link" data-tab="tasks">
-              <i data-lucide="check-square"></i> <span>Tasks Board</span>
-            </a>
-          </li>
-          <li>
-            <a href="#" class="nav-link" data-tab="settings">
-              <i data-lucide="settings"></i> <span>Settings</span>
-            </a>
-          </li>
-        </ul>
-      </nav>
+        <nav class="sidebar-nav">
+          <ul>
+            <li>
+              <a href="#" class="nav-link active" data-tab="overview">
+                <i data-lucide="layout-dashboard"></i> <span>Overview</span>
+              </a>
+            </li>
+            <li>
+              <a href="#" class="nav-link" data-tab="hierarchy">
+                <i data-lucide="git-branch"></i> <span>Team Hierarchy</span>
+              </a>
+            </li>
+            <li id="nav-item-performance">
+              <a href="#" class="nav-link" data-tab="performance">
+                <i data-lucide="bar-chart-3"></i> <span>Team Performance</span>
+              </a>
+            </li>
+            <li id="nav-item-manage-employees">
+              <a href="#" class="nav-link" data-tab="employees">
+                <i data-lucide="users"></i> <span>Manage Directory</span>
+              </a>
+            </li>
+            <li>
+              <a href="#" class="nav-link" data-tab="tasks">
+                <i data-lucide="check-square"></i> <span>Tasks Board</span>
+              </a>
+            </li>
+            <li>
+              <a href="#" class="nav-link" data-tab="settings">
+                <i data-lucide="settings"></i> <span>Settings</span>
+              </a>
+            </li>
+          </ul>
+        </nav>
 
-      <div class="sidebar-footer">
-        <button id="theme-toggle" class="btn btn-secondary btn-icon-only" title="Toggle Theme">
-          <i data-lucide="sun" id="theme-icon-sun"></i>
-          <i data-lucide="moon" id="theme-icon-moon" class="hidden"></i>
-        </button>
-        <button id="logout-btn" class="btn btn-danger btn-logout">
-          <i data-lucide="log-out"></i> <span>Logout</span>
-        </button>
+        <div class="sidebar-footer">
+          <button id="theme-toggle" class="btn btn-secondary btn-icon-only" title="Toggle Theme">
+            <i data-lucide="sun" id="theme-icon-sun"></i>
+            <i data-lucide="moon" id="theme-icon-moon" class="hidden"></i>
+          </button>
+          <button id="logout-btn" class="btn btn-danger btn-logout">
+            <i data-lucide="log-out"></i> <span>Logout</span>
+          </button>
+        </div>
       </div>
     </aside>
 
@@ -231,6 +247,22 @@
                 <div class="info-row">
                   <span class="info-label">Reporting Line:</span>
                   <span id="profile-reporting" class="info-val">...</span>
+                </div>
+                <div class="info-row">
+                  <span class="info-label">Gmail:</span>
+                  <span id="profile-gmail" class="info-val">...</span>
+                </div>
+                <div class="info-row">
+                  <span class="info-label">Phone:</span>
+                  <span id="profile-phone" class="info-val">...</span>
+                </div>
+                <div class="info-row">
+                  <span class="info-label">Domain:</span>
+                  <span id="profile-domain" class="info-val">...</span>
+                </div>
+                <div class="info-row">
+                  <span class="info-label">Aadhar Card:</span>
+                  <span id="profile-aadhar" class="info-val">...</span>
                 </div>
                 <div class="info-row">
                   <span class="info-label">Current Status:</span>
@@ -341,6 +373,8 @@
                   <option value="all">All Roles</option>
                   <option value="Admin">Admin</option>
                   <option value="Manager">Manager</option>
+                  <option value="Technical Lead">Technical Lead</option>
+                  <option value="Team Lead">Team Lead</option>
                   <option value="Employee">Employee</option>
                 </select>
               </div>
@@ -352,7 +386,10 @@
                   <tr>
                     <th>Employee ID</th>
                     <th>Name</th>
-                    <th>Username</th>
+                    <th>Gmail</th>
+                    <th>Phone</th>
+                    <th>Domain</th>
+                    <th>Aadhar Card</th>
                     <th>Role</th>
                     <th>Reporting Manager</th>
                     <th>Status</th>
@@ -563,7 +600,12 @@
           </div>
           <div class="form-group">
             <label for="new-password">Initial Password</label>
-            <input type="password" id="new-password" placeholder="e.g. temp123" required>
+            <div class="password-input-wrapper">
+              <input type="password" id="new-password" placeholder="e.g. temp123" required>
+              <button type="button" id="toggle-new-password" class="icon-btn-toggle" aria-label="Toggle Password Visibility">
+                <i data-lucide="eye"></i>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -573,6 +615,8 @@
             <select id="new-role" required>
               <option value="">Select Role...</option>
               <option value="Manager">Manager</option>
+              <option value="Technical Lead">Technical Lead</option>
+              <option value="Team Lead">Team Lead</option>
               <option value="Employee">Employee</option>
             </select>
           </div>
@@ -584,9 +628,123 @@
           </div>
         </div>
 
+        <div class="form-row">
+          <div class="form-group">
+            <label for="new-gmail">Gmail Address</label>
+            <input type="email" id="new-gmail" placeholder="e.g. rahul@gmail.com" required>
+          </div>
+          <div class="form-group">
+            <label for="new-phone">Phone Number</label>
+            <input type="tel" id="new-phone" placeholder="e.g. +91 98765 43210" required>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="new-domain">Domain</label>
+            <select id="new-domain" required>
+              <option value="">Select Domain...</option>
+              <option value="Tech">Tech</option>
+              <option value="Marketing">Marketing</option>
+              <option value="R&D">R&D</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="new-aadhar">Aadhar Card</label>
+            <input type="text" id="new-aadhar" placeholder="e.g. 1234 5678 9012" pattern="\d{4}\s?\d{4}\s?\d{4}|\d{12}" title="Aadhar card number must be a 12-digit number" required>
+          </div>
+        </div>
+
+        <div class="form-group hidden" id="custom-domain-wrapper">
+          <label for="new-custom-domain">Specify Custom Domain</label>
+          <input type="text" id="new-custom-domain" placeholder="e.g. Human Resources, Finance, Sales">
+        </div>
+
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" id="cancel-employee-btn">Cancel</button>
           <button type="submit" class="btn btn-primary">Create Account</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ==================== MODAL: EDIT EMPLOYEE (HEADS ONLY) ==================== -->
+  <div id="edit-employee-modal" class="modal-overlay hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2><i data-lucide="user-cog"></i> Edit Employee Profile</h2>
+        <button class="close-modal-btn" id="close-edit-modal">&times;</button>
+      </div>
+      <form id="edit-employee-form">
+        <input type="hidden" id="edit-user-id">
+        
+        <div class="form-group">
+          <label for="edit-fullname">Full Name</label>
+          <input type="text" id="edit-fullname" placeholder="e.g. Rahul Sharma" required>
+        </div>
+        
+        <div class="form-group">
+          <label for="edit-username">Username</label>
+          <input type="text" id="edit-username" placeholder="e.g. rahul_s" required>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="edit-role">Hierarchy Role</label>
+            <select id="edit-role" required>
+              <option value="">Select Role...</option>
+              <option value="Admin">Admin</option>
+              <option value="Manager">Manager</option>
+              <option value="Technical Lead">Technical Lead</option>
+              <option value="Team Lead">Team Lead</option>
+              <option value="Employee">Employee</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="edit-manager">Reporting Manager</label>
+            <select id="edit-manager" required>
+              <!-- Populated dynamically: Admin + Managers -->
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="edit-gmail">Gmail Address</label>
+            <input type="email" id="edit-gmail" placeholder="e.g. rahul@gmail.com" required>
+          </div>
+          <div class="form-group">
+            <label for="edit-phone">Phone Number</label>
+            <input type="tel" id="edit-phone" placeholder="e.g. +91 98765 43210" required>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="edit-domain">Domain</label>
+            <select id="edit-domain" required>
+              <option value="">Select Domain...</option>
+              <option value="Tech">Tech</option>
+              <option value="Marketing">Marketing</option>
+              <option value="R&D">R&D</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="edit-aadhar">Aadhar Card</label>
+            <input type="text" id="edit-aadhar" placeholder="e.g. 1234 5678 9012" pattern="\d{4}\s?\d{4}\s?\d{4}|\d{12}" title="Aadhar card number must be a 12-digit number" required>
+          </div>
+        </div>
+
+        <div class="form-group hidden" id="edit-custom-domain-wrapper">
+          <label for="edit-custom-domain">Specify Custom Domain</label>
+          <input type="text" id="edit-custom-domain" placeholder="e.g. Human Resources, Finance, Sales">
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="cancel-edit-btn">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Changes</button>
         </div>
       </form>
     </div>
@@ -746,6 +904,6 @@
   </div>
 
   <!-- ==================== SCRIPTS ==================== -->
-  <script src="app.js"></script>
+  <script src="app.js?v=2.2"></script>
 </body>
 </html>

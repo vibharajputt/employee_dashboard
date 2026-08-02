@@ -18,7 +18,11 @@ const DEFAULT_USERS = [
     role: "Admin",
     reportingManagerId: "none",
     status: "Active",
-    availabilityStatus: "Active"
+    availabilityStatus: "Active",
+    gmail: "alok.verma@gmail.com",
+    phone: "+91 98765 43210",
+    domain: "Other",
+    aadhar: "1234 5678 9012"
   },
   {
     id: "usr-mgr-1",
@@ -28,7 +32,11 @@ const DEFAULT_USERS = [
     role: "Manager",
     reportingManagerId: "usr-admin",
     status: "Active",
-    availabilityStatus: "Active"
+    availabilityStatus: "Active",
+    gmail: "vikram.m@gmail.com",
+    phone: "+91 98765 43211",
+    domain: "R&D",
+    aadhar: "2345 6789 0123"
   },
   {
     id: "usr-mgr-2",
@@ -38,7 +46,11 @@ const DEFAULT_USERS = [
     role: "Manager",
     reportingManagerId: "usr-admin",
     status: "Active",
-    availabilityStatus: "Active"
+    availabilityStatus: "Active",
+    gmail: "neha.sen@gmail.com",
+    phone: "+91 98765 43212",
+    domain: "Marketing",
+    aadhar: "3456 7890 1234"
   },
   {
     id: "usr-emp-1",
@@ -48,7 +60,11 @@ const DEFAULT_USERS = [
     role: "Employee",
     reportingManagerId: "usr-mgr-1",
     status: "Active",
-    availabilityStatus: "Active"
+    availabilityStatus: "Active",
+    gmail: "aman.sharma@gmail.com",
+    phone: "+91 98765 43213",
+    domain: "Tech",
+    aadhar: "4567 8901 2345"
   },
   {
     id: "usr-emp-2",
@@ -58,7 +74,11 @@ const DEFAULT_USERS = [
     role: "Employee",
     reportingManagerId: "usr-mgr-1",
     status: "Active",
-    availabilityStatus: "Active"
+    availabilityStatus: "Active",
+    gmail: "priya.v@gmail.com",
+    phone: "+91 98765 43214",
+    domain: "Tech",
+    aadhar: "5678 9012 3456"
   },
   {
     id: "usr-emp-3",
@@ -68,7 +88,11 @@ const DEFAULT_USERS = [
     role: "Employee",
     reportingManagerId: "usr-mgr-2",
     status: "Active",
-    availabilityStatus: "Active"
+    availabilityStatus: "Active",
+    gmail: "rohan.das@gmail.com",
+    phone: "+91 98765 43215",
+    domain: "Other",
+    aadhar: "6789 0123 4567"
   }
 ];
 
@@ -154,6 +178,40 @@ const DEFAULT_ACTIVITIES = [
 function initDatabase() {
   if (!localStorage.getItem("medastrax_users")) {
     localStorage.setItem("medastrax_users", JSON.stringify(DEFAULT_USERS));
+  } else {
+    // Migration: ensure all existing users have the new fields
+    const users = JSON.parse(localStorage.getItem("medastrax_users"));
+    let updated = false;
+    users.forEach(u => {
+      if (u.gmail === undefined) {
+        if (u.username === "admin") { u.gmail = "alok.verma@gmail.com"; u.phone = "+91 98765 43210"; u.domain = "Other"; u.aadhar = "1234 5678 9012"; }
+        else if (u.username === "manager1") { u.gmail = "vikram.m@gmail.com"; u.phone = "+91 98765 43211"; u.domain = "R&D"; u.aadhar = "2345 6789 0123"; }
+        else if (u.username === "manager2") { u.gmail = "neha.sen@gmail.com"; u.phone = "+91 98765 43212"; u.domain = "Marketing"; u.aadhar = "3456 7890 1234"; }
+        else if (u.username === "employee1") { u.gmail = "aman.sharma@gmail.com"; u.phone = "+91 98765 43213"; u.domain = "Tech"; u.aadhar = "4567 8901 2345"; }
+        else if (u.username === "employee2") { u.gmail = "priya.v@gmail.com"; u.phone = "+91 98765 43214"; u.domain = "Tech"; u.aadhar = "5678 9012 3456"; }
+        else if (u.username === "employee3") { u.gmail = "rohan.das@gmail.com"; u.phone = "+91 98765 43215"; u.domain = "Other"; u.aadhar = "6789 0123 4567"; }
+        else {
+          u.gmail = `${u.username}@gmail.com`;
+          u.phone = "+91 90000 00000";
+          u.domain = "Other";
+          u.aadhar = "0000 0000 0000";
+        }
+        updated = true;
+      }
+    });
+    if (updated) {
+      localStorage.setItem("medastrax_users", JSON.stringify(users));
+      
+      // Update currentUser session memory if logged in
+      const sessionUserStr = sessionStorage.getItem("medastrax_current_user");
+      if (sessionUserStr) {
+        const sessionUser = JSON.parse(sessionUserStr);
+        const freshUser = users.find(u => u.id === sessionUser.id);
+        if (freshUser) {
+          sessionStorage.setItem("medastrax_current_user", JSON.stringify(freshUser));
+        }
+      }
+    }
   }
   if (!localStorage.getItem("medastrax_tasks")) {
     localStorage.setItem("medastrax_tasks", JSON.stringify(DEFAULT_TASKS));
@@ -193,8 +251,13 @@ let performanceChart = null;
 
 function checkAuth() {
   const sessionUser = sessionStorage.getItem("medastrax_current_user");
+  const rememberedUser = localStorage.getItem("medastrax_remembered_user");
   if (sessionUser) {
     currentUser = JSON.parse(sessionUser);
+    setupWorkspace();
+  } else if (rememberedUser) {
+    currentUser = JSON.parse(rememberedUser);
+    sessionStorage.setItem("medastrax_current_user", JSON.stringify(currentUser));
     setupWorkspace();
   } else {
     showLoginScreen();
@@ -231,6 +294,13 @@ window.selectPortal = function(type) {
     `;
     document.getElementById("username").placeholder = "Enter manager or employee username";
   }
+
+  // Pre-fill remembered username and checkbox state
+  const savedUsername = localStorage.getItem(`medastrax_remember_username_${type}`) || "";
+  const savedChecked = localStorage.getItem(`medastrax_remember_checkbox_${type}`) === "true";
+  document.getElementById("username").value = savedUsername;
+  document.getElementById("remember-me").checked = savedChecked;
+  document.getElementById("password").value = "";
   
   lucide.createIcons();
 
@@ -244,12 +314,18 @@ window.selectPortal = function(type) {
     
     setTimeout(() => {
       loginCardWrapper.classList.remove("slide-in-right");
+      if (savedUsername) {
+        document.getElementById("password").focus();
+      } else {
+        document.getElementById("username").focus();
+      }
     }, 400);
   }, 250);
 };
 
 function handleLogin(username, password) {
   const portalType = document.getElementById("login-portal-type").value;
+  const rememberMeChecked = document.getElementById("remember-me").checked;
   const users = db.getUsers();
   const matchedUser = users.find(
     u => u.username.toLowerCase() === username.toLowerCase() && u.password === password
@@ -273,6 +349,18 @@ function handleLogin(username, password) {
 
     currentUser = matchedUser;
     sessionStorage.setItem("medastrax_current_user", JSON.stringify(currentUser));
+
+    // Remember me logic
+    if (rememberMeChecked) {
+      localStorage.setItem("medastrax_remembered_user", JSON.stringify(currentUser));
+      localStorage.setItem(`medastrax_remember_username_${portalType}`, username);
+      localStorage.setItem(`medastrax_remember_checkbox_${portalType}`, "true");
+    } else {
+      localStorage.removeItem("medastrax_remembered_user");
+      localStorage.removeItem(`medastrax_remember_username_${portalType}`);
+      localStorage.removeItem(`medastrax_remember_checkbox_${portalType}`);
+    }
+
     db.logActivity(`${currentUser.fullname} logged into the ${portalType} portal.`, "success");
     setupWorkspace();
     showToast(`Welcome back, ${currentUser.fullname}!`, "success");
@@ -287,6 +375,7 @@ function handleLogout() {
   }
   currentUser = null;
   sessionStorage.removeItem("medastrax_current_user");
+  localStorage.removeItem("medastrax_remembered_user");
   showLoginScreen();
   showToast("Logged out successfully.", "info");
 }
@@ -300,6 +389,7 @@ function showLoginScreen() {
   document.getElementById("portal-selector").classList.remove("hidden");
   document.getElementById("login-card-wrapper").classList.add("hidden");
   document.getElementById("workspace-container").classList.add("hidden");
+  document.getElementById("workspace-container").classList.remove("sidebar-collapsed");
   document.getElementById("login-form").reset();
   
   const ecgCanvas = document.getElementById("ecg-canvas");
@@ -338,14 +428,11 @@ function setupWorkspace() {
   
   // Set badge classes
   const roleBadge = document.getElementById("user-display-role");
-  roleBadge.className = "badge";
-  if (currentUser.role === "Admin") roleBadge.classList.add("badge-admin");
-  else if (currentUser.role === "Manager") roleBadge.classList.add("badge-manager");
-  else roleBadge.classList.add("badge-employee");
+  roleBadge.className = `badge badge-${currentUser.role.toLowerCase().replace(/\s+/g, "-")}`;
 
   document.getElementById("welcome-title").textContent = `Welcome back, ${displayName}`;
   document.getElementById("header-role-badge").textContent = currentUser.role;
-  document.getElementById("header-role-badge").className = `value badge badge-${currentUser.role.toLowerCase()}`;
+  document.getElementById("header-role-badge").className = `value badge badge-${currentUser.role.toLowerCase().replace(/\s+/g, "-")}`;
   
   // Display reporting structure in header
   const managerInfo = document.getElementById("manager-info-mini");
@@ -364,7 +451,7 @@ function setupWorkspace() {
 
   // Manage visibility of sidebar elements
   const manageEmployeesNavItem = document.getElementById("nav-item-manage-employees");
-  if (currentUser.role === "Admin") {
+  if (currentUser.role === "Admin" || currentUser.role === "Manager") {
     manageEmployeesNavItem.classList.remove("hidden");
   } else {
     manageEmployeesNavItem.classList.add("hidden");
@@ -565,6 +652,10 @@ function renderOverviewTab() {
   document.getElementById("profile-full-name").textContent = currentUser.fullname;
   document.getElementById("profile-username").textContent = `@${currentUser.username}`;
   document.getElementById("profile-role").textContent = currentUser.role;
+  document.getElementById("profile-gmail").textContent = currentUser.gmail || "N/A";
+  document.getElementById("profile-phone").textContent = currentUser.phone || "N/A";
+  document.getElementById("profile-domain").textContent = currentUser.domain || "N/A";
+  document.getElementById("profile-aadhar").textContent = currentUser.aadhar || "N/A";
   
   const profileReporting = document.getElementById("profile-reporting");
   if (currentUser.role === "Admin") {
@@ -896,7 +987,7 @@ function buildTreeHTML(node, usersList) {
 
 function createNodeCard(node, usersList, hasChildren = false) {
   const div = document.createElement("div");
-  div.className = `node-card ${node.role.toLowerCase()}-node`;
+  div.className = `node-card ${node.role.toLowerCase().replace(/\s+/g, "-")}-node`;
   if (hasChildren) {
     div.classList.add("collapsible-node");
   }
@@ -907,14 +998,23 @@ function createNodeCard(node, usersList, hasChildren = false) {
     div.style.boxShadow = "var(--shadow-accent)";
   }
 
-  const initial = node.fullname.charAt(0);
-  const reportsToUser = usersList.find(u => u.id === node.reportingManagerId);
-  const reportsToText = reportsToUser ? `Reports to: ${reportsToUser.fullname.split(' ')[0]}` : "Top Level";
+  const cleanName = node.fullname.replace(/\s*\(.*\)\s*/g, "");
+  const initial = cleanName.charAt(0);
+  
+  // Clean reports to name suffix as well
+  let reportsToText = "Top Level";
+  if (node.reportingManagerId) {
+    const reportsToUser = usersList.find(u => u.id === node.reportingManagerId);
+    if (reportsToUser) {
+      const cleanMgrName = reportsToUser.fullname.replace(/\s*\(.*\)\s*/g, "");
+      reportsToText = `Reports to: ${cleanMgrName.split(' ')[0]}`;
+    }
+  }
 
   div.innerHTML = `
     <div class="node-avatar">${initial}</div>
-    <div class="node-name">${node.fullname}</div>
-    <span class="node-role badge badge-${node.role.toLowerCase()}">${node.role}</span>
+    <div class="node-name">${cleanName}</div>
+    <span class="node-role badge badge-${node.role.toLowerCase().replace(/\s+/g, "-")}">${node.domain || "N/A"}</span>
     <div class="node-reports-to">${reportsToText}</div>
   `;
   
@@ -926,7 +1026,7 @@ function createNodeCard(node, usersList, hasChildren = false) {
 // --------------------------------------------------------------------------
 
 function renderEmployeesTab() {
-  if (currentUser.role !== "Admin") return;
+  if (currentUser.role !== "Admin" && currentUser.role !== "Manager") return;
 
   const users = db.getUsers();
   const searchVal = document.getElementById("employee-search").value.toLowerCase();
@@ -937,7 +1037,11 @@ function renderEmployeesTab() {
   const filteredUsers = users.filter(u => {
     const matchesSearch = u.fullname.toLowerCase().includes(searchVal) || 
                           u.username.toLowerCase().includes(searchVal) || 
-                          u.id.toLowerCase().includes(searchVal);
+                          u.id.toLowerCase().includes(searchVal) ||
+                          (u.gmail && u.gmail.toLowerCase().includes(searchVal)) ||
+                          (u.phone && u.phone.includes(searchVal)) ||
+                          (u.domain && u.domain.toLowerCase().includes(searchVal)) ||
+                          (u.aadhar && u.aadhar.includes(searchVal));
     const matchesRole = roleFilter === "all" || u.role === roleFilter;
     return matchesSearch && matchesRole;
   });
@@ -947,20 +1051,32 @@ function renderEmployeesTab() {
     const reportingUser = users.find(mgr => mgr.id === u.reportingManagerId);
     const reportingText = reportingUser ? reportingUser.fullname : "None (Director)";
     
-    // Checkbox action actions: delete button (disable deleting root admin)
+    // Checkbox action actions: edit and delete buttons (disable deleting/editing root admin, disable managers managing admins)
     const isRootAdmin = u.username === "admin";
-    const deleteBtn = isRootAdmin 
-      ? `<span class="text-muted">Protected</span>` 
-      : `<button class="btn btn-danger btn-logout" onclick="deleteEmployee('${u.id}')"><i data-lucide="trash-2"></i> Delete</button>`;
+    const canManage = currentUser.role === "Admin" || (currentUser.role === "Manager" && u.role !== "Admin");
+    
+    let actionButtons = "";
+    if (canManage) {
+      const editBtn = `<button class="btn btn-secondary btn-icon-only" onclick="openEditEmployeeModal('${u.id}')" title="Edit Profile" style="padding: 6px; margin-right: 6px; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center;"><i data-lucide="edit" style="width:14px; height:14px;"></i></button>`;
+      const deleteBtn = isRootAdmin 
+        ? `<span class="text-muted" style="font-size: 0.85rem;">Protected</span>` 
+        : `<button class="btn btn-danger btn-icon-only" onclick="deleteEmployee('${u.id}')" title="Delete Profile" style="padding: 6px; width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center;"><i data-lucide="trash-2" style="width:14px; height:14px;"></i></button>`;
+      actionButtons = `<div style="display: flex; align-items: center;">${editBtn}${deleteBtn}</div>`;
+    } else {
+      actionButtons = `<span class="text-muted" style="font-size: 0.8rem;">No Permission</span>`;
+    }
 
     tr.innerHTML = `
       <td><code>${u.id}</code></td>
       <td><strong>${u.fullname}</strong></td>
-      <td>@${u.username}</td>
-      <td><span class="badge badge-${u.role.toLowerCase()}">${u.role}</span></td>
+      <td>${u.gmail || "N/A"}</td>
+      <td>${u.phone || "N/A"}</td>
+      <td>${u.domain || "N/A"}</td>
+      <td><code>${u.aadhar || "N/A"}</code></td>
+      <td><span class="badge badge-${u.role.toLowerCase().replace(/\s+/g, "-")}">${u.role}</span></td>
       <td>${reportingText}</td>
       <td><span class="status-pill active-status">${u.status}</span></td>
-      <td>${deleteBtn}</td>
+      <td>${actionButtons}</td>
     `;
     tbody.appendChild(tr);
   });
@@ -969,12 +1085,18 @@ function renderEmployeesTab() {
 }
 
 window.deleteEmployee = function(userId) {
-  if (confirm("Are you sure you want to delete this employee? This action is irreversible and will delete all their assigned tasks.")) {
-    let users = db.getUsers();
-    let tasks = db.getTasks();
+  let users = db.getUsers();
+  const employeeToDelete = users.find(u => u.id === userId);
+  if (!employeeToDelete) return;
 
-    const employeeToDelete = users.find(u => u.id === userId);
-    if (!employeeToDelete) return;
+  // Safety check: Managers cannot delete Admin profiles
+  if (currentUser.role === "Manager" && employeeToDelete.role === "Admin") {
+    showToast("Access Denied: Managers cannot delete Administrator profiles.", "error");
+    return;
+  }
+
+  if (confirm(`Are you sure you want to delete ${employeeToDelete.fullname}? This action is irreversible and will delete all their assigned tasks.`)) {
+    let tasks = db.getTasks();
 
     // Check if employee has direct reports (is a manager)
     const hasReports = users.some(u => u.reportingManagerId === userId);
@@ -991,7 +1113,7 @@ window.deleteEmployee = function(userId) {
     users = users.filter(u => u.id !== userId);
     db.saveUsers(users);
 
-    db.logActivity(`Staff account '${employeeToDelete.fullname}' was deleted by Admin.`, "danger");
+    db.logActivity(`Staff account '${employeeToDelete.fullname}' was deleted by ${currentUser.fullname}.`, "danger");
     showToast(`Deleted ${employeeToDelete.fullname} successfully.`, "success");
     renderEmployeesTab();
   }
@@ -1278,6 +1400,26 @@ function openEmployeeModal() {
 
   modal.classList.remove("hidden");
   document.getElementById("add-employee-form").reset();
+  document.getElementById("custom-domain-wrapper").classList.add("hidden");
+  document.getElementById("new-custom-domain").required = false;
+
+  // Reset autocomplete suggestion state
+  const usernameInput = document.getElementById("new-username");
+  const passwordInput = document.getElementById("new-password");
+  const fullnameInput = document.getElementById("new-fullname");
+  usernameInput.dataset.autoGenerated = "true";
+  passwordInput.dataset.autoGenerated = "true";
+  usernameInput.dataset.lastAuto = "";
+  passwordInput.dataset.lastAuto = "";
+  delete fullnameInput.dataset.passwordSuffix;
+
+  // Reset password field visibility toggles
+  passwordInput.setAttribute("type", "password");
+  const eyeIcon = document.getElementById("toggle-new-password").querySelector("i");
+  if (eyeIcon) {
+    eyeIcon.setAttribute("data-lucide", "eye");
+  }
+
   lucide.createIcons();
 }
 
@@ -1293,6 +1435,35 @@ function handleAddEmployee(e) {
   const password = document.getElementById("new-password").value;
   const role = document.getElementById("new-role").value;
   const reportingManagerId = document.getElementById("new-manager").value;
+  
+  const gmail = document.getElementById("new-gmail").value.trim();
+  const phone = document.getElementById("new-phone").value.trim();
+  const domainSelect = document.getElementById("new-domain").value;
+  const customDomain = document.getElementById("new-custom-domain").value.trim();
+  const aadhar = document.getElementById("new-aadhar").value.trim();
+
+  // Determine domain
+  const domain = domainSelect === "Other" ? customDomain : domainSelect;
+
+  // Validate Domain
+  if (domainSelect === "Other" && !customDomain) {
+    showToast("Please specify your custom domain.", "error");
+    return;
+  }
+
+  // Validate Gmail
+  if (!gmail.toLowerCase().endsWith("@gmail.com")) {
+    showToast("Please enter a valid Gmail address (ending in @gmail.com).", "error");
+    return;
+  }
+
+  // Format and Validate Aadhar
+  const cleanedAadhar = aadhar.replace(/\s+/g, "");
+  if (!/^\d{12}$/.test(cleanedAadhar)) {
+    showToast("Aadhar card number must be exactly 12 digits.", "error");
+    return;
+  }
+  const formattedAadhar = cleanedAadhar.replace(/(\d{4})(\d{4})(\d{4})/, "$1 $2 $3");
 
   const users = db.getUsers();
   
@@ -1311,7 +1482,11 @@ function handleAddEmployee(e) {
     role,
     reportingManagerId,
     status: "Active",
-    availabilityStatus: "Active"
+    availabilityStatus: "Active",
+    gmail,
+    phone,
+    domain,
+    aadhar: formattedAadhar
   };
 
   users.push(newUser);
@@ -1321,6 +1496,150 @@ function handleAddEmployee(e) {
   showToast(`${role} profile created successfully!`, "success");
   closeEmployeeModal();
   renderEmployeesTab();
+}
+
+window.openEditEmployeeModal = function(userId) {
+  const modal = document.getElementById("edit-employee-modal");
+  const users = db.getUsers();
+  const user = users.find(u => u.id === userId);
+  if (!user) return;
+
+  document.getElementById("edit-user-id").value = user.id;
+  document.getElementById("edit-fullname").value = user.fullname;
+  document.getElementById("edit-username").value = user.username;
+  document.getElementById("edit-gmail").value = user.gmail || "";
+  document.getElementById("edit-phone").value = user.phone || "";
+  document.getElementById("edit-aadhar").value = user.aadhar || "";
+  
+  const managerSelect = document.getElementById("edit-manager");
+  managerSelect.innerHTML = "";
+  const managers = users.filter(u => (u.role === "Admin" || u.role === "Manager") && u.id !== user.id);
+  managers.forEach(m => {
+    const opt = document.createElement("option");
+    opt.value = m.id;
+    opt.textContent = `${m.fullname} (${m.role})`;
+    if (m.id === user.reportingManagerId) {
+      opt.selected = true;
+    }
+    managerSelect.appendChild(opt);
+  });
+
+  const roleSelect = document.getElementById("edit-role");
+  roleSelect.innerHTML = "";
+  const roles = ["Manager", "Technical Lead", "Team Lead", "Employee"];
+  if (currentUser.role === "Admin") {
+    roles.unshift("Admin");
+  }
+  roles.forEach(r => {
+    const opt = document.createElement("option");
+    opt.value = r;
+    opt.textContent = r;
+    if (r === user.role) {
+      opt.selected = true;
+    }
+    roleSelect.appendChild(opt);
+  });
+
+  const isCustomDomain = !["Tech", "Marketing", "R&D"].includes(user.domain);
+  const domainSelect = document.getElementById("edit-domain");
+  const customDomainInput = document.getElementById("edit-custom-domain");
+  const customDomainWrapper = document.getElementById("edit-custom-domain-wrapper");
+
+  if (isCustomDomain && user.domain) {
+    domainSelect.value = "Other";
+    customDomainInput.value = user.domain;
+    customDomainWrapper.classList.remove("hidden");
+    customDomainInput.required = true;
+  } else {
+    domainSelect.value = user.domain || "";
+    customDomainInput.value = "";
+    customDomainWrapper.classList.add("hidden");
+    customDomainInput.required = false;
+  }
+
+  modal.classList.remove("hidden");
+  lucide.createIcons();
+};
+
+window.closeEditEmployeeModal = function() {
+  document.getElementById("edit-employee-modal").classList.add("hidden");
+};
+
+function handleEditEmployee(e) {
+  e.preventDefault();
+
+  const userId = document.getElementById("edit-user-id").value;
+  const fullname = document.getElementById("edit-fullname").value.trim();
+  const username = document.getElementById("edit-username").value.trim().toLowerCase();
+  const role = document.getElementById("edit-role").value;
+  const reportingManagerId = document.getElementById("edit-manager").value || "none";
+  
+  const gmail = document.getElementById("edit-gmail").value.trim();
+  const phone = document.getElementById("edit-phone").value.trim();
+  const domainSelect = document.getElementById("edit-domain").value;
+  const customDomain = document.getElementById("edit-custom-domain").value.trim();
+  const aadhar = document.getElementById("edit-aadhar").value.trim();
+
+  const domain = domainSelect === "Other" ? customDomain : domainSelect;
+  if (domainSelect === "Other" && !customDomain) {
+    showToast("Please specify your custom domain.", "error");
+    return;
+  }
+
+  if (!gmail.toLowerCase().endsWith("@gmail.com")) {
+    showToast("Please enter a valid Gmail address (ending in @gmail.com).", "error");
+    return;
+  }
+
+  const cleanedAadhar = aadhar.replace(/\s+/g, "");
+  if (!/^\d{12}$/.test(cleanedAadhar)) {
+    showToast("Aadhar card number must be exactly 12 digits.", "error");
+    return;
+  }
+  const formattedAadhar = cleanedAadhar.replace(/(\d{4})(\d{4})(\d{4})/, "$1 $2 $3");
+
+  let users = db.getUsers();
+  
+  if (users.some(u => u.username === username && u.id !== userId)) {
+    showToast("Username already exists. Try another.", "error");
+    return;
+  }
+
+  const userIndex = users.findIndex(u => u.id === userId);
+  if (userIndex !== -1) {
+    const originalRole = users[userIndex].role;
+    const isPromoted = originalRole !== role;
+
+    users[userIndex].fullname = fullname;
+    users[userIndex].username = username;
+    users[userIndex].role = role;
+    users[userIndex].reportingManagerId = reportingManagerId;
+    users[userIndex].gmail = gmail;
+    users[userIndex].phone = phone;
+    users[userIndex].domain = domain;
+    users[userIndex].aadhar = formattedAadhar;
+
+    db.saveUsers(users);
+
+    if (userId === currentUser.id) {
+      currentUser = users[userIndex];
+      sessionStorage.setItem("medastrax_current_user", JSON.stringify(currentUser));
+      if (localStorage.getItem("medastrax_remembered_user")) {
+        localStorage.setItem("medastrax_remembered_user", JSON.stringify(currentUser));
+      }
+      setupWorkspace();
+    }
+
+    let logMsg = `Profile details for '${fullname}' updated by ${currentUser.fullname}.`;
+    if (isPromoted) {
+      logMsg = `'${fullname}' promoted/transferred from ${originalRole} to ${role} by ${currentUser.fullname}.`;
+    }
+    db.logActivity(logMsg, "success");
+    showToast("Employee profile updated successfully!", "success");
+    
+    closeEditEmployeeModal();
+    renderEmployeesTab();
+  }
 }
 
 // Task Modal Control
@@ -1978,6 +2297,92 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("add-employee-form").addEventListener("submit", handleAddEmployee);
   document.getElementById("create-task-form").addEventListener("submit", handleCreateTask);
 
+  // Custom Domain Toggle
+  const domainSelect = document.getElementById("new-domain");
+  const customDomainWrapper = document.getElementById("custom-domain-wrapper");
+  const customDomainInput = document.getElementById("new-custom-domain");
+  domainSelect.addEventListener("change", () => {
+    if (domainSelect.value === "Other") {
+      customDomainWrapper.classList.remove("hidden");
+      customDomainInput.required = true;
+    } else {
+      customDomainWrapper.classList.add("hidden");
+      customDomainInput.required = false;
+      customDomainInput.value = "";
+    }
+  });
+
+  // Username and Password Autocomplete / Suggestion from Full Name
+  const fullnameInput = document.getElementById("new-fullname");
+  const usernameInput = document.getElementById("new-username");
+  const passwordInput = document.getElementById("new-password");
+
+  usernameInput.addEventListener("input", () => {
+    if (usernameInput.value !== usernameInput.dataset.lastAuto) {
+      usernameInput.dataset.autoGenerated = "false";
+    }
+  });
+
+  passwordInput.addEventListener("input", () => {
+    if (passwordInput.value !== passwordInput.dataset.lastAuto) {
+      passwordInput.dataset.autoGenerated = "false";
+    }
+  });
+
+  fullnameInput.addEventListener("input", () => {
+    const nameVal = fullnameInput.value.trim();
+    const isUserAuto = usernameInput.dataset.autoGenerated !== "false";
+    const isPassAuto = passwordInput.dataset.autoGenerated !== "false";
+
+    if (!nameVal) {
+      if (isUserAuto) {
+        usernameInput.value = "";
+        usernameInput.dataset.lastAuto = "";
+      }
+      if (isPassAuto) {
+        passwordInput.value = "";
+        passwordInput.dataset.lastAuto = "";
+      }
+      delete fullnameInput.dataset.passwordSuffix;
+      return;
+    }
+
+    // Generate suggested username: e.g. "Rahul Sharma" -> "rahul_sharma"
+    const baseUsername = nameVal.toLowerCase()
+      .replace(/[^a-z0-9\s]/g, "")
+      .replace(/\s+/g, "_");
+
+    // Ensure uniqueness in the database
+    const users = db.getUsers();
+    let suggestedUsername = baseUsername;
+    let counter = 1;
+    while (users.some(u => u.username === suggestedUsername)) {
+      suggestedUsername = `${baseUsername}${counter}`;
+      counter++;
+    }
+
+    // Generate suggested password: e.g. "Rahul@3829"
+    const nameParts = nameVal.split(/\s+/);
+    const firstNameRaw = nameParts[0] || "";
+    const firstName = firstNameRaw.charAt(0).toUpperCase() + firstNameRaw.slice(1).toLowerCase().replace(/[^a-z0-9]/gi, "");
+
+    if (!fullnameInput.dataset.passwordSuffix) {
+      fullnameInput.dataset.passwordSuffix = Math.floor(1000 + Math.random() * 9000);
+    }
+    const suffix = fullnameInput.dataset.passwordSuffix;
+    const suggestedPassword = firstName ? `${firstName}@${suffix}` : "";
+
+    if (isUserAuto) {
+      usernameInput.value = suggestedUsername;
+      usernameInput.dataset.lastAuto = suggestedUsername;
+    }
+
+    if (isPassAuto && suggestedPassword) {
+      passwordInput.value = suggestedPassword;
+      passwordInput.dataset.lastAuto = suggestedPassword;
+    }
+  });
+
   // Directory Filters
   const searchInput = document.getElementById("employee-search");
   searchInput.addEventListener("input", renderEmployeesTab);
@@ -2065,6 +2470,9 @@ document.addEventListener("DOMContentLoaded", () => {
       
       currentUser.password = newPass;
       sessionStorage.setItem("medastrax_current_user", JSON.stringify(currentUser));
+      if (localStorage.getItem("medastrax_remembered_user")) {
+        localStorage.setItem("medastrax_remembered_user", JSON.stringify(currentUser));
+      }
       
       showToast("Password updated successfully!", "success");
       db.logActivity(`${currentUser.fullname} changed their workspace password.`, "success");
@@ -2086,6 +2494,9 @@ document.addEventListener("DOMContentLoaded", () => {
       
       currentUser.availabilityStatus = newStatus;
       sessionStorage.setItem("medastrax_current_user", JSON.stringify(currentUser));
+      if (localStorage.getItem("medastrax_remembered_user")) {
+        localStorage.setItem("medastrax_remembered_user", JSON.stringify(currentUser));
+      }
       
       showToast(`Duty status updated to ${newStatus}!`, "success");
       db.logActivity(`${currentUser.fullname} changed duty status to ${newStatus}.`, "info");
@@ -2109,6 +2520,266 @@ document.addEventListener("DOMContentLoaded", () => {
     lucide.createIcons();
   });
 
+  // Password Visibility Toggle for Add Employee Modal
+  const toggleNewPassBtn = document.getElementById("toggle-new-password");
+  const newPassInput = document.getElementById("new-password");
+  if (toggleNewPassBtn && newPassInput) {
+    toggleNewPassBtn.addEventListener("click", () => {
+      const type = newPassInput.getAttribute("type") === "password" ? "text" : "password";
+      newPassInput.setAttribute("type", type);
+      const icon = toggleNewPassBtn.querySelector("i");
+      icon.setAttribute("data-lucide", type === "password" ? "eye" : "eye-off");
+      lucide.createIcons();
+    });
+  }
+
+  // Edit Employee Modal Close Actions
+  document.getElementById("close-edit-modal").addEventListener("click", closeEditEmployeeModal);
+  document.getElementById("cancel-edit-btn").addEventListener("click", closeEditEmployeeModal);
+
+  // Edit Employee Modal Form Submission
+  document.getElementById("edit-employee-form").addEventListener("submit", handleEditEmployee);
+
+  // Edit Custom Domain Toggle
+  const editDomainSelect = document.getElementById("edit-domain");
+  const editCustomDomainWrapper = document.getElementById("edit-custom-domain-wrapper");
+  const editCustomDomainInput = document.getElementById("edit-custom-domain");
+  if (editDomainSelect && editCustomDomainWrapper && editCustomDomainInput) {
+    editDomainSelect.addEventListener("change", () => {
+      if (editDomainSelect.value === "Other") {
+        editCustomDomainWrapper.classList.remove("hidden");
+        editCustomDomainInput.required = true;
+      } else {
+        editCustomDomainWrapper.classList.add("hidden");
+        editCustomDomainInput.required = false;
+        editCustomDomainInput.value = "";
+      }
+    });
+  }
+
+  // Sidebar Collapse Toggle
+  const sidebarToggleBtn = document.getElementById("sidebar-toggle-btn");
+  const workspaceContainer = document.getElementById("workspace-container");
+  if (sidebarToggleBtn && workspaceContainer) {
+    sidebarToggleBtn.addEventListener("click", () => {
+      workspaceContainer.classList.toggle("sidebar-collapsed");
+    });
+  }
+
   // Perform initial session auth check
   checkAuth();
 });
+
+// ── Deliverable Selector Helpers (Photo / Video / Link / Multiple) ──────
+window.renderDeliverableInputs = function(activeTab = 'photo') {
+  const container = document.getElementById("detail-deliverable-link-container");
+  if (!container) return;
+
+  let html = `
+    <div class="deliverable-tabs" style="display: flex; gap: 4px; margin-bottom: 8px; background: rgba(0,0,0,0.03); padding: 4px; border-radius: 6px;">
+      <button type="button" class="del-tab-btn" id="btn-tab-photo" onclick="renderDeliverableInputs('photo')" style="flex: 1; padding: 6px; font-size: 0.72rem; border: none; border-radius: 4px; background: ${activeTab === 'photo' ? '#fff' : 'transparent'}; font-weight: 600; cursor: pointer; color: ${activeTab === 'photo' ? 'var(--color-primary)' : 'var(--text-secondary)'}; box-shadow: ${activeTab === 'photo' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'};">📷 Image</button>
+      <button type="button" class="del-tab-btn" id="btn-tab-video" onclick="renderDeliverableInputs('video')" style="flex: 1; padding: 6px; font-size: 0.72rem; border: none; border-radius: 4px; background: ${activeTab === 'video' ? '#fff' : 'transparent'}; font-weight: 600; cursor: pointer; color: ${activeTab === 'video' ? 'var(--color-primary)' : 'var(--text-secondary)'}; box-shadow: ${activeTab === 'video' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'};">🎥 Video</button>
+      <button type="button" class="del-tab-btn" id="btn-tab-link" onclick="renderDeliverableInputs('link')" style="flex: 1; padding: 6px; font-size: 0.72rem; border: none; border-radius: 4px; background: ${activeTab === 'link' ? '#fff' : 'transparent'}; font-weight: 600; cursor: pointer; color: ${activeTab === 'link' ? 'var(--color-primary)' : 'var(--text-secondary)'}; box-shadow: ${activeTab === 'link' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'};">🔗 Link</button>
+      <button type="button" class="del-tab-btn" id="btn-tab-multiple" onclick="renderDeliverableInputs('multiple')" style="flex: 1; padding: 6px; font-size: 0.72rem; border: none; border-radius: 4px; background: ${activeTab === 'multiple' ? '#fff' : 'transparent'}; font-weight: 600; cursor: pointer; color: ${activeTab === 'multiple' ? 'var(--color-primary)' : 'var(--text-secondary)'}; box-shadow: ${activeTab === 'multiple' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'};">📁 Multiple</button>
+    </div>
+    
+    <div class="deliverable-inputs" style="margin-bottom: 8px;">
+  `;
+
+  if (activeTab === 'photo') {
+    html += `
+      <div style="display: flex; flex-direction: column; gap: 8px;">
+        <input type="file" id="del-file-photo" accept="image/*" onchange="handleDeliverableFileSelect(event, 'photo')" style="display: none;">
+        <button type="button" class="btn btn-secondary" onclick="document.getElementById('del-file-photo').click()" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 0.8rem; padding: 6px;">
+          <i data-lucide="image" style="width:14px; height:14px;"></i> Choose Photo
+        </button>
+      </div>
+    `;
+  } else if (activeTab === 'video') {
+    html += `
+      <div style="display: flex; flex-direction: column; gap: 8px;">
+        <input type="file" id="del-file-video" accept="video/*" onchange="handleDeliverableFileSelect(event, 'video')" style="display: none;">
+        <button type="button" class="btn btn-secondary" onclick="document.getElementById('del-file-video').click()" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 0.8rem; padding: 6px;">
+          <i data-lucide="video" style="width:14px; height:14px;"></i> Choose Video
+        </button>
+      </div>
+    `;
+  } else if (activeTab === 'link') {
+    html += `
+      <div style="display: flex; gap: 6px;">
+        <input type="url" id="del-text-link" placeholder="https://example.com/..." style="flex-grow: 1; padding: 6px 8px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); color: var(--text-primary); background: transparent; font-size: 0.8rem; height: 32px;">
+        <button type="button" class="btn btn-primary" onclick="addDeliverableLink(false)" style="padding: 6px 12px; font-size: 0.8rem; height: 32px;">Add</button>
+      </div>
+    `;
+  } else if (activeTab === 'multiple') {
+    html += `
+      <div style="display: flex; flex-direction: column; gap: 6px; border: 1px dashed var(--border-color); padding: 8px; border-radius: 6px; background: rgba(0,0,0,0.01);">
+        <div style="display: flex; gap: 4px; justify-content: center;">
+          <input type="file" id="del-file-multi" accept="image/*,video/*" multiple onchange="handleDeliverableFileSelect(event, 'multiple')" style="display: none;">
+          <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('del-file-multi').click()" style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 4px; font-size: 0.75rem; padding: 4px 6px;">
+            <i data-lucide="paperclip" style="width:12px; height:12px;"></i> Upload Files
+          </button>
+        </div>
+        <div style="display: flex; gap: 4px; margin-top: 2px;">
+          <input type="url" id="del-text-link-multi" placeholder="Add web URL..." style="flex-grow: 1; padding: 4px 6px; border-radius: 4px; border: 1px solid var(--border-color); color: var(--text-primary); background: transparent; font-size: 0.75rem; height: 28px;">
+          <button type="button" class="btn btn-primary btn-sm" onclick="addDeliverableLink(true)" style="padding: 4px 8px; font-size: 0.75rem; height: 28px;">Add</button>
+        </div>
+      </div>
+    `;
+  }
+
+  html += `
+    </div>
+    <div id="del-preview-list" style="display: flex; flex-direction: column; gap: 6px; max-height: 120px; overflow-y: auto; margin-top: 6px;">
+    </div>
+  `;
+
+  container.innerHTML = html;
+  lucide.createIcons();
+  renderDeliverablePreviewList(activeTab);
+};
+
+window.handleDeliverableFileSelect = function(event, tabType) {
+  const files = event.target.files;
+  if (!files || files.length === 0) return;
+
+  let filesLoaded = 0;
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i];
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      const val = e.target.result;
+      const type = file.type.startsWith('image/') ? 'photo' : 'video';
+
+      if (tabType !== 'multiple') {
+        currentUploadedDeliverables = [];
+      }
+
+      currentUploadedDeliverables.push({
+        id: 'del-' + Date.now() + '-' + Math.floor(Math.random() * 1000),
+        type: type,
+        name: file.name,
+        size: (file.size / 1024).toFixed(1) + ' KB',
+        value: val
+      });
+
+      filesLoaded++;
+      if (filesLoaded === files.length) {
+        renderDeliverablePreviewList(tabType);
+      }
+    };
+    reader.readAsDataURL(file);
+  }
+};
+
+window.addDeliverableLink = function(isMulti = false) {
+  const inputId = isMulti ? 'del-text-link-multi' : 'del-text-link';
+  const input = document.getElementById(inputId);
+  const val = input ? input.value.trim() : "";
+  if (!val) {
+    showToast("Please enter a valid URL.", "error");
+    return;
+  }
+
+  if (!isMulti) {
+    currentUploadedDeliverables = [];
+  }
+
+  currentUploadedDeliverables.push({
+    id: 'del-' + Date.now() + '-' + Math.floor(Math.random() * 100),
+    type: 'link',
+    name: val.replace(/https?:\/\/(www\.)?/, '').substring(0, 20) + '...',
+    value: val
+  });
+
+  input.value = "";
+  renderDeliverablePreviewList(isMulti ? 'multiple' : 'link');
+};
+
+window.renderDeliverablePreviewList = function(activeTab) {
+  const list = document.getElementById("del-preview-list");
+  if (!list) return;
+  list.innerHTML = "";
+
+  if (currentUploadedDeliverables.length === 0) {
+    list.innerHTML = `<span class="text-muted" style="font-size:0.75rem; text-align:center; display:block; padding:8px; border: 1px dashed var(--border-color); border-radius: 4px;">No deliverables selected</span>`;
+    return;
+  }
+
+  currentUploadedDeliverables.forEach(item => {
+    const div = document.createElement("div");
+    div.style.display = "flex";
+    div.style.alignItems = "center";
+    div.style.justifyContent = "space-between";
+    div.style.padding = "4px 6px";
+    div.style.border = "1px solid var(--border-color)";
+    div.style.borderRadius = "4px";
+    div.style.fontSize = "0.75rem";
+    div.style.background = "rgba(0,0,0,0.01)";
+
+    let icon = "link";
+    if (item.type === 'photo') icon = "image";
+    if (item.type === 'video') icon = "video";
+
+    div.innerHTML = `
+      <div style="display:flex; align-items:center; gap:6px; min-width:0; flex-grow:1; margin-right: 6px;">
+        <i data-lucide="${icon}" style="width:12px; height:12px; flex-shrink:0; color:var(--color-primary);"></i>
+        <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:500;">${item.name}</span>
+        ${item.size ? `<span class="text-muted" style="font-size:0.65rem; flex-shrink:0;">(${item.size})</span>` : ''}
+      </div>
+      <button type="button" onclick="removeDeliverableItem('${item.id}', '${activeTab}')" style="background:transparent; border:none; color:var(--color-danger); cursor:pointer; font-size:0.72rem; padding: 2px; font-weight:600;">Remove</button>
+    `;
+    list.appendChild(div);
+  });
+  lucide.createIcons();
+};
+
+window.removeDeliverableItem = function(itemId, activeTab) {
+  currentUploadedDeliverables = currentUploadedDeliverables.filter(item => item.id !== itemId);
+  renderDeliverablePreviewList(activeTab);
+};
+
+window.openDeliverableImageLightbox = function(src) {
+  const overlay = document.createElement("div");
+  overlay.style.position = "fixed";
+  overlay.style.top = "0";
+  overlay.style.left = "0";
+  overlay.style.width = "100vw";
+  overlay.style.height = "100vh";
+  overlay.style.backgroundColor = "rgba(15, 23, 42, 0.85)";
+  overlay.style.backdropFilter = "blur(6px)";
+  overlay.style.zIndex = "99999";
+  overlay.style.display = "flex";
+  overlay.style.alignItems = "center";
+  overlay.style.justifyContent = "center";
+  overlay.style.cursor = "zoom-out";
+  overlay.style.opacity = "0";
+  overlay.style.transition = "opacity 0.2s ease-out";
+
+  const img = document.createElement("img");
+  img.src = src;
+  img.style.maxWidth = "85%";
+  img.style.maxHeight = "85%";
+  img.style.borderRadius = "8px";
+  img.style.boxShadow = "0 20px 40px rgba(0,0,0,0.5)";
+  img.style.transition = "transform 0.2s ease-out";
+  img.style.transform = "scale(0.95)";
+
+  overlay.appendChild(img);
+  document.body.appendChild(overlay);
+
+  setTimeout(() => {
+    overlay.style.opacity = "1";
+    img.style.transform = "scale(1)";
+  }, 10);
+
+  const closeBtn = () => {
+    img.style.transform = "scale(0.95)";
+    overlay.style.opacity = "0";
+    setTimeout(() => {
+      document.body.removeChild(overlay);
+    }, 200);
+  };
+
+  overlay.addEventListener("click", closeBtn);
+};
