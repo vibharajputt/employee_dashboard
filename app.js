@@ -19,14 +19,8 @@
 
 
  */
-
-
-
-
-
-
-
-// --------------------------------------------------------------------------
+// 🚀 [MedAstraX] Version 2.5 - PostgreSQL Mode Active
+console.log("🚀 [MedAstraX] Version 2.5 - PostgreSQL Mode Active");
 
 
 
@@ -855,121 +849,310 @@ function initDatabase() {
 
 
   }
-
-
-
   if (!localStorage.getItem("medastrax_tasks")) {
-
-
-
     localStorage.setItem("medastrax_tasks", JSON.stringify(DEFAULT_TASKS));
-
-
-
   }
-
-
-
   if (!localStorage.getItem("medastrax_activities")) {
-
-
-
     localStorage.setItem("medastrax_activities", JSON.stringify(DEFAULT_ACTIVITIES));
-
-
-
   }
-
-
-
+  if (!localStorage.getItem("medastrax_leaves")) {
+    localStorage.setItem("medastrax_leaves", JSON.stringify([]));
+  }
+  if (!localStorage.getItem("medastrax_leaves")) {
+    localStorage.setItem("medastrax_leaves", JSON.stringify([]));
+  }
 }
-
-
-
-
-
+  if (!localStorage.getItem("medastrax_activities")) {
+    localStorage.setItem("medastrax_activities", JSON.stringify(DEFAULT_ACTIVITIES));
+  }
+  if (!localStorage.getItem("medastrax_leaves")) {
+}
 
 
 // Database Helpers
 
+let cachedUsers = [];
+let cachedTasks = [];
+let cachedLeaves = [];
+let cachedActivities = [];
+let cachedAttendance = [];
+let cachedMeetings = [];
+let attendanceDrafts = {};
+let employeeAttendanceChartInstance = null;
 
+async function initBackendCache() {
+  try {
+    const ts = Date.now();
+    const [usersRes, tasksRes, leavesRes, activitiesRes, attendanceRes, meetingsRes] = await Promise.all([
+      fetch(`/api/users?_=${ts}`).then(r => r.json()),
+      fetch(`/api/tasks?_=${ts}`).then(r => r.json()),
+      fetch(`/api/leaves?_=${ts}`).then(r => r.json()),
+      fetch(`/api/activities?_=${ts}`).then(r => r.json()),
+      fetch(`/api/attendance?_=${ts}`).then(r => r.json()),
+      fetch(`/api/meetings?_=${ts}`).then(r => r.json())
+    ]);
+
+    cachedUsers = usersRes;
+    cachedTasks = tasksRes;
+    cachedLeaves = leavesRes;
+    cachedActivities = activitiesRes;
+    cachedAttendance = attendanceRes;
+    cachedMeetings = meetingsRes;
+    console.log('[Cache] Initialized with PostgreSQL database data');
+  } catch (err) {
+    console.error('[Cache] Error initializing cache from PostgreSQL:', err);
+  }
+}
+
+let isSyncing = false;
+async function startRealtimeSync() {
+  if (isSyncing) return;
+  isSyncing = true;
+  
+  try {
+    const ts = Date.now();
+    const [usersRes, tasksRes, leavesRes, activitiesRes, attendanceRes, meetingsRes] = await Promise.all([
+      fetch(`/api/users?_=${ts}`).then(r => r.json()),
+      fetch(`/api/tasks?_=${ts}`).then(r => r.json()),
+      fetch(`/api/leaves?_=${ts}`).then(r => r.json()),
+      fetch(`/api/activities?_=${ts}`).then(r => r.json()),
+      fetch(`/api/attendance?_=${ts}`).then(r => r.json()),
+      fetch(`/api/meetings?_=${ts}`).then(r => r.json())
+    ]);
+
+    let changed = false;
+    
+    if (JSON.stringify(cachedUsers) !== JSON.stringify(usersRes)) {
+      cachedUsers = usersRes;
+      changed = true;
+    }
+    if (JSON.stringify(cachedTasks) !== JSON.stringify(tasksRes)) {
+      cachedTasks = tasksRes;
+      changed = true;
+    }
+    if (JSON.stringify(cachedLeaves) !== JSON.stringify(leavesRes)) {
+      cachedLeaves = leavesRes;
+      changed = true;
+    }
+    if (JSON.stringify(cachedActivities) !== JSON.stringify(activitiesRes)) {
+      cachedActivities = activitiesRes;
+      changed = true;
+    }
+    if (JSON.stringify(cachedAttendance) !== JSON.stringify(attendanceRes)) {
+      cachedAttendance = attendanceRes;
+      changed = true;
+    }
+    if (JSON.stringify(cachedMeetings) !== JSON.stringify(meetingsRes)) {
+      cachedMeetings = meetingsRes;
+      changed = true;
+    }
+
+    if (changed && typeof currentUser !== 'undefined' && currentUser) {
+      console.log('[Sync] Database changes detected, refreshing UI.');
+      const activeLink = document.querySelector(".nav-link.active");
+      if (activeLink) {
+        const tabId = activeLink.getAttribute("data-tab");
+        if (tabId === "overview") renderDashboard();
+        else if (tabId === "leaves") renderLeavesTab();
+        else if (tabId === "tasks") renderTasksTab();
+        else if (tabId === "attendance") renderAttendanceTab();
+        else if (tabId === "meetings") renderScheduledMeetings();
+        else if (tabId === "employees") renderEmployeesTab();
+      }
+    }
+  } catch (err) {
+    console.error('[Sync] Error during background synchronization:', err);
+  } finally {
+    isSyncing = false;
+  }
+}
+
+// Poll database changes every 5 seconds in background
+setInterval(startRealtimeSync, 5000);
 
 const db = {
-
-
-
-  getUsers: () => JSON.parse(localStorage.getItem("medastrax_users")),
-
-
-
-  saveUsers: (users) => localStorage.setItem("medastrax_users", JSON.stringify(users)),
-
-
-
-  getTasks: () => JSON.parse(localStorage.getItem("medastrax_tasks")),
-
-
-
-  saveTasks: (tasks) => localStorage.setItem("medastrax_tasks", JSON.stringify(tasks)),
-
-
-
-  getActivities: () => JSON.parse(localStorage.getItem("medastrax_activities")),
-
-
-
-  saveActivities: (acts) => localStorage.setItem("medastrax_activities", JSON.stringify(acts)),
-
-
-
+  getUsers: () => JSON.parse(JSON.stringify(cachedUsers || [])),
   
+  saveUsers: async (users) => {
+    const oldUsers = [...cachedUsers];
+    cachedUsers = [...users];
 
+    const oldUsersMap = new Map(oldUsers.map(u => [u.id, u]));
+    const newUsersMap = new Map(users.map(u => [u.id, u]));
 
+    for (const [id, oldU] of oldUsersMap.entries()) {
+      if (!newUsersMap.has(id)) {
+        fetch(`/api/users/${id}`, { method: 'DELETE' }).catch(err => console.error(err));
+      }
+    }
+
+    for (const [id, newU] of newUsersMap.entries()) {
+      const oldU = oldUsersMap.get(id);
+      if (!oldU) {
+        fetch('/api/users', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(newU)
+        }).catch(err => console.error(err));
+      } else if (JSON.stringify(oldU) !== JSON.stringify(newU)) {
+        fetch(`/api/users/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(newU)
+        }).catch(err => console.error(err));
+      }
+    }
+  },
+
+  getTasks: () => JSON.parse(JSON.stringify(cachedTasks || [])),
+
+  saveTasks: async (tasks) => {
+    const oldTasks = [...cachedTasks];
+    cachedTasks = [...tasks];
+
+    const oldTasksMap = new Map(oldTasks.map(t => [t.id, t]));
+    const newTasksMap = new Map(tasks.map(t => [t.id, t]));
+
+    for (const [id, oldT] of oldTasksMap.entries()) {
+      if (!newTasksMap.has(id)) {
+        fetch(`/api/tasks/${id}`, { method: 'DELETE' }).catch(err => console.error(err));
+      }
+    }
+
+    for (const [id, newT] of newTasksMap.entries()) {
+      const oldT = oldTasksMap.get(id);
+      if (!oldT) {
+        fetch('/api/tasks', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(newT)
+        }).catch(err => console.error(err));
+      } else if (JSON.stringify(oldT) !== JSON.stringify(newT)) {
+        fetch(`/api/tasks/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(newT)
+        }).catch(err => console.error(err));
+      }
+    }
+  },
+
+  getLeaves: () => JSON.parse(JSON.stringify(cachedLeaves || [])),
+
+  saveLeaves: async (leaves) => {
+    const oldLeaves = [...cachedLeaves];
+    cachedLeaves = [...leaves];
+
+    const oldLeavesMap = new Map(oldLeaves.map(l => [l.id, l]));
+    const newLeavesMap = new Map(leaves.map(l => [l.id, l]));
+
+    for (const [id, newL] of newLeavesMap.entries()) {
+      const oldL = oldLeavesMap.get(id);
+      if (!oldL) {
+        fetch('/api/leaves', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(newL)
+        }).catch(err => console.error(err));
+      } else if (JSON.stringify(oldL) !== JSON.stringify(newL)) {
+        fetch(`/api/leaves/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(newL)
+        }).catch(err => console.error(err));
+      }
+    }
+  },
+
+  getActivities: () => JSON.parse(JSON.stringify(cachedActivities || [])),
+
+  saveActivities: async (acts) => {
+    const oldActs = [...cachedActivities];
+    cachedActivities = [...acts];
+
+    const oldIds = new Set(oldActs.map(a => a.id));
+    for (const act of acts) {
+      if (!oldIds.has(act.id)) {
+        fetch('/api/activities', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(act)
+        }).catch(err => console.error(err));
+      }
+    }
+  },
+
+  getAttendance: () => cachedAttendance,
+
+  saveAttendance: async (record) => {
+    const idx = cachedAttendance.findIndex(a => a.userId === record.userId && a.date === record.date && a.meetingType === record.meetingType);
+    if (idx !== -1) {
+      cachedAttendance[idx] = record;
+    } else {
+      cachedAttendance.push(record);
+    }
+
+    fetch('/api/attendance', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(record)
+    }).catch(err => console.error('[Cache] Error syncing attendance:', err));
+  },
 
   logActivity: (message, type = "info") => {
-
-
-
-    const acts = db.getActivities();
-
-
-
-    acts.unshift({
-
-
-
+    const newAct = {
       id: "act-" + Date.now(),
-
-
-
       timestamp: new Date().toISOString(),
-
-
-
-      type,
-
-
-
-      message,
-
-
-
+      type: type,
+      message: message,
       userId: (typeof currentUser !== 'undefined' && currentUser) ? currentUser.id : "system"
+    };
+    cachedActivities.unshift(newAct);
+    
+    fetch('/api/activities', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newAct)
+    }).catch(err => console.error(err));
 
+    renderActivitiesTimeline();
+  },
 
+  getMeetings: () => cachedMeetings,
 
+  saveMeeting: async (meeting) => {
+    const res = await fetch('/api/meetings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(meeting)
     });
+    if (res.ok) {
+      await initBackendCache();
+      renderScheduledMeetings();
+    }
+  },
 
+  updateMeeting: async (id, meeting) => {
+    const res = await fetch(`/api/meetings/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(meeting)
+    });
+    if (res.ok) {
+      await initBackendCache();
+      renderScheduledMeetings();
+    }
+  },
 
-
-    db.saveActivities(acts.slice(0, 30)); // Cap logs to last 30
-
-
-
+  deleteMeeting: async (id) => {
+    const res = await fetch(`/api/meetings/${id}`, {
+      method: 'DELETE'
+    });
+    if (res.ok) {
+      await initBackendCache();
+      renderScheduledMeetings();
+    }
   }
-
-
-
 };
 
 
@@ -1487,22 +1670,11 @@ function handleLogin(username, password) {
 
 
 function handleLogout() {
-
-
-
   if (currentUser) {
-
-
-
     db.logActivity(`${currentUser.fullname} logged out of the workspace.`, "system");
-
-
-
   }
-
-
-
   currentUser = null;
+  notifiedMeetings = {};
 
 
 
@@ -1595,12 +1767,29 @@ function showLoginScreen() {
 
 
 }
+function getUserRoleInfo(u) {
+  let displayRole = u.role;
+  let badgeClass = u.role.toLowerCase().replace(/\s+/g, "-");
 
+  if (u.username === "vibha") {
+    displayRole = "Head of Technology";
+    badgeClass = "manager";
+  } else if (u.username === "rashika") {
+    displayRole = "Chief Technical Officer";
+    badgeClass = "manager";
+  } else if (u.role === "Employee" && u.domain === "Tech") {
+    displayRole = "Software Developer";
+    badgeClass = "software-developer";
+  } else if (u.role === "Employee" && u.domain === "Marketing") {
+    displayRole = "MSE";
+    badgeClass = "mse";
+  } else if (u.role === "Team Lead" && u.domain === "Marketing") {
+    displayRole = "MSE (Team Lead)";
+    badgeClass = "mse-tl";
+  }
 
-
-
-
-
+  return { displayRole, badgeClass };
+}
 
 function setupWorkspace() {
 
@@ -1715,30 +1904,13 @@ function setupWorkspace() {
 
 
   // Set badge classes
-
-
-
+  const roleInfo = getUserRoleInfo(currentUser);
   const roleBadge = document.getElementById("user-display-role");
-
-
-
-  roleBadge.className = `badge badge-${currentUser.role.toLowerCase().replace(/\s+/g, "-")}`;
-
-
-
-
-
-
-
+  roleBadge.textContent = roleInfo.displayRole;
+  roleBadge.className = `badge badge-${roleInfo.badgeClass}`;
   document.getElementById("welcome-title").textContent = `Welcome back, ${displayName}`;
-
-
-
-  document.getElementById("header-role-badge").textContent = currentUser.role;
-
-
-
-  document.getElementById("header-role-badge").className = `value badge badge-${currentUser.role.toLowerCase().replace(/\s+/g, "-")}`;
+  document.getElementById("header-role-badge").textContent = roleInfo.displayRole;
+  document.getElementById("header-role-badge").className = `value badge badge-${roleInfo.badgeClass}`;
 
 
 
@@ -1839,25 +2011,19 @@ function setupWorkspace() {
 
 
   const performanceNavItem = document.getElementById("nav-item-performance");
-
-
-
   if (currentUser.role === "Admin" || currentUser.role === "Manager") {
-
-
-
     performanceNavItem.classList.remove("hidden");
-
-
-
   } else {
-
-
-
     performanceNavItem.classList.add("hidden");
+  }
 
-
-
+  const attendanceNavItem = document.getElementById("nav-item-attendance");
+  if (attendanceNavItem) {
+    if (currentUser.role === "Admin") {
+      attendanceNavItem.classList.add("hidden");
+    } else {
+      attendanceNavItem.classList.remove("hidden");
+    }
   }
 
 
@@ -1871,21 +2037,13 @@ function setupWorkspace() {
 
 
   switchTab("overview");
-
-
-
-  
-
-
-
   // Refresh Lucide Icons
-
-
-
   lucide.createIcons();
 
-
-
+  // Initialize Video Calling SSE Connection
+  initVideoSse();
+  // Trigger upcoming meeting check immediately
+  checkUpcomingMeetings();
 }
 
 
@@ -1983,18 +2141,12 @@ function switchTab(tabId) {
 
 
   else if (tabId === "hierarchy") renderHierarchyTab();
-
-
-
-  else if (tabId === "employees" && currentUser.role === "Admin") renderEmployeesTab();
-
-
-
+  else if (tabId === "employees" && (currentUser.role === "Admin" || currentUser.role === "Manager")) renderEmployeesTab();
   else if (tabId === "tasks") renderTasksTab();
-
-
-
+  else if (tabId === "leaves") renderLeavesTab();
+  else if (tabId === "attendance") renderAttendanceTab();
   else if (tabId === "settings") renderSettingsTab();
+  else if (tabId === "meetings") renderMeetingsTab();
 
 
 
@@ -2127,12 +2279,72 @@ function getVisibleActivities(currentUser, users, activities) {
 
 
 }
-
-
-
-
-
-
+function renderActivitiesTimeline() {
+  const timeline = document.getElementById("activity-timeline-container");
+  if (!timeline) return;
+  
+  timeline.innerHTML = "";
+  const users = db.getUsers() || [];
+  const activities = db.getActivities() || [];
+  const visibleActivities = getVisibleActivities(currentUser, users, activities);
+  
+  if (visibleActivities.length === 0) {
+    timeline.innerHTML = `<span class="text-muted" style="font-size:0.85rem; text-align:center; display:block; padding:16px;">No recent activities logged</span>`;
+  } else {
+    visibleActivities.forEach(act => {
+      const actTime = new Date(act.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const actDate = new Date(act.timestamp).toLocaleDateString([], { month: 'short', day: 'numeric' });
+      
+      let iconName = "bell";
+      let iconColor = "var(--color-primary)";
+      let bgColor = "rgba(5, 47, 95, 0.04)";
+      let borderLeftColor = "var(--color-primary)";
+      
+      if (act.type === "success") {
+        iconName = "check-circle";
+        iconColor = "var(--color-success)";
+        bgColor = "rgba(16, 185, 129, 0.04)";
+        borderLeftColor = "var(--color-success)";
+      } else if (act.type === "danger") {
+        iconName = "x-circle";
+        iconColor = "var(--color-danger)";
+        bgColor = "rgba(239, 68, 68, 0.04)";
+        borderLeftColor = "var(--color-danger)";
+      } else if (act.type === "warning") {
+        iconName = "alert-triangle";
+        iconColor = "var(--color-warning)";
+        bgColor = "rgba(245, 158, 11, 0.04)";
+        borderLeftColor = "var(--color-warning)";
+      } else if (act.type === "system") {
+        iconName = "settings";
+        iconColor = "var(--accent-secondary)";
+        bgColor = "rgba(99, 102, 241, 0.04)";
+        borderLeftColor = "var(--accent-secondary)";
+      } else if (act.type === "info") {
+        iconName = "info";
+        iconColor = "var(--color-primary)";
+        bgColor = "rgba(5, 47, 95, 0.04)";
+        borderLeftColor = "var(--color-primary)";
+      }
+      
+      const div = document.createElement("div");
+      div.className = `activity-item ${act.type}-activity`;
+      div.innerHTML = `
+        <div class="activity-icon-badge" style="border-color: ${borderLeftColor}; color: ${iconColor};">
+          <i data-lucide="${iconName}" style="width: 14px; height: 14px;"></i>
+        </div>
+        <div class="activity-card" style="border-left: 4px solid ${borderLeftColor}; flex-grow: 1;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; gap: 8px;">
+            <span class="activity-time" style="font-weight: 500; font-size: 0.72rem; color: var(--text-secondary);">${actDate} at ${actTime}</span>
+            <span style="font-size: 0.62rem; text-transform: uppercase; font-weight: 700; color: ${iconColor}; letter-spacing: 0.5px;">${act.type}</span>
+          </div>
+          <p class="activity-desc" style="font-size: 0.85rem; color: var(--text-primary); margin: 0; line-height: 1.4;">${act.message}</p>
+        </div>
+      `;
+      timeline.appendChild(div);
+    });
+  }
+}
 
 function renderOverviewTab() {
 
@@ -2635,75 +2847,8 @@ function renderOverviewTab() {
 
 
   statsContainer.innerHTML = statsHTML;
-
-
-
-
-
-
-
-  // Render recent activities (Filtered by hierarchy with Premium Visual Cards)
-  const timeline = document.getElementById("activity-timeline-container");
-  timeline.innerHTML = "";
-  
-  const visibleActivities = getVisibleActivities(currentUser, users, activities);
-  
-  if (visibleActivities.length === 0) {
-    timeline.innerHTML = `<span class="text-muted" style="font-size:0.85rem; text-align:center; display:block; padding:16px;">No recent activities logged</span>`;
-  } else {
-    visibleActivities.forEach(act => {
-      const actTime = new Date(act.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      const actDate = new Date(act.timestamp).toLocaleDateString([], { month: 'short', day: 'numeric' });
-      
-      let iconName = "bell";
-      let iconColor = "var(--color-primary)";
-      let bgColor = "rgba(5, 47, 95, 0.04)";
-      let borderLeftColor = "var(--color-primary)";
-      
-      if (act.type === "success") {
-        iconName = "check-circle";
-        iconColor = "var(--color-success)";
-        bgColor = "rgba(16, 185, 129, 0.04)";
-        borderLeftColor = "var(--color-success)";
-      } else if (act.type === "danger") {
-        iconName = "x-circle";
-        iconColor = "var(--color-danger)";
-        bgColor = "rgba(239, 68, 68, 0.04)";
-        borderLeftColor = "var(--color-danger)";
-      } else if (act.type === "warning") {
-        iconName = "alert-triangle";
-        iconColor = "var(--color-warning)";
-        bgColor = "rgba(245, 158, 11, 0.04)";
-        borderLeftColor = "var(--color-warning)";
-      } else if (act.type === "system") {
-        iconName = "settings";
-        iconColor = "var(--accent-secondary)";
-        bgColor = "rgba(99, 102, 241, 0.04)";
-        borderLeftColor = "var(--accent-secondary)";
-      } else if (act.type === "info") {
-        iconName = "info";
-        iconColor = "var(--color-primary)";
-        bgColor = "rgba(5, 47, 95, 0.04)";
-        borderLeftColor = "var(--color-primary)";
-      }
-      
-      const div = document.createElement("div");
-      div.className = `activity-item ${act.type}-activity`;
-      div.innerHTML = `
-        <div class="activity-icon-badge" style="border-color: ${borderLeftColor}; color: ${iconColor};">
-          <i data-lucide="${iconName}" style="width: 14px; height: 14px;"></i>
-        </div>
-        <div class="activity-card" style="border-left: 4px solid ${borderLeftColor}; flex-grow: 1;">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; gap: 8px;">
-            <span class="activity-time" style="font-weight: 500; font-size: 0.72rem; color: var(--text-secondary);">${actDate} at ${actTime}</span>
-            <span style="font-size: 0.62rem; text-transform: uppercase; font-weight: 700; color: ${iconColor}; letter-spacing: 0.5px;">${act.type}</span>
-          </div>
-          <p class="activity-desc" style="font-size: 0.85rem; color: var(--text-primary); margin: 0; line-height: 1.4;">${act.message}</p>
-        </div>
-      `;
-      timeline.appendChild(div);
-    });
-  }
+  // Render recent activities
+  renderActivitiesTimeline();
   
   // Space helper
   // Render security card details
@@ -3711,110 +3856,32 @@ function getSubordinates(managerId, usersList) {
 
 
 function renderHierarchyTab() {
-
-
-
-  const users = db.getUsers();
-
-
-
+  const rawUsers = db.getUsers();
   const container = document.getElementById("org-chart-container");
-
-
-
   container.innerHTML = "";
 
-
-
-
-
-
-
-  // The hierarchy should start from a specific root depending on the role.
-
-
-
-  // Admin: starts from Admin.
-
-
-
-  // Manager: starts from that specific manager (hiding admin/other manager's hierarchy).
-
-
-
-  // Employee: starts from the Employee showing their reporting line to the top.
-
-
-
-  
-
-
-
   let rootNode = null;
-
-
-
-  
-
-
-
   if (currentUser.role === "Admin") {
-
-
-
-    // Admin is root
-
-
-
-    rootNode = users.find(u => u.role === "Admin");
-
-
-
-  } else if (currentUser.role === "Manager") {
-
-
-
-    // Manager is root of their own team
-
-
-
-    rootNode = currentUser;
-
-
-
+    rootNode = rawUsers.find(u => u.id === currentUser.id);
+  } else if (currentUser.role === "Manager" || currentUser.role === "Technical Lead" || currentUser.role === "Team Lead") {
+    rootNode = rawUsers.find(u => u.id === currentUser.id);
   } else {
-
-
-
-    // Employee: let's build their path (Admin -> Manager -> Employee)
-
-
-
-    rootNode = users.find(u => u.role === "Admin");
-
-
-
+    // Employee: trace reporting manager line to the top parent
+    let current = currentUser;
+    while (current.reportingManagerId && current.reportingManagerId !== "none") {
+      const mgr = rawUsers.find(u => u.id === current.reportingManagerId);
+      if (!mgr) break;
+      current = mgr;
+    }
+    rootNode = rawUsers.find(u => u.id === current.id);
   }
-
-
-
-
-
-
 
   if (!rootNode) {
-
-
-
     container.innerHTML = "<p class='text-muted'>No hierarchy data available.</p>";
-
-
-
     return;
-
-
-
   }
+  // Use rawUsers directly without dynamic redirection
+  const users = rawUsers;
 
 
 
@@ -3835,234 +3902,183 @@ function renderHierarchyTab() {
 
 
   if (currentUser.role === "Employee") {
-
-
-
-    // Show vertical path for employee to reduce isolation
-
-
-
-    const list = document.createElement("li");
-
-
-
-    list.appendChild(createNodeCard(rootNode, users));
-
-
-
-    
-
-
-
     // Find manager
-
-
-
     const manager = users.find(u => u.id === currentUser.reportingManagerId);
 
+    if (currentUser.domain === "Tech") {
+      // For last-level tech team members, only show their direct manager (Rashika) and themselves
+      if (manager) {
+        const managerLi = document.createElement("li");
+        managerLi.appendChild(createNodeCard(manager, users));
 
+        const empUl = document.createElement("ul");
+        const empLi = document.createElement("li");
+        empLi.appendChild(createNodeCard(currentUser, users));
+        empUl.appendChild(empLi);
 
-    if (manager) {
+        managerLi.appendChild(empUl);
+        ul.appendChild(managerLi);
+      } else {
+        const empLi = document.createElement("li");
+        empLi.appendChild(createNodeCard(currentUser, users));
+        ul.appendChild(empLi);
+      }
+    } else {
+      // Show vertical path for other employees to reduce isolation
+      const list = document.createElement("li");
+      list.appendChild(createNodeCard(rootNode, users));
 
+      if (manager) {
+        const subUl = document.createElement("ul");
+        const managerLi = document.createElement("li");
+        managerLi.appendChild(createNodeCard(manager, users));
+        subUl.appendChild(managerLi);
 
+        const empUl = document.createElement("ul");
+        const empLi = document.createElement("li");
+        empLi.appendChild(createNodeCard(currentUser, users));
+        empUl.appendChild(empLi);
 
-      const subUl = document.createElement("ul");
-
-
-
-      const managerLi = document.createElement("li");
-
-
-
-      managerLi.appendChild(createNodeCard(manager, users));
-
-
-
-      subUl.appendChild(managerLi);
-
-
-
-      
-
-
-
-      const empUl = document.createElement("ul");
-
-
-
-      const empLi = document.createElement("li");
-
-
-
-      empLi.appendChild(createNodeCard(currentUser, users));
-
-
-
-      empUl.appendChild(empLi);
-
-
-
-      managerLi.appendChild(empUl);
-
-
-
-      
-
-
-
-      list.appendChild(subUl);
-
-
-
+        managerLi.appendChild(empUl);
+        list.appendChild(subUl);
+      }
+      ul.appendChild(list);
     }
-
-
-
-    ul.appendChild(list);
-
-
-
   } else {
-
-
-
     // For Admin or Manager, construct the complete downwards tree
-
-
-
     ul.appendChild(buildTreeHTML(rootNode, users));
-
-
-
   }
-
-
-
-  
-
-
 
   container.appendChild(ul);
-
-
-
 }
-
-
-
-
-
-
-
 function buildTreeHTML(node, usersList) {
+  let children = [];
+  if (node.isDummy) {
+    children = [node.actualChild];
+  } else if (node.isDual) {
+    children = usersList.filter(u => u.reportingManagerId === "usr-mahakpreet");
+  } else {
+    // If the node is Shivangi or Shakcham, their children are the same as Sambhav's children
+    const targetId = (node.id === "usr-shivangi" || node.id === "usr-shakcham") ? "usr-sambhav" : node.id;
+    children = usersList.filter(u => u.reportingManagerId === targetId);
+    if (node.id === "usr-parneet") {
+      const hasMarketing = children.some(u => u.id === "usr-prabhroop" || u.id === "usr-mahakpreet");
+      children = children.filter(u => u.id !== "usr-prabhroop" && u.id !== "usr-mahakpreet");
+      if (hasMarketing) {
+        children.push({
+          id: "dual-marketing",
+          isDual: true,
+          parent1: usersList.find(u => u.id === "usr-prabhroop"),
+          parent2: usersList.find(u => u.id === "usr-mahakpreet"),
+          reportingManagerId: node.id
+        });
+      }
+    }
 
-
-
-  const children = usersList.filter(u => u.reportingManagerId === node.id);
-
-
-
-  const hasChildren = children.length > 0;
-
-
-
-
-
-
-
-  const li = document.createElement("li");
-
-
-
-  const nodeCard = createNodeCard(node, usersList, hasChildren);
-
-
-
-  li.appendChild(nodeCard);
-
-
-
-
-
-
-
-  if (hasChildren) {
-
-
-
-    const ul = document.createElement("ul");
-
-
-
-    children.forEach(child => {
-
-
-
-      ul.appendChild(buildTreeHTML(child, usersList));
-
-
-
-    });
-
-
-
-    li.appendChild(ul);
-
-
-
-
-
-
-
-    // Collapsible branch click handler
-
-
-
-    nodeCard.addEventListener("click", () => {
-
-
-
-      ul.classList.toggle("collapsed");
-
-
-
-      nodeCard.classList.toggle("node-collapsed");
-
-
-
-    });
-
-
-
+    if (node.id === "usr-sambhav" || node.id === "usr-shivangi" || node.id === "usr-shakcham") {
+      children = children.map(u => {
+        if (u.id === "usr-spandan") {
+          return {
+            id: "dummy-" + u.id,
+            fullname: "",
+            role: "Dummy",
+            isDummy: true,
+            reportingManagerId: node.id,
+            actualChild: u
+          };
+        }
+        return u;
+      });
+    }
   }
 
+  const hasChildren = children.length > 0;
+  const li = document.createElement("li");
 
+  if (node.isDual) {
+    const dualContainer = document.createElement("div");
+    dualContainer.className = "dual-node-container";
+    
+    const card1 = createNodeCard(node.parent1, usersList, false);
+    const card2 = createNodeCard(node.parent2, usersList, hasChildren);
+    
+    dualContainer.appendChild(card1);
+    dualContainer.appendChild(card2);
+    li.appendChild(dualContainer);
+    
+    if (hasChildren) {
+      const ul = document.createElement("ul");
+      children.forEach(child => {
+        ul.appendChild(buildTreeHTML(child, usersList));
+      });
+      li.appendChild(ul);
+      
+      card2.addEventListener("click", () => {
+        ul.classList.toggle("collapsed");
+        card2.classList.toggle("node-collapsed");
+      });
+    }
+  } else {
+    const nodeCard = createNodeCard(node, usersList, hasChildren);
+    li.appendChild(nodeCard);
 
-
-
-
+    if (hasChildren) {
+      const ul = document.createElement("ul");
+      children.forEach(child => {
+        ul.appendChild(buildTreeHTML(child, usersList));
+      });
+      li.appendChild(ul);
+      // Collapsible branch click handler
+      if (!node.isDummy) {
+        nodeCard.addEventListener("click", () => {
+          ul.classList.toggle("collapsed");
+          nodeCard.classList.toggle("node-collapsed");
+        });
+      }
+    }
+  }
 
   return li;
-
-
-
 }
 
-
-
-
-
-
+function getNodeDisplayDomain(node) {
+  if (!node) return "N/A";
+  
+  if (node.id === "usr-rashika") {
+    return "Head of technology";
+  }
+  if (node.id === "usr-tanveer") {
+    return "AI & Full stack Executive";
+  }
+  
+  if (node.fullname) {
+    const match = node.fullname.match(/\(([^)]+)\)/);
+    if (match && match[1]) {
+      return match[1].trim();
+    }
+  }
+  
+  return node.domain || "N/A";
+}
 
 function createNodeCard(node, usersList, hasChildren = false) {
+  if (node.isDummy) {
+    const div = document.createElement("div");
+    div.className = "node-card dummy-node-card";
+    div.style.opacity = "0";
+    div.style.pointerEvents = "none";
+    div.innerHTML = `
+      <div class="node-avatar">&nbsp;</div>
+      <div class="node-name">&nbsp;</div>
+      <span class="node-role badge">&nbsp;</span>
+      <div class="node-reports-to">&nbsp;</div>
+    `;
+    return div;
+  }
 
-
-
+  const roleInfo = getUserRoleInfo(node);
   const div = document.createElement("div");
-
-
-
-  div.className = `node-card ${node.role.toLowerCase().replace(/\s+/g, "-")}-node`;
+  div.className = `node-card ${roleInfo.badgeClass}-node`;
 
 
 
@@ -4167,10 +4183,7 @@ function createNodeCard(node, usersList, hasChildren = false) {
 
 
     <div class="node-name">${cleanName}</div>
-
-
-
-    <span class="node-role badge badge-${node.role.toLowerCase().replace(/\s+/g, "-")}">${node.domain || "N/A"}</span>
+    <span class="node-role badge badge-${roleInfo.badgeClass}">${getNodeDisplayDomain(node)}</span>
 
 
 
@@ -4291,17 +4304,8 @@ function renderEmployeesTab() {
 
 
   });
-
-
-
-
-
-
-
   filteredUsers.forEach(u => {
-
-
-
+    const roleInfo = getUserRoleInfo(u);
     const tr = document.createElement("tr");
 
 
@@ -4399,14 +4403,8 @@ function renderEmployeesTab() {
 
 
       <td>${u.domain || "N/A"}</td>
-
-
-
       <td><code>${u.aadhar || "N/A"}</code></td>
-
-
-
-      <td><span class="badge badge-${u.role.toLowerCase().replace(/\s+/g, "-")}">${u.role}</span></td>
+      <td><span class="badge badge-${roleInfo.badgeClass}">${roleInfo.displayRole}</span></td>
 
 
 
@@ -8603,21 +8601,10 @@ function showToast(message, type = "success") {
 
 
     setTimeout(() => {
-
-
-
       toast.remove();
-
-
-
     }, 300);
-
-
-
   }, 4000);
-
-
-
+  return toast;
 }
 
 
@@ -9191,38 +9178,1460 @@ function initECG() {
 
 
 }
+// ──────────────────────────────────────────────────────────────────────────
+// 10.5. Leave Management Core Functionality
+// ──────────────────────────────────────────────────────────────────────────
+function buildApprovalChain(user, usersList) {
+  const chain = [];
+  if (!user) return chain;
 
+  const list = Array.isArray(usersList) ? usersList : [];
+  let current = user;
+  const visited = new Set([user.id]);
+  
+  while (current && current.reportingManagerId && current.reportingManagerId !== "none") {
+    const manager = list.find(u => u.id === current.reportingManagerId);
+    if (manager && !visited.has(manager.id)) {
+      visited.add(manager.id);
+      chain.push({
+        approverId: manager.id,
+        approverName: (manager.fullname || manager.username || "Manager").replace(/\s*\(.*\)\s*/g, ""),
+        approverRole: (manager.fullname && manager.fullname.match(/\(([^)]+)\)/)) ? manager.fullname.match(/\(([^)]+)\)/)[1] : (manager.role || "Manager"),
+        status: "Pending",
+        actionDate: null
+      });
+      current = manager;
+    } else {
+      break;
+    }
+  }
 
+  const adminUser = list.find(u => u.role === "Admin");
+  if (adminUser) {
+    const hasAdmin = chain.some(item => item.approverId === adminUser.id);
+    if (!hasAdmin && user.id !== adminUser.id) {
+      chain.push({
+        approverId: adminUser.id,
+        approverName: (adminUser.fullname || "Admin").replace(/\s*\(.*\)\s*/g, ""),
+        approverRole: (adminUser.fullname && adminUser.fullname.match(/\(([^)]+)\)/)) ? adminUser.fullname.match(/\(([^)]+)\)/)[1] : (adminUser.role || "Admin"),
+        status: "Pending",
+        actionDate: null
+      });
+    }
+  }
 
+  return chain;
+}
+function getWeekRange(dateString) {
+  const parts = dateString.split('-');
+  const date = parts.length === 3 
+    ? new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]))
+    : new Date(dateString);
+  
+  const day = date.getDay();
+  const diff = date.getDate() - day + (day === 0 ? -6 : 1);
+  const monday = new Date(date.setDate(diff));
+  monday.setHours(0, 0, 0, 0);
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+  sunday.setHours(23, 59, 59, 999);
+  return { start: monday, end: sunday };
+}
 
+function validateLeaveDates(fromDateStr, toDateStr, userId) {
+  console.log("=== LEAVE VALIDATION ===");
+  console.log("From:", fromDateStr, "To:", toDateStr, "User:", userId);
+  console.log("Current Leaves in Cache:", db.getLeaves());
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  const fParts = fromDateStr.split('-');
+  const fromDate = fParts.length === 3
+    ? new Date(Number(fParts[0]), Number(fParts[1]) - 1, Number(fParts[2]))
+    : new Date(fromDateStr);
+  fromDate.setHours(0, 0, 0, 0);
+  
+  const tParts = toDateStr.split('-');
+  const toDate = tParts.length === 3
+    ? new Date(Number(tParts[0]), Number(tParts[1]) - 1, Number(tParts[2]))
+    : new Date(toDateStr);
+  toDate.setHours(0, 0, 0, 0);
 
+  const minStartDate = new Date(today);
+  minStartDate.setDate(today.getDate() + 1);
+  if (fromDate < minStartDate) {
+    return { valid: false, message: "Leave applications must be submitted at least 1 day in advance (prior to the leave date)." };
+  }
 
+  if (toDate < fromDate) {
+    return { valid: false, message: "End date cannot be earlier than start date." };
+  }
+
+  const diffTime = Math.abs(toDate - fromDate);
+  const requestedDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+  if (requestedDays > 2) {
+    return { valid: false, message: "A leave request cannot exceed 2 days (max 2 leaves in a week)." };
+  }
+
+  const { start, end } = getWeekRange(fromDateStr);
+  const leaves = db.getLeaves() || [];
+  let totalWeekDays = 0;
+
+  for (const lv of leaves) {
+    if (lv.userId === userId && lv.status !== "Rejected") {
+      const lvParts = lv.fromDate.split('-');
+      const lvFrom = lvParts.length === 3
+        ? new Date(Number(lvParts[0]), Number(lvParts[1]) - 1, Number(lvParts[2]))
+        : new Date(lv.fromDate);
+      
+      if (lvFrom >= start && lvFrom <= end) {
+        totalWeekDays += lv.totalDays;
+      }
+    }
+  }
+
+  if (totalWeekDays + requestedDays > 2) {
+    return { valid: false, message: "Not more than two (2) leaves shall be granted in a week. You already have requested/approved leaves for this week." };
+  }
+
+  return { valid: true, requestedDays };
+}
+
+async function openLeaveModal() {
+  await initBackendCache();
+  const modal = document.getElementById("apply-leave-modal");
+  if (modal) {
+    document.getElementById("leave-emp-name").value = currentUser.fullname.replace(/\s*\(.*\)\s*/g, "");
+    document.getElementById("leave-emp-role").value = currentUser.role;
+    document.getElementById("leave-emp-phone").value = currentUser.phone || "N/A";
+    
+    document.getElementById("leave-from-date").value = "";
+    document.getElementById("leave-to-date").value = "";
+    document.getElementById("leave-total-days").value = "";
+    document.getElementById("leave-reason").value = "";
+    
+    modal.classList.remove("hidden");
+  }
+}
+
+function updateLeaveTotalDays() {
+  const fromVal = document.getElementById("leave-from-date").value;
+  const toVal = document.getElementById("leave-to-date").value;
+  const totalDaysInput = document.getElementById("leave-total-days");
+
+  if (fromVal && toVal) {
+    const fromDate = new Date(fromVal);
+    fromDate.setHours(0, 0, 0, 0);
+    const toDate = new Date(toVal);
+    toDate.setHours(0, 0, 0, 0);
+
+    if (toDate >= fromDate) {
+      const diffTime = Math.abs(toDate - fromDate);
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+      totalDaysInput.value = `${diffDays} Day(s)`;
+    } else {
+      totalDaysInput.value = "Invalid Date Range";
+    }
+  } else {
+    totalDaysInput.value = "";
+  }
+}
+
+function handleLeaveSubmit(e) {
+  e.preventDefault();
+
+  const fromDateStr = document.getElementById("leave-from-date").value;
+  const toDateStr = document.getElementById("leave-to-date").value;
+  const reason = document.getElementById("leave-reason").value.trim();
+
+  if (!fromDateStr || !toDateStr || !reason) {
+    showToast("Please fill all required fields.", "error");
+    return;
+  }
+
+  const validation = validateLeaveDates(fromDateStr, toDateStr, currentUser.id);
+  if (!validation.valid) {
+    showToast(validation.message, "error");
+    return;
+  }
+
+  const users = db.getUsers();
+  const chain = buildApprovalChain(currentUser, users);
+  
+  let status = "Pending";
+  let currentApproverId = null;
+
+  if (chain.length > 0) {
+    const firstApprover = users.find(u => u.id === chain[0].approverId);
+    if (firstApprover && firstApprover.role === "Admin") {
+      // Admin is only for record, auto-approve Admin step
+      chain[0].status = "Approved";
+      chain[0].actionDate = new Date().toISOString();
+      currentApproverId = null;
+      status = "Approved";
+    } else {
+      currentApproverId = chain[0].approverId;
+      status = "Pending";
+    }
+  } else {
+    status = "Approved";
+  }
+
+  const newLeave = {
+    id: "lv-" + Date.now(),
+    userId: currentUser.id,
+    employeeName: currentUser.fullname.replace(/\s*\(.*\)\s*/g, ""),
+    designation: (currentUser.fullname.match(/\(([^)]+)\)/) || [])[1] || currentUser.role,
+    contactNo: currentUser.phone || "N/A",
+    fromDate: fromDateStr,
+    toDate: toDateStr,
+    totalDays: validation.requestedDays,
+    reason: reason,
+    status: status,
+    currentApproverId: currentApproverId,
+    approvalChain: chain,
+    createdAt: new Date().toISOString()
+  };
+
+  const leaves = db.getLeaves() || [];
+  leaves.push(newLeave);
+  db.saveLeaves(leaves);
+
+  db.logActivity(
+    `${currentUser.fullname.replace(/\s*\(.*\)\s*/g, "")} submitted a leave application for ${validation.requestedDays} day(s) starting ${fromDateStr}.`,
+    "info"
+  );
+
+  showToast("Leave application submitted successfully!", "success");
+  
+  document.getElementById("apply-leave-modal").classList.add("hidden");
+  document.getElementById("leave-application-form").reset();
+
+  renderLeavesTab();
+}
+
+function approveLeaveRequest(leaveId) {
+  const leaves = db.getLeaves() || [];
+  const leave = leaves.find(lv => lv.id === leaveId);
+  if (!leave) return;
+
+  if (leave.currentApproverId !== currentUser.id) {
+    showToast("You are not authorized to approve this leave request.", "error");
+    return;
+  }
+
+  const currentStep = leave.approvalChain.find(step => step.approverId === currentUser.id && step.status === "Pending");
+  if (currentStep) {
+    currentStep.status = "Approved";
+    currentStep.actionDate = new Date().toISOString();
+  }
+
+  const nextStepIndex = leave.approvalChain.findIndex(step => step.status === "Pending");
+  if (nextStepIndex !== -1) {
+    const users = db.getUsers() || [];
+    const nextApprover = users.find(u => u.id === leave.approvalChain[nextStepIndex].approverId);
+    if (nextApprover && nextApprover.role === "Admin") {
+      // Admin is only for record, auto-approve Admin step
+      leave.approvalChain[nextStepIndex].status = "Approved";
+      leave.approvalChain[nextStepIndex].actionDate = new Date().toISOString();
+      leave.currentApproverId = null;
+      leave.status = "Approved";
+    } else {
+      leave.currentApproverId = leave.approvalChain[nextStepIndex].approverId;
+      leave.status = "Pending";
+    }
+  } else {
+    leave.currentApproverId = null;
+    leave.status = "Approved";
+  }
+
+  db.saveLeaves(leaves);
+
+  db.logActivity(
+    `Leave application for ${leave.employeeName} approved by ${currentUser.fullname.replace(/\s*\(.*\)\s*/g, "")}. Status: ${leave.status}.`,
+    "success"
+  );
+
+  showToast("Leave application approved!", "success");
+  renderLeavesTab();
+}
+
+function rejectLeaveRequest(leaveId) {
+  const leaves = db.getLeaves() || [];
+  const leave = leaves.find(lv => lv.id === leaveId);
+  if (!leave) return;
+
+  if (leave.currentApproverId !== currentUser.id) {
+    showToast("You are not authorized to reject this leave request.", "error");
+    return;
+  }
+
+  const currentStep = leave.approvalChain.find(step => step.approverId === currentUser.id && step.status === "Pending");
+  if (currentStep) {
+    currentStep.status = "Rejected";
+    currentStep.actionDate = new Date().toISOString();
+  }
+
+  leave.currentApproverId = null;
+  leave.status = "Rejected";
+
+  db.saveLeaves(leaves);
+
+  db.logActivity(
+    `Leave application for ${leave.employeeName} rejected by ${currentUser.fullname.replace(/\s*\(.*\)\s*/g, "")}.`,
+    "danger"
+  );
+
+  showToast("Leave application rejected.", "info");
+  renderLeavesTab();
+}
+
+let currentLeavesSubtab = "my-leaves";
+
+function renderLeavesTab() {
+  const leaves = db.getLeaves() || [];
+  const users = db.getUsers() || [];
+  
+  // 1. My Leave Applications
+  const myLeavesCard = document.getElementById("my-leaves-card");
+  const openApplyLeaveModalBtn = document.getElementById("open-apply-leave-modal");
+  const teamHistoryCard = document.getElementById("team-leaves-history-card");
+  
+  const subtabsNav = document.getElementById("leaves-subtabs-nav");
+  const subtabMyLeavesBtn = document.getElementById("subtab-my-leaves");
+  const subtabTeamHistoryBtn = document.getElementById("subtab-team-history");
+
+  const isManagerOrAdmin = currentUser.role === "Admin" || currentUser.role === "Manager" || currentUser.role === "Technical Lead" || currentUser.role === "Team Lead";
+
+  // Dynamic Subtab Button Texts
+  if (subtabMyLeavesBtn) {
+    subtabMyLeavesBtn.innerHTML = isManagerOrAdmin 
+      ? `<i data-lucide="user" style="width: 14px; height: 14px; display: inline-block; vertical-align: middle; margin-right: 6px;"></i>My Leaves`
+      : `<i data-lucide="calendar" style="width: 14px; height: 14px; display: inline-block; vertical-align: middle; margin-right: 6px;"></i>Leave Application`;
+  }
+  if (subtabTeamHistoryBtn) {
+    subtabTeamHistoryBtn.innerHTML = isManagerOrAdmin
+      ? `<i data-lucide="history" style="width: 14px; height: 14px; display: inline-block; vertical-align: middle; margin-right: 6px;"></i>Team Leaves History`
+      : `<i data-lucide="history" style="width: 14px; height: 14px; display: inline-block; vertical-align: middle; margin-right: 6px;"></i>Leave History`;
+  }
+  lucide.createIcons();
+
+  if (currentUser.role === "Admin") {
+    if (subtabsNav) subtabsNav.classList.add("hidden");
+    if (myLeavesCard) myLeavesCard.classList.add("hidden");
+    if (openApplyLeaveModalBtn) openApplyLeaveModalBtn.classList.add("hidden");
+    if (teamHistoryCard) teamHistoryCard.classList.remove("hidden");
+  } else {
+    // Both managers and regular employees see subtabs now!
+    if (subtabsNav) subtabsNav.classList.remove("hidden");
+    if (openApplyLeaveModalBtn) openApplyLeaveModalBtn.classList.remove("hidden");
+
+    // Toggle subtab buttons active styles and card visibility
+    if (currentLeavesSubtab === "my-leaves") {
+      if (myLeavesCard) myLeavesCard.classList.remove("hidden");
+      if (teamHistoryCard) teamHistoryCard.classList.add("hidden");
+
+      if (subtabMyLeavesBtn) {
+        subtabMyLeavesBtn.style.border = "1px solid var(--accent-color)";
+        subtabMyLeavesBtn.style.backgroundColor = "rgba(16, 185, 129, 0.1)";
+        subtabMyLeavesBtn.style.color = "#10b981";
+        subtabMyLeavesBtn.style.fontWeight = "600";
+      }
+      if (subtabTeamHistoryBtn) {
+        subtabTeamHistoryBtn.style.border = "1px solid var(--border-color)";
+        subtabTeamHistoryBtn.style.backgroundColor = "var(--bg-primary)";
+        subtabTeamHistoryBtn.style.color = "var(--text-muted)";
+        subtabTeamHistoryBtn.style.fontWeight = "500";
+      }
+    } else {
+      // For managers: hide myLeavesCard, show teamHistoryCard
+      // For employees: show myLeavesCard, hide teamHistoryCard
+      if (isManagerOrAdmin) {
+        if (myLeavesCard) myLeavesCard.classList.add("hidden");
+        if (teamHistoryCard) teamHistoryCard.classList.remove("hidden");
+      } else {
+        if (myLeavesCard) myLeavesCard.classList.remove("hidden");
+        if (teamHistoryCard) teamHistoryCard.classList.add("hidden");
+      }
+
+      if (subtabTeamHistoryBtn) {
+        subtabTeamHistoryBtn.style.border = "1px solid var(--accent-color)";
+        subtabTeamHistoryBtn.style.backgroundColor = "rgba(16, 185, 129, 0.1)";
+        subtabTeamHistoryBtn.style.color = "#10b981";
+        subtabTeamHistoryBtn.style.fontWeight = "600";
+      }
+      if (subtabMyLeavesBtn) {
+        subtabMyLeavesBtn.style.border = "1px solid var(--border-color)";
+        subtabMyLeavesBtn.style.backgroundColor = "var(--bg-primary)";
+        subtabMyLeavesBtn.style.color = "var(--text-muted)";
+        subtabMyLeavesBtn.style.fontWeight = "500";
+      }
+    }
+  }
+
+  // Dynamic Header Text for My Leaves Card
+  if (myLeavesCard) {
+    const myLeavesHeader = myLeavesCard.querySelector("h3");
+    if (myLeavesHeader) {
+      if (isManagerOrAdmin) {
+        myLeavesHeader.innerHTML = `<i data-lucide="calendar" class="text-accent" style="color: #10b981;"></i> My Leave Applications`;
+      } else {
+        myLeavesHeader.innerHTML = currentLeavesSubtab === "my-leaves"
+          ? `<i data-lucide="calendar" class="text-accent" style="color: #10b981;"></i> My Leave Applications`
+          : `<i data-lucide="history" class="text-accent" style="color: #10b981;"></i> My Leaves History`;
+      }
+      lucide.createIcons();
+    }
+  }
+
+  if (currentUser.role !== "Admin") {
+    let myLeaves = [];
+    if (isManagerOrAdmin) {
+      myLeaves = leaves.filter(lv => lv.userId === currentUser.id);
+    } else {
+      if (currentLeavesSubtab === "my-leaves") {
+        // Pending only
+        myLeaves = leaves.filter(lv => lv.userId === currentUser.id && lv.status === "Pending");
+      } else {
+        // Approved or Rejected only
+        myLeaves = leaves.filter(lv => lv.userId === currentUser.id && (lv.status === "Approved" || lv.status === "Rejected"));
+      }
+    }
+    const myTableBody = document.getElementById("my-leaves-table-body");
+    if (myTableBody) {
+      myTableBody.innerHTML = "";
+      if (myLeaves.length === 0) {
+        myTableBody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-muted);">No leave applications found.</td></tr>`;
+      } else {
+        myLeaves.sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
+        myLeaves.forEach(lv => {
+          let approverText = lv.status === "Pending" ? "Pending Approval" : lv.status;
+
+          let statusClass = "badge-employee";
+          if (lv.status === "Approved") statusClass = "badge-technical-lead";
+          else if (lv.status === "Rejected") statusClass = "badge-admin";
+          else statusClass = "badge-team-lead";
+
+          myTableBody.innerHTML += `
+            <tr>
+              <td>${lv.fromDate}</td>
+              <td>${lv.toDate}</td>
+              <td>${lv.totalDays}</td>
+              <td>${lv.reason}</td>
+              <td><strong>${approverText}</strong></td>
+              <td><span class="badge ${statusClass}">${lv.status}</span></td>
+            </tr>
+          `;
+        });
+      }
+    }
+  }
+
+  // 2. Pending Team Leaves (shown ONLY to current level approver in hierarchy sequence)
+  const pendingApprovalsCard = document.getElementById("pending-approvals-card");
+  const pendingTableBody = document.getElementById("pending-leaves-table-body");
+  
+  if (pendingApprovalsCard && pendingTableBody) {
+    const pendingLeaves = leaves.filter(lv => {
+      if (lv.status !== "Pending") return false;
+      // Strict hierarchy: Only show leave to the current active stage approver
+      return lv.currentApproverId === currentUser.id;
+    });
+    
+    if (pendingLeaves.length > 0) {
+      pendingApprovalsCard.classList.remove("hidden");
+      pendingTableBody.innerHTML = "";
+      
+      pendingLeaves.sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
+      pendingLeaves.forEach(lv => {
+        const chain = lv.approvalChain || [];
+        const currentStepIndex = chain.findIndex(step => step.status === "Pending");
+        const stageText = currentStepIndex !== -1 ? `Level ${currentStepIndex + 1} of ${chain.length}` : "Pending";
+        
+        pendingTableBody.innerHTML += `
+          <tr>
+            <td><strong>${lv.employeeName}</strong></td>
+            <td>${lv.designation}</td>
+            <td>From ${lv.fromDate} to ${lv.toDate}</td>
+            <td>${lv.totalDays}</td>
+            <td>${lv.reason}</td>
+            <td><span class="badge badge-manager">${stageText}</span></td>
+            <td>
+              <div class="leave-action-btn-group">
+                <button class="btn btn-primary btn-icon-only approve-leave-btn" data-id="${lv.id}" title="Approve Leave"><i data-lucide="check"></i></button>
+                <button class="btn btn-danger btn-icon-only reject-leave-btn" data-id="${lv.id}" title="Reject Leave"><i data-lucide="x"></i></button>
+              </div>
+            </td>
+          </tr>
+        `;
+      });
+
+      document.querySelectorAll(".approve-leave-btn").forEach(btn => {
+        btn.onclick = () => approveLeaveRequest(btn.getAttribute("data-id"));
+      });
+      document.querySelectorAll(".reject-leave-btn").forEach(btn => {
+        btn.onclick = () => rejectLeaveRequest(btn.getAttribute("data-id"));
+      });
+      
+      lucide.createIcons();
+    } else {
+      pendingApprovalsCard.classList.add("hidden");
+      pendingTableBody.innerHTML = "";
+    }
+  }
+
+  // 3. Team Leaves History (shown to everyone!)
+  const teamHistoryBody = document.getElementById("team-leaves-history-table-body");
+  const filterSelect = document.getElementById("history-leave-filter");
+
+  if (teamHistoryCard && teamHistoryBody) {
+    if (isManagerOrAdmin) {
+      const isSubtabHistory = currentLeavesSubtab === "team-history" || currentUser.role === "Admin";
+      if (isSubtabHistory) {
+        teamHistoryCard.classList.remove("hidden");
+      } else {
+        teamHistoryCard.classList.add("hidden");
+      }
+
+      teamHistoryBody.innerHTML = "";
+
+      const filterVal = filterSelect ? filterSelect.value : "all";
+      if (filterSelect && !filterSelect.dataset.listenerBound) {
+        filterSelect.onchange = () => renderLeavesTab();
+        filterSelect.dataset.listenerBound = "true";
+      }
+
+      const filteredLeaves = leaves.filter(lv => {
+        if (lv.userId === currentUser.id) return false;
+        
+        let hasAccess = false;
+        const myStep = (lv.approvalChain || []).find(step => step.approverId === currentUser.id);
+
+        if (currentUser.role === "Admin") {
+          hasAccess = (lv.status === "Approved" || lv.status === "Rejected");
+        } else {
+          hasAccess = (myStep && (myStep.status === "Approved" || myStep.status === "Rejected")) ||
+                      (lv.status === "Approved" || lv.status === "Rejected");
+        }
+
+        if (!hasAccess) return false;
+
+        const isApproved = lv.status === "Approved" || (myStep && myStep.status === "Approved" && lv.status === "Pending");
+        const isDeclined = lv.status === "Rejected" || (myStep && myStep.status === "Rejected");
+
+        if (filterVal === "approved") return isApproved;
+        if (filterVal === "declined") return isDeclined;
+        return isApproved || isDeclined;
+      });
+
+      if (filteredLeaves.length === 0) {
+        teamHistoryBody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--text-muted);">No matching leave history records found.</td></tr>`;
+      } else {
+        filteredLeaves.sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
+        filteredLeaves.forEach(lv => {
+          const chain = lv.approvalChain || [];
+          const currentStepIndex = chain.findIndex(s => s.status === "Pending");
+          
+          let stageText = "";
+          let cellHtml = "";
+
+          if (currentUser.role === "Admin") {
+            stageText = currentStepIndex !== -1 ? `Level ${currentStepIndex + 1}/${chain.length} Pending` : "All Levels Approved";
+            if (lv.status === "Approved") {
+              const approvedSteps = chain.filter(s => s.status === "Approved");
+              if (approvedSteps.length > 0) {
+                const names = approvedSteps.map(s => s.approverName).join(" → ");
+                stageText = `Approved by: ${names}`;
+              } else {
+                stageText = "Approved";
+              }
+            } else if (lv.status === "Rejected") {
+              const rejectedStep = chain.find(s => s.status === "Rejected");
+              stageText = rejectedStep ? `Declined by ${rejectedStep.approverName}` : "Declined";
+            }
+
+            const tooltipLines = chain.map(step => {
+              const dateStr = step.actionDate ? new Date(step.actionDate).toLocaleString() : "N/A";
+              return `${step.approverName} (${step.approverRole}): ${step.status} on ${dateStr}`;
+            }).join("\n");
+
+            cellHtml = `
+              <td title="${tooltipLines}">
+                <span class="badge badge-manager hover-interactive" style="cursor: pointer; text-decoration: underline; white-space: normal; text-align: left; line-height: 1.4; padding: 6px 10px;" onclick="showLeaveChainModal('${lv.id}')">
+                  ${stageText} <i data-lucide="info" style="width: 12px; height: 12px; display: inline-block; vertical-align: middle; margin-left: 4px;"></i>
+                </span>
+              </td>
+            `;
+          } else {
+            if (lv.status === "Approved") {
+              stageText = "All Levels Approved";
+            } else if (lv.status === "Rejected") {
+              stageText = "Declined";
+            } else {
+              stageText = "Pending Approval";
+            }
+
+            cellHtml = `
+              <td>
+                <span class="badge badge-manager" style="white-space: normal; text-align: left; line-height: 1.4; padding: 6px 10px;">
+                  ${stageText}
+                </span>
+              </td>
+            `;
+          }
+
+          let statusClass = "badge-team-lead"; // Pending
+          if (lv.status === "Approved") statusClass = "badge-technical-lead";
+          else if (lv.status === "Rejected") statusClass = "badge-admin";
+          
+          teamHistoryBody.innerHTML += `
+            <tr>
+              <td><strong>${lv.employeeName}</strong></td>
+              <td>${lv.designation}</td>
+              <td>${lv.fromDate} to ${lv.toDate}</td>
+              <td>${lv.totalDays}</td>
+              <td>${lv.reason}</td>
+              ${cellHtml}
+              <td><span class="badge ${statusClass}">${lv.status}</span></td>
+            </tr>
+          `;
+        });
+        
+        lucide.createIcons();
+      }
+    } else {
+      teamHistoryCard.classList.add("hidden");
+    }
+  }
+}
+
+function showLeaveChainModal(leaveId) {
+  const leaves = db.getLeaves() || [];
+  const leave = leaves.find(lv => lv.id === leaveId);
+  if (!leave) return;
+
+  const container = document.getElementById("leave-chain-flow-container");
+  if (!container) return;
+
+  container.innerHTML = "";
+
+  // 1. Applicant node
+  const applyDate = new Date(leave.createdAt).toLocaleString();
+  let applicantHtml = `
+    <div class="chain-node" style="position: relative;">
+      <div class="chain-dot" style="position: absolute; left: -33px; top: 4px; width: 16px; height: 16px; border-radius: 50%; background-color: var(--accent-color); border: 3px solid var(--card-bg);"></div>
+      <div class="chain-content">
+        <h4 style="margin: 0; font-size: 0.95rem; color: var(--text-primary);">${leave.employeeName} (Applicant)</h4>
+        <p style="margin: 4px 0 0 0; font-size: 0.8rem; color: var(--text-muted);">Applied on ${applyDate}</p>
+        <p style="margin: 2px 0 0 0; font-size: 0.8rem; font-style: italic; color: var(--text-muted);">"Reason: ${leave.reason}"</p>
+      </div>
+    </div>
+  `;
+  container.innerHTML += applicantHtml;
+
+  // 2. Chain approval nodes
+  const chain = leave.approvalChain || [];
+  chain.forEach(step => {
+    let dotColor = "var(--text-muted)";
+    let statusColor = "var(--text-muted)";
+    if (step.status === "Approved") {
+      dotColor = "#10b981";
+      statusColor = "#10b981";
+    } else if (step.status === "Rejected") {
+      dotColor = "#ef4444";
+      statusColor = "#ef4444";
+    }
+
+    const actionDate = step.actionDate ? new Date(step.actionDate).toLocaleString() : "Awaiting action";
+    let stepHtml = `
+      <div class="chain-node" style="position: relative;">
+        <div class="chain-dot" style="position: absolute; left: -33px; top: 4px; width: 16px; height: 16px; border-radius: 50%; background-color: ${dotColor}; border: 3px solid var(--card-bg);"></div>
+        <div class="chain-content">
+          <h4 style="margin: 0; font-size: 0.95rem; color: var(--text-primary);">${step.approverName} (${step.approverRole})</h4>
+          <p style="margin: 4px 0 0 0; font-size: 0.8rem; color: ${statusColor}; font-weight: 600;">Status: ${step.status}</p>
+          <p style="margin: 2px 0 0 0; font-size: 0.8rem; color: var(--text-muted);">${actionDate}</p>
+        </div>
+      </div>
+    `;
+    container.innerHTML += stepHtml;
+  });
+
+  const modal = document.getElementById("leave-chain-modal");
+  if (modal) modal.classList.remove("hidden");
+  lucide.createIcons();
+}
+window.showLeaveChainModal = showLeaveChainModal;
+
+function renderAttendanceTab() {
+  const isHead = currentUser.role === "Admin" || currentUser.role === "Manager" || currentUser.role === "Technical Lead" || currentUser.role === "Team Lead";
+
+  document.getElementById("attendance-manager-view").classList.add("hidden");
+  document.getElementById("attendance-employee-view").classList.add("hidden");
+
+  if (isHead) {
+    document.getElementById("attendance-manager-view").classList.remove("hidden");
+    
+    const dateInput = document.getElementById("attendance-date");
+    if (!dateInput.value) {
+      const todayStr = new Date().toISOString().split("T")[0];
+      dateInput.value = todayStr;
+    }
+
+    const meetingSelect = document.getElementById("attendance-meeting-type");
+
+    renderManagerAttendanceSheet();
+
+    dateInput.onchange = () => {
+      renderManagerAttendanceSheet();
+    };
+    meetingSelect.onchange = () => {
+      renderManagerAttendanceSheet();
+    };
+
+    // Bind footer actions
+    const btnSubmit = document.getElementById("btn-submit-attendance");
+    if (btnSubmit) {
+      btnSubmit.onclick = () => {
+        submitManagerAttendance();
+      };
+    }
+
+    const btnDownload = document.getElementById("btn-download-attendance");
+    if (btnDownload) {
+      btnDownload.onclick = () => {
+        downloadAttendancePDF();
+      };
+    }
+  } else {
+    document.getElementById("attendance-employee-view").classList.remove("hidden");
+    renderEmployeeAttendanceDashboard();
+  }
+}
+
+function validateAttendanceDate(dateStr) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const selectedDate = new Date(dateStr);
+  selectedDate.setHours(0, 0, 0, 0);
+
+  // Check 1: Future date check
+  if (selectedDate > today) {
+    return { valid: false, message: "Attendance cannot be marked for future dates." };
+  }
+
+  // Check 2: Max 2 days in the past check
+  const diffTime = today - selectedDate;
+  const diffDays = diffTime / (1000 * 60 * 60 * 24);
+  if (diffDays > 2) {
+    return { valid: false, message: "Attendance can only be marked up to 2 days after the target date." };
+  }
+
+  return { valid: true };
+}
+
+function renderManagerAttendanceSheet() {
+  const selectedDate = document.getElementById("attendance-date").value;
+  const selectedMeetingType = document.getElementById("attendance-meeting-type").value;
+  const tbody = document.getElementById("attendance-subordinates-table-body");
+  if (!tbody) return;
+
+  const btnSubmit = document.getElementById("btn-submit-attendance");
+
+  // Validate date constraints
+  const dateValidation = validateAttendanceDate(selectedDate);
+  if (!dateValidation.valid) {
+    tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; padding: 32px; color: var(--color-danger); font-weight: 600;">
+      <i data-lucide="lock" style="vertical-align: middle; margin-right: 8px;"></i> ${dateValidation.message}
+    </td></tr>`;
+    if (btnSubmit) {
+      btnSubmit.disabled = true;
+      btnSubmit.style.opacity = 0.5;
+      btnSubmit.style.cursor = "not-allowed";
+    }
+    lucide.createIcons();
+    return;
+  }
+
+  // If valid, enable submit button
+  if (btnSubmit) {
+    btnSubmit.disabled = false;
+    btnSubmit.style.opacity = 1;
+    btnSubmit.style.cursor = "pointer";
+  }
+
+  tbody.innerHTML = "";
+
+  const users = db.getUsers() || [];
+  const attendance = db.getAttendance() || [];
+  let subordinates = [];
+  if (currentUser.role === "Admin") {
+    subordinates = users.filter(u => u.id !== currentUser.id);
+  } else {
+    // Recursively retrieve all direct and indirect reports in the hierarchy
+    const getReports = (mgrId) => {
+      let reports = [];
+      const direct = users.filter(u => u.reportingManagerId === mgrId);
+      direct.forEach(d => {
+        reports.push(d);
+        reports = reports.concat(getReports(d.id));
+      });
+      return reports;
+    };
+    subordinates = getReports(currentUser.id);
+  }
+
+  if (subordinates.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; padding: 24px; color: var(--text-secondary);">No team members found.</td></tr>`;
+    return;
+  }
+
+  // Clear and initialize drafts state from database
+  attendanceDrafts = {};
+  subordinates.forEach(sub => {
+    const subRoleInfo = getUserRoleInfo(sub);
+    const record = attendance.find(a => a.userId === sub.id && a.date === selectedDate && a.meetingType === selectedMeetingType);
+    
+    // If database has record, load its status; otherwise default to Absent.
+    const status = record ? record.status : "Absent";
+    attendanceDrafts[sub.id] = status;
+
+    const isPresent = status === "Present";
+
+    tbody.innerHTML += `
+      <tr>
+        <td>
+          <div class="user-info-cell">
+            <div class="user-avatar-small" style="background-color: var(--primary-color); color: #fff; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 0.85rem;">
+              ${sub.fullname.charAt(0)}
+            </div>
+            <div>
+              <div class="user-fullname">${sub.fullname.replace(/\s*\(.*\)\s*/g, "")}</div>
+              <div class="user-username">@${sub.username}</div>
+            </div>
+          </div>
+        </td>
+        <td><span class="role-badge role-${subRoleInfo.badgeClass}">${subRoleInfo.displayRole}</span></td>
+        <td><span class="domain-badge">${sub.domain || "Other"}</span></td>
+        <td>
+          <label class="checkbox-container" style="margin-bottom:0;">
+            <input type="checkbox" class="attendance-checkbox" data-uid="${sub.id}" ${isPresent ? 'checked' : ''}>
+            <span class="checkbox-checkmark"></span>
+            <span class="status-label" style="font-weight: 600; color: ${isPresent ? '#10b981' : '#ef4444'};">
+              ${isPresent ? 'Present' : 'Absent'}
+            </span>
+          </label>
+        </td>
+      </tr>
+    `;
+  });
+
+  // Bind change events to dynamically update local drafts mapping (without saving to server yet!)
+  document.querySelectorAll(".attendance-checkbox").forEach(chk => {
+    chk.onchange = () => {
+      const uid = chk.getAttribute("data-uid");
+      const status = chk.checked ? "Present" : "Absent";
+      attendanceDrafts[uid] = status;
+
+      // Update text and color label instantly in UI
+      const label = chk.closest('label').querySelector('.status-label');
+      if (label) {
+        label.textContent = status;
+        label.style.color = chk.checked ? "#10b981" : "#ef4444";
+      }
+    };
+  });
+
+  lucide.createIcons();
+}
+async function submitManagerAttendance() {
+  const selectedDate = document.getElementById("attendance-date").value;
+  const selectedMeetingType = document.getElementById("attendance-meeting-type").value;
+  
+  const dateValidation = validateAttendanceDate(selectedDate);
+  if (!dateValidation.valid) {
+    showToast(dateValidation.message, "error");
+    return;
+  }
+  
+  const users = db.getUsers() || [];
+  const subordinates = users.filter(u => {
+    if (u.id === currentUser.id) return false;
+    if (currentUser.role === "Admin") return true;
+    return u.reportingManagerId === currentUser.id;
+  });
+
+  if (subordinates.length === 0) return;
+
+  // Save all drafts to server/cache
+  for (const sub of subordinates) {
+    const status = attendanceDrafts[sub.id] || "Absent";
+    const record = {
+      id: "att-" + Date.now() + "-" + sub.id,
+      userId: sub.id,
+      date: selectedDate,
+      meetingType: selectedMeetingType,
+      status: status,
+      markedById: currentUser.id,
+      markedByName: currentUser.fullname.replace(/\s*\(.*\)\s*/g, "")
+    };
+    await db.saveAttendance(record);
+  }
+
+  showToast(`Attendance successfully submitted for ${selectedMeetingType} on ${selectedDate}!`, "success");
+  
+  // Refresh view
+  renderManagerAttendanceSheet();
+}
+
+function downloadAttendancePDF() {
+  const selectedDate = document.getElementById("attendance-date").value;
+  const selectedMeetingType = document.getElementById("attendance-meeting-type").value;
+  const users = db.getUsers() || [];
+  
+  const subordinates = users.filter(u => {
+    if (u.id === currentUser.id) return false;
+    if (currentUser.role === "Admin") return true;
+    return u.reportingManagerId === currentUser.id;
+  });
+
+  let rowsHtml = "";
+  subordinates.forEach((sub, index) => {
+    const status = attendanceDrafts[sub.id] || "Absent";
+
+    rowsHtml += `
+      <tr>
+        <td>${index + 1}</td>
+        <td><strong>${sub.fullname.replace(/\s*\(.*\)\s*/g, "")}</strong></td>
+        <td>${sub.role}</td>
+        <td>${sub.domain || "Other"}</td>
+        <td style="color: ${status === 'Present' ? '#10b981' : '#ef4444'}; font-weight: bold;">
+          ${status}
+        </td>
+      </tr>
+    `;
+  });
+
+  const printWindow = window.open("", "_blank");
+  printWindow.document.write(`
+    <html>
+      <head>
+        <title>Attendance Sheet - ${selectedDate}</title>
+        <style>
+          body { font-family: 'Inter', sans-serif; color: #333; padding: 40px; }
+          .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #052f5f; padding-bottom: 20px; }
+          .header h1 { color: #052f5f; margin: 0; font-size: 24px; }
+          .header p { margin: 5px 0 0; color: #666; font-size: 14px; }
+          .meta-grid { display: flex; justify-content: space-between; margin-bottom: 20px; font-size: 14px; background: #f8fafc; padding: 12px; border-radius: 6px; }
+          .meta-item strong { color: #052f5f; }
+          table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+          th, td { border: 1px solid #e2e8f0; padding: 12px; text-align: left; font-size: 14px; }
+          th { background-color: #052f5f; color: white; font-weight: 600; }
+          tr:nth-child(even) { background-color: #f8fafc; }
+          .footer { margin-top: 50px; text-align: right; font-size: 12px; color: #999; }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>MedAstraX Workspace Portal</h1>
+          <p>Official Attendance Record Sheet</p>
+        </div>
+        <div class="meta-grid">
+          <div class="meta-item"><strong>Date:</strong> ${selectedDate}</div>
+          <div class="meta-item"><strong>Meeting Type:</strong> ${selectedMeetingType}</div>
+          <div class="meta-item"><strong>Generated By:</strong> ${currentUser.fullname}</div>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th style="width: 50px;">S.No</th>
+              <th>Employee Name</th>
+              <th>Role</th>
+              <th>Domain</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rowsHtml}
+          </tbody>
+        </table>
+        <div class="footer">
+          <p>Generated on ${new Date().toLocaleString()}</p>
+        </div>
+        <script>
+          window.onload = function() {
+            window.print();
+            window.onafterprint = function() {
+              window.close();
+            };
+          };
+        </script>
+      </body>
+    </html>
+  `);
+  printWindow.document.close();
+}
+
+function renderEmployeeAttendanceDashboard() {
+  const tbody = document.getElementById("my-attendance-table-body");
+  if (!tbody) return;
+
+  tbody.innerHTML = "";
+
+  const attendance = db.getAttendance() || [];
+  const myLogs = attendance.filter(a => a.userId === currentUser.id);
+
+  myLogs.sort((a, b) => {
+    const dateDiff = new Date(b.date) - new Date(a.date);
+    if (dateDiff !== 0) return dateDiff;
+    return b.meetingType.localeCompare(a.meetingType);
+  });
+
+  let presentCount = 0;
+  let absentCount = 0;
+
+  myLogs.forEach(log => {
+    if (log.status === "Present") presentCount++;
+    else absentCount++;
+
+    const badgeClass = log.status === "Present" ? "badge-employee" : "badge-critical";
+
+    tbody.innerHTML += `
+      <tr>
+        <td><strong>${log.date}</strong></td>
+        <td><span class="badge badge-manager">${log.meetingType}</span></td>
+        <td><span class="badge ${badgeClass}">${log.status}</span></td>
+        <td>${log.markedByName || "System"}</td>
+        <td>${new Date(log.createdAt || Date.now()).toLocaleTimeString()}</td>
+      </tr>
+    `;
+  });
+
+  if (myLogs.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; padding: 24px; color: var(--text-secondary);">No attendance logs found.</td></tr>`;
+  }
+
+  document.getElementById("att-stats-present").innerText = presentCount;
+  document.getElementById("att-stats-absent").innerText = absentCount;
+
+  const totalDays = myLogs.length;
+  document.getElementById("att-stats-rate").innerText = `${percentage}%`;
+}
+
+// ==================== MEETINGS PORTAL IMPLEMENTATION ====================
+let notifiedMeetings = {};
+
+function initMeetingsPortal() {
+  const scheduleModal = document.getElementById("schedule-meeting-modal");
+  const editModal = document.getElementById("edit-meeting-modal");
+  if (!scheduleModal || !editModal) return;
+
+  // Request browser notification permission if not asked yet
+  if ("Notification" in window && Notification.permission === "default") {
+    Notification.requestPermission();
+  }
+
+  // Render scheduled meetings on portal initialization
+  renderScheduledMeetings();
+  
+  // Trigger upcoming meeting check immediately
+  checkUpcomingMeetings();
+  
+  // Open Schedule Modal
+  const btnOpenSched = document.getElementById("btn-open-sched-modal");
+  if (btnOpenSched) {
+    btnOpenSched.onclick = () => {
+      // Populate participants list with checkboxes for all other users
+      const container = document.getElementById("sched-participants-list");
+      if (container) {
+        container.innerHTML = "";
+        const users = db.getUsers() || [];
+        
+        // Sort users by name, exclude current user
+        users.forEach(u => {
+          if (u.id === currentUser.id) return;
+          const displayName = u.fullname.replace(/\s*\(.*\)\s*/g, "");
+          const div = document.createElement("div");
+          div.style.display = "flex";
+          div.style.alignItems = "center";
+          div.style.gap = "8px";
+          div.innerHTML = `
+            <input type="checkbox" id="part-${u.id}" value="${u.id}" style="width: auto; margin: 0;">
+            <label for="part-${u.id}" style="font-weight: normal; margin: 0; cursor: pointer; color: var(--text-primary); font-size: 13px;">${displayName} (${u.role})</label>
+          `;
+          container.appendChild(div);
+        });
+      }
+      
+      document.getElementById("sched-title").value = "";
+      document.getElementById("sched-time").value = "";
+      document.getElementById("sched-desc").value = "";
+      document.getElementById("sched-room").value = "room-" + Math.random().toString(36).substring(2, 8);
+      scheduleModal.classList.remove("hidden");
+    };
+  }
+
+  // Close Modals
+  document.getElementById("close-sched-modal").onclick = () => scheduleModal.classList.add("hidden");
+  document.getElementById("cancel-sched-btn").onclick = () => scheduleModal.classList.add("hidden");
+  document.getElementById("close-edit-mtg-modal").onclick = () => editModal.classList.add("hidden");
+  document.getElementById("cancel-edit-mtg-btn").onclick = () => editModal.classList.add("hidden");
+
+  // Handle Schedule Submit
+  const scheduleForm = document.getElementById("schedule-meeting-form");
+  if (scheduleForm) {
+    scheduleForm.onsubmit = async (e) => {
+      e.preventDefault();
+      const canManage = currentUser.role === "Admin" || currentUser.id === "usr-vibha" || currentUser.id === "usr-rashika";
+      if (!canManage) {
+        showToast("Access denied: only Admins, Vibha, or Rashika can schedule meetings.", "error");
+        return;
+      }
+      const title = document.getElementById("sched-title").value.trim();
+      const time = document.getElementById("sched-time").value;
+      const roomCode = document.getElementById("sched-room").value.trim();
+      const description = document.getElementById("sched-desc").value.trim();
+      
+      // Get checked participants
+      const participants = [currentUser.id];
+      const checkboxes = document.querySelectorAll("#sched-participants-list input[type='checkbox']");
+      checkboxes.forEach(cb => {
+        if (cb.checked) {
+          participants.push(cb.value);
+        }
+      });
+
+      if (participants.length === 1) {
+        showToast("Please select at least one participant.", "error");
+        return;
+      }
+
+      const newMtg = {
+        id: "mtg-" + Date.now(),
+        title,
+        time,
+        participants,
+        isFixed: false,
+        roomCode,
+        description
+      };
+
+      await db.saveMeeting(newMtg);
+      scheduleModal.classList.add("hidden");
+      showToast("Meeting scheduled successfully!", "success");
+    };
+  }
+
+  // Handle Edit Submit
+  const editForm = document.getElementById("edit-meeting-form");
+  if (editForm) {
+    editForm.onsubmit = async (e) => {
+      e.preventDefault();
+      const canManage = currentUser.role === "Admin" || currentUser.id === "usr-vibha" || currentUser.id === "usr-rashika";
+      if (!canManage) {
+        showToast("Access denied: only Admins, Vibha, or Rashika can change meeting times.", "error");
+        return;
+      }
+      const id = document.getElementById("edit-mtg-id").value;
+      const time = document.getElementById("edit-mtg-time").value;
+      const description = document.getElementById("edit-mtg-desc").value.trim();
+      
+      const meetings = db.getMeetings() || [];
+      const mtg = meetings.find(m => m.id === id);
+      if (mtg) {
+        const updatedMtg = { ...mtg, time, description };
+        await db.updateMeeting(id, updatedMtg);
+        editModal.classList.add("hidden");
+        showToast("Meeting updated successfully!", "success");
+      }
+    };
+  }
+
+  // Start background 10-minute check
+  setInterval(checkUpcomingMeetings, 30000);
+}
+
+function getTechTeamParticipants() {
+  const users = db.getUsers() || [];
+  const participantIds = new Set();
+  
+  // Include Vibha and Rashika specifically
+  participantIds.add('usr-vibha');
+  participantIds.add('usr-rashika');
+  
+  // Include anyone in Tech domain
+  users.forEach(u => {
+    if (u.domain === 'Tech') {
+      participantIds.add(u.id);
+    }
+  });
+  
+  // Include anyone in the subordinates hierarchy of Vibha and Rashika
+  if (typeof getSubordinates === 'function') {
+    getSubordinates('usr-vibha', users).forEach(s => participantIds.add(s.id));
+    getSubordinates('usr-rashika', users).forEach(s => participantIds.add(s.id));
+  }
+  
+  return Array.from(participantIds);
+}
+
+function renderScheduledMeetings() {
+  const listContainer = document.getElementById("scheduled-meetings-list");
+  if (!listContainer) return;
+  listContainer.innerHTML = "";
+
+  if (!currentUser) return; // Prevent crashes when not logged in!
+
+  const meetings = db.getMeetings() || [];
+  const myMeetings = meetings.filter(m => {
+    const participants = m.isFixed ? getTechTeamParticipants() : (m.participants || []);
+    return participants.includes(currentUser.id);
+  });
+
+  // Enable/disable schedule button
+  const canManage = currentUser.role === "Admin" || currentUser.id === "usr-vibha" || currentUser.id === "usr-rashika";
+  const btnOpenSched = document.getElementById("btn-open-sched-modal");
+  if (btnOpenSched) {
+    if (canManage) {
+      btnOpenSched.classList.remove("hidden");
+    } else {
+      btnOpenSched.classList.add("hidden");
+    }
+  }
+
+  if (myMeetings.length === 0) {
+    listContainer.innerHTML = `<div style="text-align: center; color: var(--text-secondary); font-size: 13px; padding: 12px 0;">No meetings scheduled.</div>`;
+    return;
+  }
+
+  myMeetings.forEach(m => {
+    const item = document.createElement("div");
+    item.style.backgroundColor = "rgba(5, 47, 95, 0.03)";
+    item.style.border = "1px solid var(--border-color)";
+    item.style.borderRadius = "var(--radius-sm)";
+    item.style.padding = "12px";
+    item.style.display = "flex";
+    item.style.flexDirection = "column";
+    item.style.gap = "8px";
+
+    // Format Time: 17:30 -> 05:30 PM
+    const [hrs, mins] = m.time.split(':').map(Number);
+    const ampm = hrs >= 12 ? 'PM' : 'AM';
+    const dispHrs = hrs % 12 || 12;
+    const dispMins = mins < 10 ? '0' + mins : mins;
+    const timeStr = `${dispHrs}:${dispMins} ${ampm}`;
+
+    // Get participants names
+    const participants = m.isFixed ? getTechTeamParticipants() : (m.participants || []);
+    const participantNames = participants.map(pid => {
+      const u = db.getUsers().find(x => x.id === pid);
+      return u ? u.fullname.replace(/\s*\(.*\)\s*/g, "") : pid;
+    }).join(", ");
+
+    item.innerHTML = `
+      <div style="display: flex; justify-content: space-between; align-items: start; gap: 8px;">
+        <div>
+          <strong style="color: var(--text-primary); font-size: 14px; display: block;">${m.title}</strong>
+          <span style="font-size: 12px; color: var(--text-secondary); display: flex; align-items: center; gap: 4px; margin-top: 2px;">
+            <i data-lucide="clock" style="width: 12px; height: 12px;"></i> ${timeStr} ${m.isFixed ? '<span class="badge badge-lead" style="font-size: 9px; padding: 1px 4px; margin-left: 4px;">Fixed</span>' : ''}
+          </span>
+        </div>
+        <button type="button" class="btn btn-primary btn-sm btn-join-mtg" data-room="${m.roomCode}" style="padding: 4px 8px; font-size: 12px; display: flex; align-items: center; gap: 4px;">
+          <i data-lucide="video" style="width: 12px; height: 12px;"></i> Join
+        </button>
+      </div>
+      ${m.description ? `
+      <div style="font-size: 12px; color: var(--text-secondary); line-height: 1.4; margin-top: 2px; padding: 4px 0;">
+        ${m.description}
+      </div>
+      ` : ''}
+      <div style="font-size: 11px; color: var(--text-secondary); border-top: 1px dashed var(--border-color); padding-top: 6px;">
+        <strong>Team:</strong> <span title="${participantNames}">${participantNames.length > 40 ? participantNames.substring(0, 37) + "..." : participantNames}</span>
+      </div>
+      ${canManage ? `
+        <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px;">
+          <button type="button" class="btn-edit-mtg-time" data-id="${m.id}" data-title="${m.title}" data-time="${m.time}" style="background: none; border: none; color: var(--primary-color); font-size: 11px; font-weight: 500; cursor: pointer; padding: 0; display: flex; align-items: center; gap: 2px;">
+            <i data-lucide="edit-2" style="width: 10px; height: 10px;"></i> Change Time
+          </button>
+          ${!m.isFixed ? `
+            <button type="button" class="btn-delete-mtg" data-id="${m.id}" style="background: none; border: none; color: var(--color-danger); font-size: 11px; font-weight: 500; cursor: pointer; padding: 0; display: flex; align-items: center; gap: 2px;">
+              <i data-lucide="trash-2" style="width: 10px; height: 10px;"></i> Delete
+            </button>
+          ` : ''}
+        </div>
+      ` : ''}
+    `;
+
+    listContainer.appendChild(item);
+  });
+
+  // Re-initialize click handlers for the list items
+  listContainer.querySelectorAll(".btn-join-mtg").forEach(btn => {
+    btn.onclick = () => {
+      const room = btn.getAttribute("data-room");
+      document.getElementById("meeting-room-input").value = room;
+      document.getElementById("btn-join-meeting").click();
+    };
+  });
+
+  if (canManage) {
+    listContainer.querySelectorAll(".btn-edit-mtg-time").forEach(btn => {
+      btn.onclick = () => {
+        const id = btn.getAttribute("data-id");
+        const title = btn.getAttribute("data-title");
+        const time = btn.getAttribute("data-time");
+        
+        const meetings = db.getMeetings() || [];
+        const mtg = meetings.find(x => x.id === id);
+        const desc = mtg ? (mtg.description || "") : "";
+        
+        document.getElementById("edit-mtg-id").value = id;
+        document.getElementById("edit-mtg-title").value = title;
+        document.getElementById("edit-mtg-time").value = time;
+        document.getElementById("edit-mtg-desc").value = desc;
+        
+        document.getElementById("edit-meeting-modal").classList.remove("hidden");
+      };
+    });
+
+    listContainer.querySelectorAll(".btn-delete-mtg").forEach(btn => {
+      btn.onclick = async () => {
+        const id = btn.getAttribute("data-id");
+        if (confirm("Are you sure you want to delete this custom meeting?")) {
+          await db.deleteMeeting(id);
+          showToast("Meeting deleted.", "info");
+        }
+      };
+    });
+  }
+
+  // Refresh Lucide Icons in the newly rendered list
+  lucide.createIcons();
+}
+
+function showBrowserNotification(title, body) {
+  if (!("Notification" in window)) return;
+  if (Notification.permission === "granted") {
+    new Notification(title, { body, icon: '/medastrax_logo.png' });
+  }
+}
+
+function checkUpcomingMeetings() {
+  if (typeof currentUser === 'undefined' || !currentUser) return;
+  const now = new Date();
+  const todayStr = now.toDateString();
+  const meetings = db.getMeetings() || [];
+  
+  meetings.forEach(m => {
+    const participants = m.isFixed ? getTechTeamParticipants() : (m.participants || []);
+    if (participants.includes(currentUser.id)) {
+      const [hrs, mins] = m.time.split(':').map(Number);
+      const targetTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hrs, mins, 0, 0);
+      const diffMs = targetTime - now;
+      const diffMins = Math.floor(diffMs / 60000);
+      
+      const key = `${m.id}-${m.time}-${todayStr}`;
+      // Trigger when remaining time is 10 minutes or less, but meeting has not started
+      if (diffMins <= 10 && diffMins >= 0 && !notifiedMeetings[key]) {
+        notifiedMeetings[key] = true;
+        
+        const ampm = hrs >= 12 ? 'PM' : 'AM';
+        const dispHrs = hrs % 12 || 12;
+        const dispMins = mins < 10 ? '0' + mins : mins;
+        const timeStr = `${dispHrs}:${dispMins} ${ampm}`;
+        
+        const msg = diffMins === 0 ? `Your "${m.title}" is starting now!` : `Your "${m.title}" is starting in ${diffMins} minutes (at ${timeStr})!`;
+        
+        // Show clickable Toast Notification to switch to Meetings tab
+        const toastEl = showToast(`${msg} Click to join.`, "info");
+        if (toastEl) {
+          toastEl.style.cursor = "pointer";
+          toastEl.onclick = () => {
+            switchTab("meetings");
+          };
+        }
+        
+        // Play notification sound
+        playNotificationBeep();
+
+        // Show native browser notification
+        showBrowserNotification(`Meeting Alert: ${m.title}`, msg);
+      }
+    }
+  });
+}
+
+function playNotificationBeep() {
+  try {
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    // Beep 1
+    const osc1 = audioCtx.createOscillator();
+    const gain1 = audioCtx.createGain();
+    osc1.connect(gain1);
+    gain1.connect(audioCtx.destination);
+    osc1.type = 'sine';
+    osc1.frequency.setValueAtTime(880, audioCtx.currentTime); // A5 note
+    gain1.gain.setValueAtTime(0.1, audioCtx.currentTime);
+    gain1.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
+    osc1.start();
+    osc1.stop(audioCtx.currentTime + 0.15);
+    
+    // Beep 2 (slightly delayed)
+    setTimeout(() => {
+      const osc2 = audioCtx.createOscillator();
+      const gain2 = audioCtx.createGain();
+      osc2.connect(gain2);
+      gain2.connect(audioCtx.destination);
+      osc2.type = 'sine';
+      osc2.frequency.setValueAtTime(1046.5, audioCtx.currentTime); // C6 note
+      gain2.gain.setValueAtTime(0.1, audioCtx.currentTime);
+      gain2.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+      osc2.start();
+      osc2.stop(audioCtx.currentTime + 0.2);
+    }, 150);
+  } catch (err) {
+    console.error("Audio beep failed:", err);
+  }
+}
 
 // --------------------------------------------------------------------------
-
-
-
 // 11. Core Event Listeners Initialization
 
 
 
 // --------------------------------------------------------------------------
+document.addEventListener("DOMContentLoaded", async () => {
+  // Check if loaded via file:// protocol
+  if (window.location.protocol === "file:") {
+    setTimeout(() => {
+      showToast("Warning: Running via file://. Please use http://localhost:8000", "warning");
+    }, 1000);
+    const banner = document.createElement("div");
+    banner.style.position = "fixed";
+    banner.style.top = "0";
+    banner.style.left = "0";
+    banner.style.width = "100%";
+    banner.style.backgroundColor = "#e11d48";
+    banner.style.color = "#fff";
+    banner.style.padding = "14px";
+    banner.style.textAlign = "center";
+    banner.style.fontWeight = "600";
+    banner.style.zIndex = "999999";
+    banner.style.fontSize = "14px";
+    banner.style.fontFamily = "system-ui, sans-serif";
+    banner.style.boxShadow = "0 4px 6px -1px rgba(0,0,0,0.2)";
+    banner.innerHTML = `
+      ⚠️ Running directly from files. Database APIs are disabled. 
+      Please open <a href="http://localhost:8000" target="_blank" style="color: #fff; text-decoration: underline; margin-left: 8px; font-weight: 700;">http://localhost:8000</a> in your browser.
+    `;
+    document.body.prepend(banner);
+  }
 
+  // Init Backend Cache from PostgreSQL
+  await initBackendCache();
 
-
-
-
-
-
-document.addEventListener("DOMContentLoaded", () => {
-
-
-
-  // Init Local Storage DB
-
-
-
-  initDatabase();
+  // Init Meetings Portal
+  initMeetingsPortal();
 
 
 
@@ -10555,17 +11964,66 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
   }
+  // Leave Modal Open/Close Actions
+  const openApplyLeaveModalBtn = document.getElementById("open-apply-leave-modal");
+  const closeLeaveModalBtn = document.getElementById("close-leave-modal");
+  const cancelLeaveBtn = document.getElementById("cancel-leave-btn");
+  const leaveForm = document.getElementById("leave-application-form");
+  const leaveFromInput = document.getElementById("leave-from-date");
+  const leaveToInput = document.getElementById("leave-to-date");
 
+  if (openApplyLeaveModalBtn) {
+    openApplyLeaveModalBtn.addEventListener("click", openLeaveModal);
+  }
+  if (closeLeaveModalBtn) {
+    closeLeaveModalBtn.addEventListener("click", () => {
+      document.getElementById("apply-leave-modal").classList.add("hidden");
+    });
+  }
+  if (cancelLeaveBtn) {
+    cancelLeaveBtn.addEventListener("click", () => {
+      document.getElementById("apply-leave-modal").classList.add("hidden");
+    });
+  }
+  if (leaveForm) {
+    leaveForm.addEventListener("submit", handleLeaveSubmit);
+  }
+  if (leaveFromInput && leaveToInput) {
+    leaveFromInput.addEventListener("change", updateLeaveTotalDays);
+    leaveToInput.addEventListener("change", updateLeaveTotalDays);
+  }
 
+  // Leave Subtabs Navigation Toggle Click Handlers
+  const subtabMyLeavesBtn = document.getElementById("subtab-my-leaves");
+  const subtabTeamHistoryBtn = document.getElementById("subtab-team-history");
+  if (subtabMyLeavesBtn) {
+    subtabMyLeavesBtn.onclick = () => {
+      currentLeavesSubtab = "my-leaves";
+      renderLeavesTab();
+    };
+  }
+  if (subtabTeamHistoryBtn) {
+    subtabTeamHistoryBtn.onclick = () => {
+      currentLeavesSubtab = "team-history";
+      renderLeavesTab();
+    };
+  }
 
-
-
-
+  // Leave Hierarchy Timeline Modal Actions
+  const closeLeaveChainModalBtn = document.getElementById("close-leave-chain-modal");
+  const closeLeaveChainBtn = document.getElementById("close-leave-chain-btn");
+  if (closeLeaveChainModalBtn) {
+    closeLeaveChainModalBtn.onclick = () => {
+      document.getElementById("leave-chain-modal").classList.add("hidden");
+    };
+  }
+  if (closeLeaveChainBtn) {
+    closeLeaveChainBtn.onclick = () => {
+      document.getElementById("leave-chain-modal").classList.add("hidden");
+    };
+  }
 
   // Sidebar Collapse Toggle
-
-
-
   const sidebarToggleBtn = document.getElementById("sidebar-toggle-btn");
 
 
@@ -10592,20 +12050,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
   }
 
-
-
-
-
-
-
   // Perform initial session auth check
-
-
-
   checkAuth();
-
-
-
 });
 
 
@@ -11351,18 +12797,425 @@ window.openDeliverableImageLightbox = function(src) {
 
 
   };
-
-
-
-
-
-
-
   overlay.addEventListener("click", closeBtn);
 
-
-
 };
+
+// WebRTC and video calls variables
+let sseVideoSource = null;
+let localStream = null;
+let currentRoom = null;
+let peerConnections = {}; // targetUserId -> RTCPeerConnection
+let isCamOn = true;
+let isMicOn = true;
+let isScreenSharing = false;
+
+function initVideoSse() {
+  if (!currentUser) return;
+  if (sseVideoSource) sseVideoSource.close();
+
+  sseVideoSource = new EventSource(`/api/video/events?userId=${currentUser.id}&username=${encodeURIComponent(currentUser.fullname)}`);
+
+  sseVideoSource.onmessage = async (e) => {
+    const event = JSON.parse(e.data);
+    await handleVideoSseEvent(event);
+  };
+
+  sseVideoSource.onerror = (e) => {
+    console.error("Video SSE error, attempting reconnect:", e);
+  };
+}
+
+function renderMeetingsTab() {
+  // Render the scheduled meetings card list initially
+  renderScheduledMeetings();
+
+  const roomInput = document.getElementById("meeting-room-input");
+  const btnJoin = document.getElementById("btn-join-meeting");
+  const btnLeave = document.getElementById("btn-leave-meeting");
+  const mediaControls = document.getElementById("meeting-media-controls");
+  const statusText = document.getElementById("meeting-status-text");
+  const activeRoomDisplay = document.getElementById("meeting-active-room-display");
+  const roomBadge = document.getElementById("meeting-room-badge");
+
+  btnJoin.onclick = async () => {
+    const room = roomInput.value.trim();
+    if (!room) {
+      showToast("Please enter a Room Code / ID", "error");
+      return;
+    }
+
+    btnJoin.classList.add("hidden");
+    btnLeave.classList.remove("hidden");
+    mediaControls.classList.remove("hidden");
+    statusText.textContent = "Connecting...";
+    statusText.className = "badge badge-lead";
+    activeRoomDisplay.classList.remove("hidden");
+    roomBadge.textContent = room;
+
+    await joinMeetingRoom(room);
+  };
+
+  btnLeave.onclick = async () => {
+    await leaveMeetingRoom();
+    
+    btnJoin.classList.remove("hidden");
+    btnLeave.classList.add("hidden");
+    mediaControls.classList.add("hidden");
+    statusText.textContent = "Not Connected";
+    statusText.className = "badge badge-critical";
+    activeRoomDisplay.classList.add("hidden");
+  };
+
+  // Media controls
+  const btnCam = document.getElementById("btn-toggle-cam");
+  const btnMic = document.getElementById("btn-toggle-mic");
+  const btnShare = document.getElementById("btn-share-screen");
+
+  btnCam.onclick = () => {
+    if (localStream) {
+      isCamOn = !isCamOn;
+      localStream.getVideoTracks().forEach(track => track.enabled = isCamOn);
+      btnCam.style.backgroundColor = isCamOn ? "var(--bg-secondary)" : "#ef4444";
+      btnCam.style.color = isCamOn ? "var(--text-primary)" : "#fff";
+      showToast(isCamOn ? "Webcam enabled" : "Webcam disabled", "info");
+    }
+  };
+
+  btnMic.onclick = () => {
+    if (localStream) {
+      isMicOn = !isMicOn;
+      localStream.getAudioTracks().forEach(track => track.enabled = isMicOn);
+      btnMic.style.backgroundColor = isMicOn ? "var(--bg-secondary)" : "#ef4444";
+      btnMic.style.color = isMicOn ? "var(--text-primary)" : "#fff";
+      showToast(isMicOn ? "Microphone unmuted" : "Microphone muted", "info");
+    }
+  };
+
+  btnShare.onclick = async () => {
+    if (!localStream) return;
+    try {
+      if (!isScreenSharing) {
+        const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+        const screenTrack = screenStream.getVideoTracks()[0];
+        
+        // Replace track in all peer connections
+        for (const pc of Object.values(peerConnections)) {
+          const senders = pc.getSenders();
+          const videoSender = senders.find(s => s.track.kind === 'video');
+          if (videoSender) {
+            videoSender.replaceTrack(screenTrack);
+          }
+        }
+
+        // Update local video element
+        const localVideo = document.getElementById("local-video-element");
+        if (localVideo) {
+          localVideo.srcObject = screenStream;
+        }
+
+        screenTrack.onended = () => {
+          stopScreenSharing();
+        };
+
+        isScreenSharing = true;
+        btnShare.style.backgroundColor = "#10b981";
+        btnShare.style.color = "#fff";
+        showToast("Screen sharing started", "success");
+      } else {
+        stopScreenSharing();
+      }
+    } catch (err) {
+      console.error("Screen share error:", err);
+      showToast("Could not share screen: " + err.message, "error");
+    }
+  };
+}
+
+function stopScreenSharing() {
+  if (!isScreenSharing) return;
+  isScreenSharing = false;
+  const btnShare = document.getElementById("btn-share-screen");
+  btnShare.style.backgroundColor = "var(--bg-secondary)";
+  btnShare.style.color = "var(--text-primary)";
+
+  // Switch back to camera video track
+  if (localStream) {
+    const camTrack = localStream.getVideoTracks()[0];
+    for (const pc of Object.values(peerConnections)) {
+      const senders = pc.getSenders();
+      const videoSender = senders.find(s => s.track.kind === 'video');
+      if (videoSender && camTrack) {
+        videoSender.replaceTrack(camTrack);
+      }
+    }
+    const localVideo = document.getElementById("local-video-element");
+    if (localVideo) {
+      localVideo.srcObject = localStream;
+    }
+  }
+  showToast("Screen sharing stopped", "info");
+}
+
+async function joinMeetingRoom(room) {
+  currentRoom = room;
+  
+  // Remove placeholder
+  const placeholder = document.getElementById("video-grid-placeholder");
+  if (placeholder) placeholder.classList.add("hidden");
+
+  try {
+    // Get local media
+    localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+    addLocalVideo();
+
+    // Join room on signaling server
+    const res = await fetch("/api/video/join", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId: currentUser.id, username: currentUser.fullname, room })
+    });
+    
+    const data = await res.json();
+    const statusText = document.getElementById("meeting-status-text");
+    statusText.textContent = "Connected";
+    statusText.className = "badge badge-employee";
+
+    // Establish connection with every existing user in room
+    if (data.existingUsers) {
+      for (const user of data.existingUsers) {
+        createPeerConnection(user.userId, true);
+      }
+    }
+  } catch (err) {
+    console.error("Error joining room:", err);
+    showToast("Failed to access camera/mic: " + err.message, "error");
+    leaveMeetingRoom();
+  }
+}
+
+async function leaveMeetingRoom() {
+  if (currentRoom) {
+    await fetch("/api/video/leave", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId: currentUser.id, room: currentRoom })
+    });
+  }
+
+  // Stop screen sharing if active
+  stopScreenSharing();
+
+  // Close and cleanup local stream
+  if (localStream) {
+    localStream.getTracks().forEach(track => track.stop());
+    localStream = null;
+  }
+
+  // Close and cleanup peer connections
+  for (const peerId of Object.keys(peerConnections)) {
+    peerConnections[peerId].close();
+    delete peerConnections[peerId];
+  }
+
+  currentRoom = null;
+
+  // Reset UI video grid
+  const grid = document.getElementById("video-grid");
+  if (grid) {
+    grid.innerHTML = `
+      <div id="video-grid-placeholder" style="grid-column: 1 / -1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #94a3b8; height: 100%;">
+        <i data-lucide="video" style="width: 48px; height: 48px; margin-bottom: 12px; color: #475569;"></i>
+        <p style="margin: 0; font-weight: 500;">No active video stream.</p>
+        <p style="margin: 4px 0 0; font-size: 0.85rem; color: #64748b;">Enter a room code and click Join to start.</p>
+      </div>
+    `;
+  }
+  lucide.createIcons();
+}
+
+function addLocalVideo() {
+  const grid = document.getElementById("video-grid");
+  if (!grid) return;
+
+  // Create container
+  const container = document.createElement("div");
+  container.id = "video-container-local";
+  container.style.position = "relative";
+  container.style.borderRadius = "8px";
+  container.style.overflow = "hidden";
+  container.style.backgroundColor = "#1e293b";
+
+  const video = document.createElement("video");
+  video.id = "local-video-element";
+  video.srcObject = localStream;
+  video.autoplay = true;
+  video.playsInline = true;
+  video.muted = true; // local video must be muted to prevent echo!
+  video.style.width = "100%";
+  video.style.height = "100%";
+  video.style.objectFit = "cover";
+
+  const label = document.createElement("div");
+  label.textContent = "You";
+  label.style.position = "absolute";
+  label.style.bottom = "12px";
+  label.style.left = "12px";
+  label.style.background = "rgba(15, 23, 42, 0.75)";
+  label.style.color = "#fff";
+  label.style.padding = "4px 8px";
+  label.style.borderRadius = "4px";
+  label.style.fontSize = "0.75rem";
+  label.style.fontWeight = "600";
+
+  container.appendChild(video);
+  container.appendChild(label);
+  grid.appendChild(container);
+}
+
+function addRemoteVideo(peerId, stream) {
+  const grid = document.getElementById("video-grid");
+  if (!grid) return;
+
+  // Check if remote video container already exists
+  let container = document.getElementById(`video-container-${peerId}`);
+  if (!container) {
+    container = document.createElement("div");
+    container.id = `video-container-${peerId}`;
+    container.style.position = "relative";
+    container.style.borderRadius = "8px";
+    container.style.overflow = "hidden";
+    container.style.backgroundColor = "#1e293b";
+
+    const video = document.createElement("video");
+    video.srcObject = stream;
+    video.autoplay = true;
+    video.playsInline = true;
+    video.style.width = "100%";
+    video.style.height = "100%";
+    video.style.objectFit = "cover";
+
+    // Retrieve username from user database
+    const users = db.getUsers() || [];
+    const peerUser = users.find(u => u.id === peerId);
+    const name = peerUser ? peerUser.fullname.replace(/\s*\(.*\)\s*/g, "") : "Participant";
+
+    const label = document.createElement("div");
+    label.textContent = name;
+    label.style.position = "absolute";
+    label.style.bottom = "12px";
+    label.style.left = "12px";
+    label.style.background = "rgba(15, 23, 42, 0.75)";
+    label.style.color = "#fff";
+    label.style.padding = "4px 8px";
+    label.style.borderRadius = "4px";
+    label.style.fontSize = "0.75rem";
+    label.style.fontWeight = "600";
+
+    container.appendChild(video);
+    container.appendChild(label);
+    grid.appendChild(container);
+  } else {
+    const video = container.querySelector("video");
+    if (video) video.srcObject = stream;
+  }
+}
+
+function createPeerConnection(peerId, initiator) {
+  const pc = new RTCPeerConnection({
+    iceServers: [
+      { urls: 'stun:stun.l.google.com:19302' },
+      { urls: 'stun:stun1.l.google.com:19302' }
+    ]
+  });
+
+  peerConnections[peerId] = pc;
+
+  // Add local stream tracks to pc
+  if (localStream) {
+    localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+  }
+
+  // Handle ICE candidates
+  pc.onicecandidate = (event) => {
+    if (event.candidate) {
+      sendSignal(peerId, "ice-candidate", event.candidate);
+    }
+  };
+
+  // Handle remote track
+  pc.ontrack = (event) => {
+    addRemoteVideo(peerId, event.streams[0]);
+  };
+
+  if (initiator) {
+    pc.createOffer()
+      .then(offer => pc.setLocalDescription(offer))
+      .then(() => {
+        sendSignal(peerId, "offer", pc.localDescription);
+      })
+      .catch(err => console.error("Error creating offer:", err));
+  }
+
+  return pc;
+}
+
+async function sendSignal(targetId, type, data) {
+  try {
+    await fetch("/api/video/signal", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ senderId: currentUser.id, targetId, type, data })
+    });
+  } catch (err) {
+    console.error("Signaling error:", err);
+  }
+}
+
+async function handleVideoSseEvent(event) {
+  const { type, senderId, data } = event;
+  
+  switch (type) {
+    case 'user-joined':
+      createPeerConnection(senderId, true);
+      showToast(`${event.username || "Someone"} joined the meeting!`, "info");
+      break;
+
+    case 'user-left':
+      if (peerConnections[senderId]) {
+        peerConnections[senderId].close();
+        delete peerConnections[senderId];
+      }
+      const videoEl = document.getElementById(`video-container-${senderId}`);
+      if (videoEl) videoEl.remove();
+      break;
+
+    case 'offer':
+      let pcOffer = peerConnections[senderId];
+      if (!pcOffer) {
+        pcOffer = createPeerConnection(senderId, false);
+      }
+      await pcOffer.setRemoteDescription(new RTCSessionDescription(data));
+      const answer = await pcOffer.createAnswer();
+      await pcOffer.setLocalDescription(answer);
+      sendSignal(senderId, "answer", pcOffer.localDescription);
+      break;
+
+    case 'answer':
+      const pcAnswer = peerConnections[senderId];
+      if (pcAnswer) {
+        await pcAnswer.setRemoteDescription(new RTCSessionDescription(data));
+      }
+      break;
+
+    case 'ice-candidate':
+      const pcIce = peerConnections[senderId];
+      if (pcIce) {
+        await pcIce.addIceCandidate(new RTCIceCandidate(data));
+      }
+      break;
+  }
+}
 
 
 

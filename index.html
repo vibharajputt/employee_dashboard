@@ -30,7 +30,7 @@
 
   <!-- Custom Stylesheet -->
 
-  <link rel="stylesheet" href="styles.css?v=2.2">
+  <link rel="stylesheet" href="styles.css?v=6.0">
 
   
 
@@ -349,13 +349,24 @@
             </li>
 
             <li>
-
-              <a href="#" class="nav-link" data-tab="settings">
-
-                <i data-lucide="settings"></i> <span>Settings</span>
-
+              <a href="#" class="nav-link" data-tab="leaves">
+                <i data-lucide="calendar"></i> <span>Leaves</span>
               </a>
-
+            </li>
+            <li id="nav-item-attendance">
+              <a href="#" class="nav-link" data-tab="attendance">
+                <i data-lucide="calendar-check"></i> <span>Attendance</span>
+              </a>
+            </li>
+            <li>
+              <a href="#" class="nav-link" data-tab="meetings">
+                <i data-lucide="video"></i> <span>Meetings</span>
+              </a>
+            </li>
+            <li>
+              <a href="#" class="nav-link" data-tab="settings">
+                <i data-lucide="settings"></i> <span>Settings</span>
+              </a>
             </li>
 
           </ul>
@@ -630,14 +641,15 @@
 
             </div>
 
-            <div class="hierarchy-legend">
-
-              <span class="legend-item"><span class="color-dot admin-dot"></span> Admin</span>
-
-              <span class="legend-item"><span class="color-dot manager-dot"></span> Manager</span>
-
-              <span class="legend-item"><span class="color-dot employee-dot"></span> Employee</span>
-
+            <div class="hierarchy-legend" style="flex-wrap: wrap; gap: 12px 18px; justify-content: center;">
+              <span class="legend-item"><span class="color-dot admin-dot"></span> CEO / Admin</span>
+              <span class="legend-item"><span class="color-dot manager-dot"></span> Manager / C-Level</span>
+              <span class="legend-item"><span class="color-dot tech-lead-dot"></span> Technical Lead</span>
+              <span class="legend-item"><span class="color-dot team-lead-dot"></span> Team Lead</span>
+              <span class="legend-item"><span class="color-dot software-developer-dot"></span> Software Developer</span>
+              <span class="legend-item"><span class="color-dot mse-tl-dot"></span> MSE (Team Lead)</span>
+              <span class="legend-item"><span class="color-dot mse-dot"></span> MSE</span>
+              <span class="legend-item"><span class="color-dot employee-dot"></span> Other Employee</span>
             </div>
 
           </div>
@@ -1005,6 +1017,324 @@
         </section>
 
 
+
+        <!-- ==================== TAB: LEAVES ==================== -->
+        <section id="tab-leaves" class="tab-pane hidden">
+          <div class="section-header">
+            <div>
+              <h2>Leave Management</h2>
+              <p class="section-desc">Apply for official leaves, track approval status, and manage team requests.</p>
+            </div>
+            <button class="btn btn-primary hidden" id="open-apply-leave-modal"><i data-lucide="calendar-plus"></i> Apply for Leave</button>
+          </div>
+
+          <!-- Leave sub-navigation tabs -->
+          <div id="leaves-subtabs-nav" class="leaves-tabs-nav hidden" style="display: flex; gap: 8px; margin-bottom: 24px; border-bottom: 1px solid var(--border-color); padding-bottom: 12px;">
+            <button class="subtab-btn" id="subtab-my-leaves" style="padding: 8px 16px; font-size: 0.85rem; border-radius: var(--radius-sm); cursor: pointer; border: 1px solid var(--border-color); background-color: var(--bg-primary); color: var(--text-muted); font-weight: 500; outline: none; transition: all 0.2s;">
+              <i data-lucide="user" style="width: 14px; height: 14px; display: inline-block; vertical-align: middle; margin-right: 6px;"></i>My Leaves
+            </button>
+            <button class="subtab-btn" id="subtab-team-history" style="padding: 8px 16px; font-size: 0.85rem; border-radius: var(--radius-sm); cursor: pointer; border: 1px solid var(--border-color); background-color: var(--bg-primary); color: var(--text-muted); font-weight: 500; outline: none; transition: all 0.2s;">
+              <i data-lucide="history" style="width: 14px; height: 14px; display: inline-block; vertical-align: middle; margin-right: 6px;"></i>Team Leaves History
+            </button>
+          </div>
+
+          <div class="leaves-layout-grid">
+            <!-- Pending Approvals (only shown to managers/admin/heads) -->
+            <div class="dashboard-card hidden" id="pending-approvals-card" style="width: 100%; margin-top: 0; margin-bottom: 24px;">
+              <h3 style="margin-bottom: 16px;"><i data-lucide="check-square" class="text-accent"></i> Pending Team Leaves</h3>
+              <div class="table-responsive">
+                <table class="table">
+                  <thead>
+                    <tr>
+                      <th>Employee</th>
+                      <th>Role</th>
+                      <th>Dates</th>
+                      <th>Days</th>
+                      <th>Reason</th>
+                      <th>Approval Stage</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="pending-leaves-table-body">
+                    <!-- Populated dynamically -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Team Leaves History (shown to managers/admin) -->
+            <div class="dashboard-card hidden" id="team-leaves-history-card" style="width: 100%; margin-top: 0; margin-bottom: 24px;">
+              <div class="section-header" style="padding: 0 0 16px 0; border-bottom: 1px solid var(--border-color); margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+                <h3 style="margin: 0;"><i data-lucide="history" class="text-accent" style="color: #10b981;"></i> Team Leaves History</h3>
+                <div class="filter-group" style="display: flex; align-items: center; gap: 8px;">
+                  <label for="history-leave-filter" style="font-size: 0.85rem; color: var(--text-muted); font-weight: 500;">Filter Status:</label>
+                  <select id="history-leave-filter" class="form-control" style="padding: 6px 12px; font-size: 0.85rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary); cursor: pointer; outline: none; width: auto;">
+                    <option value="all">All Leaves</option>
+                    <option value="approved">Approved Leaves</option>
+                    <option value="declined">Declined Leaves</option>
+                  </select>
+                </div>
+              </div>
+              <div class="table-responsive">
+                <table class="table">
+                  <thead>
+                    <tr>
+                      <th>Employee</th>
+                      <th>Role</th>
+                      <th>Dates</th>
+                      <th>Days</th>
+                      <th>Reason</th>
+                      <th>Approval Stage</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody id="team-leaves-history-table-body">
+                    <!-- Populated dynamically -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- My Leave History -->
+            <div class="dashboard-card" id="my-leaves-card" style="width: 100%; margin-top: 0;">
+              <h3 style="margin-bottom: 16px;"><i data-lucide="history" class="text-accent"></i> My Leave Applications</h3>
+              <div class="table-responsive">
+                <table class="table">
+                  <thead>
+                    <tr>
+                      <th>From Date</th>
+                      <th>To Date</th>
+                      <th>Days</th>
+                      <th>Reason</th>
+                      <th>Current Approver</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody id="my-leaves-table-body">
+                    <!-- Populated dynamically -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ==================== TAB: ATTENDANCE ==================== -->
+        <section id="tab-attendance" class="tab-pane hidden">
+          <div class="section-header">
+            <div>
+              <h1>Attendance Portal</h1>
+              <p class="subtitle">Track and record daily work attendance logs</p>
+            </div>
+            <div class="header-actions" id="attendance-header-actions">
+              <!-- Dynamically populated if needed -->
+            </div>
+          </div>
+
+          <!-- Manager View: Mark Attendance -->
+          <div id="attendance-manager-view" class="attendance-container hidden">
+            <div class="card attendance-marking-card">
+              <div class="attendance-marking-header">
+                <h3>Team Attendance Sheet</h3>
+                <div class="attendance-filters-wrapper" style="display: flex; gap: 16px; flex-wrap: wrap; align-items: center;">
+                  <div class="date-picker-wrapper">
+                    <label for="attendance-date">Select Date:</label>
+                    <input type="date" id="attendance-date">
+                  </div>
+                  <div class="meeting-selector-wrapper" style="display: flex; align-items: center; gap: 8px;">
+                    <label for="attendance-meeting-type" style="font-weight: 500; color: var(--text-secondary);">Meeting:</label>
+                    <select id="attendance-meeting-type" style="background-color: var(--bg-primary); border: 1px solid var(--border-color); border-radius: var(--radius-sm); color: var(--text-primary); padding: 8px 12px; font-family: inherit;">
+                      <option value="Daily Meeting">Daily Meeting</option>
+                      <option value="EOD Meeting">EOD Meeting</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+              <div class="table-responsive">
+                <table class="table">
+                  <thead>
+                    <tr>
+                      <th>Employee</th>
+                      <th>Role</th>
+                      <th>Domain</th>
+                      <th>Attendance Status</th>
+                    </tr>
+                  </thead>
+                  <tbody id="attendance-subordinates-table-body">
+                    <!-- Populated dynamically -->
+                  </tbody>
+                </table>
+              </div>
+              <div class="attendance-footer-actions" style="display: flex; justify-content: flex-end; gap: 16px; padding: 20px; border-top: 1px solid var(--border-color);">
+                <button type="button" id="btn-download-attendance" class="btn btn-secondary" style="display: flex; align-items: center; gap: 8px;">
+                  <i data-lucide="download"></i> Download PDF
+                </button>
+                <button type="button" id="btn-submit-attendance" class="btn btn-primary glow-btn" style="display: flex; align-items: center; gap: 8px;">
+                  <i data-lucide="check-square"></i> Submit Attendance
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Employee View: My Attendance Summary and History -->
+          <div id="attendance-employee-view" class="attendance-container hidden">
+            <!-- Stats Search Filter Card -->
+            <div class="attendance-filter-card card" style="margin-bottom: 24px; padding: 20px;">
+              <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 16px;">
+                <div class="form-group" style="margin-bottom: 0; display: flex; align-items: center; gap: 8px;">
+                  <label for="att-filter-type" style="font-weight: 600; white-space: nowrap; color: var(--text-secondary);">Filter By:</label>
+                  <select id="att-filter-type" style="background-color: var(--bg-primary); border: 1px solid var(--border-color); border-radius: var(--radius-sm); color: var(--text-primary); padding: 8px 12px; font-family: inherit;">
+                    <option value="all">Till Date(All days)</option>
+                    <option value="date-wise">Date wise</option>
+                  </select>
+                </div>
+                
+                <div id="att-date-range-fields" class="hidden" style="display: flex; align-items: center; gap: 12px;">
+                  <div class="form-group" style="margin-bottom: 0; display: flex; align-items: center; gap: 8px;">
+                    <label for="att-filter-from" style="font-weight: 500; color: var(--text-secondary);">From:</label>
+                    <input type="date" id="att-filter-from" style="background-color: var(--bg-primary); border: 1px solid var(--border-color); border-radius: var(--radius-sm); color: var(--text-primary); padding: 8px 12px; font-family: inherit;">
+                  </div>
+                  <div class="form-group" style="margin-bottom: 0; display: flex; align-items: center; gap: 8px;">
+                    <label for="att-filter-to" style="font-weight: 500; color: var(--text-secondary);">To:</label>
+                    <input type="date" id="att-filter-to" style="background-color: var(--bg-primary); border: 1px solid var(--border-color); border-radius: var(--radius-sm); color: var(--text-primary); padding: 8px 12px; font-family: inherit;">
+                  </div>
+                </div>
+
+                <button type="button" id="btn-att-search" class="btn" style="background-color: #d32f2f; color: white; padding: 8px 20px; font-weight: 600; border-radius: 4px; border: none; cursor: pointer; transition: background-color 0.2s;">
+                  SEARCH
+                </button>
+              </div>
+              <div style="margin-top: 10px; font-size: 0.85rem; color: var(--text-secondary);">
+                <strong>Search Criteria:</strong> <span id="att-criteria-text">Till Date(All days)</span>
+              </div>
+            </div>
+
+            <!-- Stats Horizontal Line Bar -->
+            <div class="card" style="padding: 16px; margin-bottom: 24px; display: flex; justify-content: space-around; flex-wrap: wrap; gap: 16px;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="display: inline-block; width: 4px; height: 16px; background-color: #10b981; border-radius: 2px;"></span>
+                <span style="font-weight: 500; color: var(--text-secondary);">Present Days:</span>
+                <span id="att-stats-present" style="font-weight: 700; color: var(--text-primary); font-size: 1.1rem; margin-left: 4px;">0</span>
+              </div>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="display: inline-block; width: 4px; height: 16px; background-color: #ef4444; border-radius: 2px;"></span>
+                <span style="font-weight: 500; color: var(--text-secondary);">Absent Days:</span>
+                <span id="att-stats-absent" style="font-weight: 700; color: var(--text-primary); font-size: 1.1rem; margin-left: 4px;">0</span>
+              </div>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="display: inline-block; width: 4px; height: 16px; background-color: #06b6d4; border-radius: 2px;"></span>
+                <span style="font-weight: 500; color: var(--text-secondary);">Attendance Rate:</span>
+                <span id="att-stats-rate" style="font-weight: 700; color: var(--text-primary); font-size: 1.1rem; margin-left: 4px;">0%</span>
+              </div>
+            </div>
+
+            <!-- Chart Card -->
+            <div class="card" style="padding: 24px; margin-bottom: 24px;">
+              <h3 style="margin-top: 0; margin-bottom: 16px; color: var(--text-primary);">Meeting Attendance Comparison</h3>
+              <div style="position: relative; height: 260px; max-width: 500px; margin: 0 auto;">
+                <canvas id="employee-attendance-chart"></canvas>
+              </div>
+            </div>
+
+            <!-- Attendance History Card -->
+            <div class="card attendance-history-card">
+              <h3>My Attendance History</h3>
+              <div class="table-responsive">
+                <table class="table">
+                  <thead>
+                    <tr>
+                      <th>Date</th>
+                      <th>Meeting Type</th>
+                      <th>Status</th>
+                      <th>Marked By</th>
+                      <th>Timestamp</th>
+                    </tr>
+                  </thead>
+                  <tbody id="my-attendance-table-body">
+                    <!-- Populated dynamically -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ==================== TAB: MEETINGS ==================== -->
+        <section id="tab-meetings" class="tab-pane hidden">
+          <div class="section-header">
+            <div>
+              <h2>Video Meetings Portal</h2>
+              <p class="section-desc">Host or join real-time audio and video meetings with your team.</p>
+            </div>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 3fr; gap: 24px; align-items: start; margin-bottom: 24px;">
+            <!-- Left Side controls -->
+            <div style="display: flex; flex-direction: column; gap: 24px; width: 100%;">
+              <div class="card" style="padding: 20px;">
+                <h3 style="margin-top: 0; margin-bottom: 16px;">Meeting Setup</h3>
+                <div class="form-group" style="margin-bottom: 16px;">
+                  <label for="meeting-room-input" style="font-weight: 500; margin-bottom: 6px; display: block; color: var(--text-secondary);">Room Code / ID</label>
+                  <input type="text" id="meeting-room-input" placeholder="e.g. daily-meeting" style="width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); background-color: var(--bg-primary); color: var(--text-primary); font-family: inherit;">
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 12px;">
+                  <button type="button" id="btn-join-meeting" class="btn btn-primary glow-btn" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                    <i data-lucide="video"></i> Join Meeting
+                  </button>
+                  <button type="button" id="btn-leave-meeting" class="btn btn-danger hidden" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                    <i data-lucide="phone-off"></i> Leave Meeting
+                  </button>
+                </div>
+
+                <div id="meeting-media-controls" class="hidden" style="margin-top: 20px; border-top: 1px solid var(--border-color); padding-top: 16px; display: flex; justify-content: space-around;">
+                  <button type="button" id="btn-toggle-cam" class="btn btn-icon" style="background-color: var(--bg-secondary); border-radius: 50%; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; border: 1px solid var(--border-color); color: var(--text-primary);" title="Toggle Camera">
+                    <i data-lucide="video"></i>
+                  </button>
+                  <button type="button" id="btn-toggle-mic" class="btn btn-icon" style="background-color: var(--bg-secondary); border-radius: 50%; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; border: 1px solid var(--border-color); color: var(--text-primary);" title="Toggle Mic">
+                    <i data-lucide="mic"></i>
+                  </button>
+                  <button type="button" id="btn-share-screen" class="btn btn-icon" style="background-color: var(--bg-secondary); border-radius: 50%; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; border: 1px solid var(--border-color); color: var(--text-primary);" title="Share Screen">
+                    <i data-lucide="monitor"></i>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Tech Team Scheduled Meetings Card -->
+              <div class="card" style="padding: 20px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; gap: 8px;">
+                  <h3 style="margin: 0; font-size: 16px;">Scheduled Meetings</h3>
+                  <button type="button" id="btn-open-sched-modal" class="btn btn-sm hidden" style="background-color: var(--primary-color); color: white; display: flex; align-items: center; gap: 4px; padding: 6px 10px; font-size: 12px; border-radius: var(--radius-sm);">
+                    <i data-lucide="plus" style="width: 14px; height: 14px;"></i> Schedule
+                  </button>
+                </div>
+                <div id="scheduled-meetings-list" style="display: flex; flex-direction: column; gap: 12px;">
+                  <!-- Loaded dynamically in app.js -->
+                </div>
+              </div>
+            </div>
+
+            <!-- Right Side active participants & video grid -->
+            <div style="display: flex; flex-direction: column; gap: 20px;">
+              <div class="card" style="padding: 16px; display: flex; align-items: center; justify-content: space-between;">
+                <div>
+                  <strong>Status:</strong> <span id="meeting-status-text" class="badge badge-critical">Not Connected</span>
+                </div>
+                <div id="meeting-active-room-display" class="hidden">
+                  <strong>Room:</strong> <span id="meeting-room-badge" class="badge badge-manager">-</span>
+                </div>
+              </div>
+
+              <div id="video-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; min-height: 400px; background-color: #0f172a; border-radius: 12px; padding: 16px; overflow: hidden; position: relative;">
+                <!-- Fallback info when no active call -->
+                <div id="video-grid-placeholder" style="grid-column: 1 / -1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #94a3b8; height: 100%;">
+                  <i data-lucide="video" style="width: 48px; height: 48px; margin-bottom: 12px; color: #475569;"></i>
+                  <p style="margin: 0; font-weight: 500;">No active video stream.</p>
+                  <p style="margin: 4px 0 0; font-size: 0.85rem; color: #64748b;">Enter a room code and click Join to start.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
 
         <!-- ==================== TAB: SETTINGS ==================== -->
 
@@ -1757,20 +2087,185 @@
       
 
       <div class="modal-footer" style="margin-top: 20px;">
-
         <button type="button" class="btn btn-secondary" id="close-detail-modal-footer">Close</button>
-
       </div>
-
     </div>
-
   </div>
 
+  <!-- ==================== MODAL: APPLY LEAVE ==================== -->
+  <div id="apply-leave-modal" class="modal-overlay hidden">
+    <div class="modal-card leave-modal-card">
+      <div class="modal-header">
+        <h2><i data-lucide="file-text"></i> Official Leave Application Form</h2>
+        <button class="close-modal-btn" id="close-leave-modal">&times;</button>
+      </div>
+      <form id="leave-application-form">
+        
+        <!-- MedAstraX Branding inside modal matching PDF -->
+        <div class="leave-pdf-brand">
+          <img src="medastrax_logo.png" alt="Medastrax Logo" class="brand-logo-small">
+          <span class="brand-name">MedAstraX</span>
+          <span class="brand-tagline">Innovate • Heal • Evolve •</span>
+        </div>
 
+        <h3 class="leave-section-title">1. Applicant Details</h3>
+        <table class="leave-pdf-table">
+          <thead>
+            <tr>
+              <th style="width: 30%;">Field</th>
+              <th>Information</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Name of Employee</strong></td>
+              <td><input type="text" id="leave-emp-name" readonly></td>
+            </tr>
+            <tr>
+              <td><strong>Designation</strong></td>
+              <td><input type="text" id="leave-emp-role" readonly></td>
+            </tr>
+            <tr>
+              <td><strong>Contact No.</strong></td>
+              <td><input type="text" id="leave-emp-phone" readonly></td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h3 class="leave-section-title">2. Leave Details</h3>
+        <table class="leave-pdf-table">
+          <thead>
+            <tr>
+              <th style="width: 30%;">Field</th>
+              <th>Information</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Period of Leave</strong></td>
+              <td>
+                <div class="leave-date-row">
+                  <span>From:</span>
+                  <input type="date" id="leave-from-date" required>
+                  <span>To:</span>
+                  <input type="date" id="leave-to-date" required>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td><strong>Total No. of Days</strong></td>
+              <td><input type="text" id="leave-total-days" placeholder="Auto-calculated" readonly></td>
+            </tr>
+            <tr>
+              <td><strong>Reason for Leave</strong></td>
+              <td><textarea id="leave-reason" rows="3" placeholder="Please specify the reason for leave..." required></textarea></td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h3 class="leave-section-title">3. Recommendation Guidelines</h3>
+        <div class="leave-guideline-note">
+          <p><strong>Note:</strong> Leave applications are routed through your management hierarchy for approval. A maximum of two (2) days leave is allowed in a single week.</p>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="cancel-leave-btn">Cancel</button>
+          <button type="submit" class="btn btn-primary" id="submit-leave-btn">Submit Application</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ==================== MODAL: LEAVE APPROVAL CHAIN DETAILS ==================== -->
+  <div id="leave-chain-modal" class="modal-overlay hidden">
+    <div class="modal-card" style="max-width: 500px; background-color: var(--card-bg); border: 1px solid var(--border-color);">
+      <div class="modal-header" style="border-bottom: 1px solid var(--border-color); padding-bottom: 12px; margin-bottom: 16px;">
+        <h2><i data-lucide="git-commit" style="color: var(--accent-color);"></i> Leave Approval Hierarchy</h2>
+        <button class="close-modal-btn" id="close-leave-chain-modal">&times;</button>
+      </div>
+      <div class="modal-body" style="padding: 10px 0;">
+        <div id="leave-chain-flow-container" style="display: flex; flex-direction: column; gap: 24px; position: relative; margin-left: 20px; border-left: 2px dashed var(--border-color); padding-left: 24px;">
+          <!-- Populated dynamically with timeline nodes -->
+        </div>
+      </div>
+      <div class="modal-footer" style="margin-top: 20px; border-top: 1px solid var(--border-color); padding-top: 12px; display: flex; justify-content: flex-end;">
+        <button type="button" class="btn btn-secondary" id="close-leave-chain-btn">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== MODAL: SCHEDULE MEETING ==================== -->
+  <div id="schedule-meeting-modal" class="modal-overlay hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2>Schedule Custom Meeting</h2>
+        <button class="close-modal-btn" id="close-sched-modal">&times;</button>
+      </div>
+      <form id="schedule-meeting-form">
+        <div class="form-group" style="margin-bottom: 16px;">
+          <label for="sched-title">Meeting Title</label>
+          <input type="text" id="sched-title" placeholder="e.g. Technical Sync" required>
+        </div>
+        <div class="form-row" style="margin-bottom: 16px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+          <div class="form-group">
+            <label for="sched-time">Meeting Time (HH:MM)</label>
+            <input type="time" id="sched-time" required>
+          </div>
+          <div class="form-group">
+            <label for="sched-room">Room Code</label>
+            <input type="text" id="sched-room" placeholder="e.g. custom-sync" required>
+          </div>
+        </div>
+        <div class="form-group" style="margin-bottom: 16px;">
+          <label for="sched-desc" style="display: block; margin-bottom: 8px; font-weight: 500;">Meeting Description</label>
+          <textarea id="sched-desc" placeholder="e.g. Discuss Q3 deliverables and blockers" style="width: 100%; border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 8px; font-size: 13px; resize: vertical; min-height: 60px; background-color: var(--bg-primary); color: var(--text-primary); font-family: inherit;"></textarea>
+        </div>
+        <div class="form-group" style="margin-bottom: 16px;">
+          <label style="display: block; margin-bottom: 8px; font-weight: 500;">Select Participants</label>
+          <div id="sched-participants-list" style="max-height: 150px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 10px; background-color: var(--bg-primary); display: flex; flex-direction: column; gap: 8px;">
+            <!-- Loaded dynamically in app.js -->
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="cancel-sched-btn">Cancel</button>
+          <button type="submit" class="btn btn-primary">Schedule</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ==================== MODAL: EDIT MEETING TIME ==================== -->
+  <div id="edit-meeting-modal" class="modal-overlay hidden">
+    <div class="modal-card" style="max-width: 400px;">
+      <div class="modal-header">
+        <h2>Change Meeting Time</h2>
+        <button class="close-modal-btn" id="close-edit-mtg-modal">&times;</button>
+      </div>
+      <form id="edit-meeting-form">
+        <input type="hidden" id="edit-mtg-id">
+        <div class="form-group" style="margin-bottom: 20px;">
+          <label for="edit-mtg-title" style="font-weight: 500; display: block; margin-bottom: 8px;">Meeting</label>
+          <input type="text" id="edit-mtg-title" readonly style="background-color: var(--bg-secondary); border-color: var(--border-color); width: 100%; padding: 8px; border-radius: var(--radius-sm); color: var(--text-primary);">
+        </div>
+        <div class="form-group" style="margin-bottom: 20px;">
+          <label for="edit-mtg-time" style="font-weight: 500; display: block; margin-bottom: 8px;">New Time (HH:MM)</label>
+          <input type="time" id="edit-mtg-time" required style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); background-color: var(--bg-primary); color: var(--text-primary);">
+        </div>
+        <div class="form-group" style="margin-bottom: 20px;">
+          <label for="edit-mtg-desc" style="font-weight: 500; display: block; margin-bottom: 8px;">Description</label>
+          <textarea id="edit-mtg-desc" placeholder="e.g. Weekly review of tech roadmap" style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); background-color: var(--bg-primary); color: var(--text-primary); font-size: 13px; resize: vertical; min-height: 60px; font-family: inherit;"></textarea>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="cancel-edit-mtg-btn">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
 
   <!-- ==================== SCRIPTS ==================== -->
 
-  <script src="app.js?v=2.2"></script>
+  <script src="app.js?v=6.0"></script>
 
 </body>
 
