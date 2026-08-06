@@ -9825,6 +9825,17 @@ function renderEmployeeAttendanceDashboard() {
   const tbody = document.getElementById("my-attendance-table-body");
   if (!tbody) return;
 
+  const chartCard = document.getElementById("attendance-chart-card");
+  const isHead = currentUser.role === "Admin" || currentUser.role === "Manager" || currentUser.role === "Technical Lead" || currentUser.role === "Team Lead";
+  
+  if (chartCard) {
+    if (isHead) {
+      chartCard.classList.remove("hidden");
+    } else {
+      chartCard.classList.add("hidden");
+    }
+  }
+
   tbody.innerHTML = "";
 
   const attendance = db.getAttendance() || [];
