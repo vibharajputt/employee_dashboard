@@ -9476,12 +9476,50 @@ window.showLeaveChainModal = showLeaveChainModal;
 function renderAttendanceTab() {
   const isHead = currentUser.role === "Admin" || currentUser.role === "Manager" || currentUser.role === "Technical Lead" || currentUser.role === "Team Lead";
 
-  // Always show the employee's own attendance dashboard
+  const toggleWrapper = document.getElementById("attendance-toggle-wrapper");
+  const btnMyAttendance = document.getElementById("btn-toggle-my-attendance");
+  const btnTeamAttendance = document.getElementById("btn-toggle-team-attendance");
+
+  // Always show the employee's own attendance dashboard initially
   document.getElementById("attendance-employee-view").classList.remove("hidden");
+  document.getElementById("attendance-manager-view").classList.add("hidden");
+  
+  if (toggleWrapper) {
+    toggleWrapper.classList.add("hidden");
+    toggleWrapper.style.display = "none";
+  }
+
   renderEmployeeAttendanceDashboard();
 
   if (isHead) {
-    document.getElementById("attendance-manager-view").classList.remove("hidden");
+    if (toggleWrapper) {
+      toggleWrapper.classList.remove("hidden");
+      toggleWrapper.style.display = "flex";
+      
+      // Default state for Managers: Team Attendance
+      document.getElementById("attendance-manager-view").classList.remove("hidden");
+      document.getElementById("attendance-employee-view").classList.add("hidden");
+      if (btnTeamAttendance) btnTeamAttendance.className = "btn btn-primary";
+      if (btnMyAttendance) btnMyAttendance.className = "btn btn-secondary";
+
+      if (btnMyAttendance) {
+        btnMyAttendance.onclick = () => {
+          document.getElementById("attendance-employee-view").classList.remove("hidden");
+          document.getElementById("attendance-manager-view").classList.add("hidden");
+          btnMyAttendance.className = "btn btn-primary";
+          btnTeamAttendance.className = "btn btn-secondary";
+        };
+      }
+
+      if (btnTeamAttendance) {
+        btnTeamAttendance.onclick = () => {
+          document.getElementById("attendance-manager-view").classList.remove("hidden");
+          document.getElementById("attendance-employee-view").classList.add("hidden");
+          btnTeamAttendance.className = "btn btn-primary";
+          btnMyAttendance.className = "btn btn-secondary";
+        };
+      }
+    }
     
     const dateInput = document.getElementById("attendance-date");
     if (!dateInput.value) {
