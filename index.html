@@ -368,6 +368,11 @@
                 <i data-lucide="settings"></i> <span>Settings</span>
               </a>
             </li>
+            <li>
+              <a href="#" class="nav-link" data-tab="chat">
+                <i data-lucide="message-square"></i> <span>Chat</span>
+              </a>
+            </li>
 
           </ul>
 
@@ -679,6 +684,34 @@
         </section>
 
 
+        <!-- ==================== TAB: CHAT ==================== -->
+
+        <section id="tab-chat" class="tab-pane hidden">
+          <div class="dashboard-header">
+            <h2>Employee Chat</h2>
+            <p class="section-desc">Connect and communicate with your team members in real-time.</p>
+          </div>
+
+          <div class="chat-container">
+            <div class="chat-users">
+              <h3>Direct Messages</h3>
+              <!-- Users will be populated here -->
+            </div>
+
+            <div class="chat-window">
+              <div class="chat-header">
+                <strong>Select an employee</strong>
+              </div>
+              <div class="chat-messages">
+                <!-- Messages will appear here -->
+              </div>
+              <div class="chat-input">
+                <input type="text" placeholder="Type a message...">
+                <button>Send</button>
+              </div>
+            </div>
+          </div>
+        </section>
 
         <!-- ==================== TAB: MANAGE DIRECTORY (ADMIN ONLY) ==================== -->
 
@@ -2272,10 +2305,8 @@
   </div>
 
   <!-- ==================== SCRIPTS ==================== -->
-
-  <script src="app.js?v=6.0"></script>
-
+  
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="app.js?v=2.2"></script>
 </body>
-
 </html>
-

@@ -1,9 +1,13 @@
 const express = require('express');
 const { Pool, Client } = require('pg');
 const path = require('path');
+const http = require('http');
+const { Server } = require("socket.io");
 require('dotenv').config();
 
 const app = express();
+const server = http.createServer(app);
+const io = new Server(server, { cors: { origin: "*", methods: ["GET", "POST"] } });
 const port = process.env.PORT || 8000;
 
 app.use(express.json());
@@ -120,6 +124,17 @@ async function initDb() {
         "message" TEXT NOT NULL,
         "type" VARCHAR(50) NOT NULL,
         "timestamp" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Create messages table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS messages (
+        "id" SERIAL PRIMARY KEY,
+        "sender" VARCHAR(100) NOT NULL,
+        "receiver" VARCHAR(100) NOT NULL,
+        "message" TEXT NOT NULL,
+        "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `);
 
@@ -606,6 +621,48 @@ app.post('/api/video/signal', (req, res) => {
   }
 });
 
+// --------------------------------------------------
+// Chat API
+// --------------------------------------------------
+app.get("/api/messages", async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM messages ORDER BY "createdAt" ASC');
+    res.json(result.rows);
+  } catch (error) {
+    console.error("Error fetching messages:", error);
+    res.json([]);
+  }
+});
+
+app.post("/api/messages", async (req, res) => {
+  try {
+    const { sender, receiver, message } = req.body;
+    if (!sender || !receiver || !message) {
+      return res.status(400).json({ error: "sender, receiver and message are required" });
+    }
+    const result = await pool.query(
+      `INSERT INTO messages (sender, receiver, message) VALUES ($1, $2, $3) RETURNING *`,
+      [sender, receiver, message]
+    );
+    const savedMessage = result.rows[0];
+    // Rename id to _id so frontend works without changing its expectation of MongoDB-like _id
+    savedMessage._id = savedMessage.id;
+    io.emit("newMessage", savedMessage);
+    res.status(201).json(savedMessage);
+  } catch (error) {
+    console.error("Error saving message:", error);
+    res.status(500).json({ error: "Failed to save message" });
+  }
+});
+
+// Socket.IO Connection
+io.on("connection", (socket) => {
+  console.log("User connected:", socket.id);
+  socket.on("disconnect", () => {
+    console.log("User disconnected:", socket.id);
+  });
+});
+
 app.post('/api/video/leave', (req, res) => {
   const { userId, room } = req.body;
   const client = videoClients.find(c => c.userId === userId);
@@ -637,7 +694,7 @@ app.get('*', (req, res) => {
 });
 
 // Initialize server
-app.listen(port, async () => {
+server.listen(port, async () => {
   await initDb();
   console.log(`[Server] Running on http://localhost:${port}`);
 });
