@@ -1852,6 +1852,17 @@ function renderOverviewTab() {
 
 
   const activities = db.getActivities();
+  
+  // Hide team attendance graph for non-heads
+  const isHead = currentUser.role === "Admin" || currentUser.role === "Manager" || currentUser.role === "Technical Lead" || currentUser.role === "Team Lead";
+  const graphWrapper = document.getElementById("attendance-graph-wrapper");
+  if (graphWrapper) {
+    if (isHead) {
+      graphWrapper.classList.remove("hidden");
+    } else {
+      graphWrapper.classList.add("hidden");
+    }
+  }
 
 
 
@@ -9824,17 +9835,6 @@ function downloadAttendancePDF() {
 function renderEmployeeAttendanceDashboard() {
   const tbody = document.getElementById("my-attendance-table-body");
   if (!tbody) return;
-
-  const chartCard = document.getElementById("attendance-chart-card");
-  const isHead = currentUser.role === "Admin" || currentUser.role === "Manager" || currentUser.role === "Technical Lead" || currentUser.role === "Team Lead";
-  
-  if (chartCard) {
-    if (isHead) {
-      chartCard.classList.remove("hidden");
-    } else {
-      chartCard.classList.add("hidden");
-    }
-  }
 
   tbody.innerHTML = "";
 
