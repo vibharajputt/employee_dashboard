@@ -454,12 +454,20 @@
             <!-- Dynamic stats generated here based on role -->
           </div>
 
-          <div class="overview-layout" style="grid-template-columns: 1fr;">
+          <div class="overview-layout" style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
             <!-- Recent Activities / Notifications -->
             <div class="dashboard-card recent-activities" style="width: 100%;">
               <h3><i data-lucide="bell" class="text-accent"></i> Recent Activity Log</h3>
               <div class="activity-timeline" id="activity-timeline-container">
                 <!-- Dynamically rendered activities -->
+              </div>
+            </div>
+
+            <!-- Attendance Graph -->
+            <div class="dashboard-card attendance-graph-card" style="width: 100%;" id="attendance-graph-wrapper">
+              <h3><i data-lucide="bar-chart-2" class="text-accent"></i> Team Attendance</h3>
+              <div style="position: relative; height: 300px; width: 100%;">
+                <canvas id="teamAttendanceChart"></canvas>
               </div>
             </div>
           </div>

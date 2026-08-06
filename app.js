@@ -1772,10 +1772,10 @@ function getUserRoleInfo(u) {
   let badgeClass = u.role.toLowerCase().replace(/\s+/g, "-");
 
   if (u.username === "vibha") {
-    displayRole = "Head of Technology";
-    badgeClass = "manager";
-  } else if (u.username === "rashika") {
     displayRole = "Chief Technical Officer";
+    badgeClass = "admin";
+  } else if (u.username === "rashika") {
+    displayRole = "Head of Technology";
     badgeClass = "manager";
   } else if (u.role === "Employee" && u.domain === "Tech") {
     displayRole = "Software Developer";
@@ -1983,27 +1983,11 @@ function setupWorkspace() {
 
 
   const manageEmployeesNavItem = document.getElementById("nav-item-manage-employees");
-
-
-
-  if (currentUser.role === "Admin" || currentUser.role === "Manager") {
-
-
-
+  if (currentUser.username === "vibha") {
     manageEmployeesNavItem.classList.remove("hidden");
-
-
-
   } else {
-
-
-
     manageEmployeesNavItem.classList.add("hidden");
-
-
-
   }
-
 
 
 
@@ -2344,6 +2328,95 @@ function renderActivitiesTimeline() {
       timeline.appendChild(div);
     });
   }
+}
+
+// Global chart variable to destroy before re-rendering
+let teamAttendanceChartInstance = null;
+
+function renderTeamAttendanceChart() {
+  const canvas = document.getElementById("teamAttendanceChart");
+  if (!canvas) return;
+
+  const users = db.getUsers() || [];
+  const attendance = db.getAttendance() || [];
+
+  const techTeam = users.filter(u => u.domain === 'Tech');
+  const marketingTeam = users.filter(u => u.domain === 'Marketing');
+
+  const today = new Date().toISOString().split('T')[0];
+
+  const calcAttendancePercentage = (team) => {
+    if (team.length === 0) return 0;
+    let presentCount = 0;
+    team.forEach(u => {
+      const record = attendance.find(a => a.userId === u.id && a.date === today);
+      if (record && record.status === 'Present') {
+        presentCount++;
+      }
+    });
+    return Math.round((presentCount / team.length) * 100);
+  };
+
+  const techAtt = calcAttendancePercentage(techTeam);
+  const mktAtt = calcAttendancePercentage(marketingTeam);
+
+  let chartLabels = [];
+  let chartDataPoints = [];
+  let chartBgColors = [];
+  let chartBorderColors = [];
+
+  if (currentUser.domain === 'Tech') {
+    chartLabels = ['Tech Team'];
+    chartDataPoints = [techAtt];
+    chartBgColors = ['rgba(54, 162, 235, 0.6)'];
+    chartBorderColors = ['rgba(54, 162, 235, 1)'];
+  } else if (currentUser.domain === 'Marketing') {
+    chartLabels = ['Marketing Team'];
+    chartDataPoints = [mktAtt];
+    chartBgColors = ['rgba(255, 99, 132, 0.6)'];
+    chartBorderColors = ['rgba(255, 99, 132, 1)'];
+  } else {
+    // Show both for Admins/Others
+    chartLabels = ['Tech Team', 'Marketing Team'];
+    chartDataPoints = [techAtt, mktAtt];
+    chartBgColors = ['rgba(54, 162, 235, 0.6)', 'rgba(255, 99, 132, 0.6)'];
+    chartBorderColors = ['rgba(54, 162, 235, 1)', 'rgba(255, 99, 132, 1)'];
+  }
+
+  if (teamAttendanceChartInstance) {
+    teamAttendanceChartInstance.destroy();
+  }
+
+  const ctx = canvas.getContext("2d");
+  teamAttendanceChartInstance = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: chartLabels,
+      datasets: [{
+        label: 'Attendance % Today',
+        data: chartDataPoints,
+        backgroundColor: chartBgColors,
+        borderColor: chartBorderColors,
+        borderWidth: 1
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        y: {
+          beginAtZero: true,
+          max: 100,
+          ticks: {
+            stepSize: 20
+          }
+        }
+      },
+      plugins: {
+        legend: { display: false }
+      }
+    }
+  });
 }
 
 function renderOverviewTab() {
@@ -2849,6 +2922,11 @@ function renderOverviewTab() {
   statsContainer.innerHTML = statsHTML;
   // Render recent activities
   renderActivitiesTimeline();
+  
+  // Render Attendance Graph
+  if (typeof renderTeamAttendanceChart === 'function') {
+    renderTeamAttendanceChart();
+  }
   
   // Space helper
   // Render security card details
@@ -9186,6 +9264,27 @@ function buildApprovalChain(user, usersList) {
   if (!user) return chain;
 
   const list = Array.isArray(usersList) ? usersList : [];
+
+  // Custom hierarchy for Vibha and Rikhil
+  if (user.id === "usr-vibha" || user.id === "usr-rikhil") {
+    const customApprovers = ["usr-sambhav", "usr-shakcham", "usr-shivangi"];
+    
+    customApprovers.forEach(approverId => {
+      const manager = list.find(u => u.id === approverId);
+      if (manager) {
+        chain.push({
+          approverId: manager.id,
+          approverName: (manager.fullname || manager.username || "Approver").replace(/\s*\(.*\)\s*/g, ""),
+          approverRole: (manager.fullname && manager.fullname.match(/\(([^)]+)\)/)) ? manager.fullname.match(/\(([^)]+)\)/)[1] : (manager.role || "Admin"),
+          status: "Pending",
+          actionDate: null
+        });
+      }
+    });
+    
+    return chain; // Return early for custom hierarchy
+  }
+
   let current = user;
   const visited = new Set([user.id]);
   
@@ -9206,7 +9305,7 @@ function buildApprovalChain(user, usersList) {
     }
   }
 
-  const adminUser = list.find(u => u.role === "Admin");
+  const adminUser = list.find(u => u.role === "Admin" && u.id !== user.id);
   if (adminUser) {
     const hasAdmin = chain.some(item => item.approverId === adminUser.id);
     if (!hasAdmin && user.id !== adminUser.id) {

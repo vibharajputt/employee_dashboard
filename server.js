@@ -150,21 +150,21 @@ async function initDb() {
       { id: "usr-emp-3", username: "employee3", password: "emp323", fullname: "Rohan Das (Systems Exec)", role: "Employee", reportingManagerId: "usr-mgr-2", status: "Active", availabilityStatus: "Active", gmail: "rohan.das@gmail.com", phone: "+91 98765 43215", domain: "Other", aadhar: "6789 0123 4567" },
 
       // CO-FOUNDERS & C-Level
-      { id: "usr-sambhav", username: "sambhav", password: "sambhav123", fullname: "Sambhav Kaushik Singh (Co-Founder & CEO)", role: "Admin", reportingManagerId: "none", status: "Active", availabilityStatus: "Active", gmail: "sambhavceo25@gmail.com", phone: "7527910223", domain: "Other", aadhar: "645713250752" },
-      { id: "usr-shivangi", username: "shivangi", password: "shivangi123", fullname: "Shivangi Bathyal (Co-Founder & COO)", role: "Admin", reportingManagerId: "none", status: "Active", availabilityStatus: "Active", gmail: "shivangicoo25@gmail.com", phone: "7526920225", domain: "Other", aadhar: "396680523862" },
-      { id: "usr-shakcham", username: "shakcham", password: "shakcham123", fullname: "Shakcham Kaushik Singh (Co-Founder & CMO)", role: "Admin", reportingManagerId: "none", status: "Active", availabilityStatus: "Active", gmail: "shakchamcmo25@gmail.com", phone: "6290191578", domain: "Marketing", aadhar: "697836655001" },
+      { id: "usr-sambhav", username: "sambhav", password: "sambhav123", fullname: "Sambhav Kaushik Singh (CO - Founder & Chief Executive Officer)", role: "Admin", reportingManagerId: "none", status: "Active", availabilityStatus: "Active", gmail: "sambhavceo25@gmail.com", phone: "7527910223", domain: "Other", aadhar: "645713250752" },
+      { id: "usr-shivangi", username: "shivangi", password: "shivangi123", fullname: "Shivangi Bathyal (CO- Founder & Chief Operating Officer)", role: "Admin", reportingManagerId: "none", status: "Active", availabilityStatus: "Active", gmail: "shivangicoo25@gmail.com", phone: "7526920225", domain: "Other", aadhar: "396680523862" },
+      { id: "usr-shakcham", username: "shakcham", password: "shakcham123", fullname: "Shakcham Kaushik Singh (Co - Founder & Chief Marketing Officer)", role: "Admin", reportingManagerId: "none", status: "Active", availabilityStatus: "Active", gmail: "shakchamcmo25@gmail.com", phone: "6290191578", domain: "Marketing", aadhar: "697836655001" },
       
       // Tech Heads & Tech Team
-      { id: "usr-vibha", username: "vibha", password: "vibha123", fullname: "Vibha Rajput (Chief Technical Officer)", role: "Manager", reportingManagerId: "usr-sambhav", status: "Active", availabilityStatus: "Active", gmail: "vibharajput2004@gmail.com", phone: "7827472924", domain: "Tech", aadhar: "536302716909" },
+      { id: "usr-vibha", username: "vibha", password: "vibha123", fullname: "Vibha Rajput (Chief Technical Officer)", role: "Admin", reportingManagerId: "usr-sambhav", status: "Active", availabilityStatus: "Active", gmail: "vibharajput2004@gmail.com", phone: "7827472924", domain: "Tech", aadhar: "536302716909" },
       { id: "usr-rashika", username: "rashika", password: "rashika123", fullname: "Rashika Poonia (Head of Technology)", role: "Manager", reportingManagerId: "usr-vibha", status: "Active", availabilityStatus: "Active", gmail: "pooniarashika5@gmail.com", phone: "7988766566", domain: "Tech", aadhar: "919766258868" },
-      { id: "usr-amit", username: "amit", password: "amit123", fullname: "Amit Rai (Android developer)", role: "Employee", reportingManagerId: "usr-rashika", status: "Active", availabilityStatus: "Active", gmail: "amitraics06@gmail.com", phone: "8826233540", domain: "Tech", aadhar: "543336197283" },
-      { id: "usr-naina", username: "naina", password: "naina123", fullname: "Naina (Full Stack Engineer)", role: "Employee", reportingManagerId: "usr-rashika", status: "Active", availabilityStatus: "Active", gmail: "nainahooda2106@gmail.com", phone: "9817512192", domain: "Tech", aadhar: "398626983045" },
-      { id: "usr-aryan", username: "aryan", password: "aryan123", fullname: "Aryan (System support Engineer)", role: "Employee", reportingManagerId: "usr-rashika", status: "Active", availabilityStatus: "Active", gmail: "aryanrao8670@gmail.com", phone: "8307847393", domain: "Tech", aadhar: "407917734100" },
-      { id: "usr-tanveer", username: "tanveer", password: "tanveer123", fullname: "Tanveer Dhindsa (AI & Full stack Engineer)", role: "Employee", reportingManagerId: "usr-rashika", status: "Active", availabilityStatus: "Active", gmail: "tanveer0713@gmail.com", phone: "9041990211", domain: "Tech", aadhar: "827367367601" },
-      { id: "usr-saksham", username: "saksham", password: "saksham123", fullname: "Saksham (Data Analytics)", role: "Employee", reportingManagerId: "usr-rashika", status: "Active", availabilityStatus: "Active", gmail: "jainsaksham286@gmail.com", phone: "8330954134", domain: "Tech", aadhar: "280887258140" },
+      { id: "usr-amit", username: "amit", password: "amit123", fullname: "Amit Rai (Android developer)", role: "Software Developer", reportingManagerId: "usr-rashika", status: "Active", availabilityStatus: "Active", gmail: "amitraics06@gmail.com", phone: "8826233540", domain: "Tech", aadhar: "543336197283" },
+      { id: "usr-naina", username: "naina", password: "naina123", fullname: "Naina (Full Stack Engineer)", role: "Software Developer", reportingManagerId: "usr-rashika", status: "Active", availabilityStatus: "Active", gmail: "nainahooda2106@gmail.com", phone: "9817512192", domain: "Tech", aadhar: "398626983045" },
+      { id: "usr-aryan", username: "aryan", password: "aryan123", fullname: "Aryan (System support Engineer)", role: "Software Developer", reportingManagerId: "usr-rashika", status: "Active", availabilityStatus: "Active", gmail: "aryanrao8670@gmail.com", phone: "8307847393", domain: "Tech", aadhar: "407917734100" },
+      { id: "usr-tanveer", username: "tanveer", password: "tanveer123", fullname: "Tanveer Dhindsa (AI & Full stack Engineer)", role: "Software Developer", reportingManagerId: "usr-rashika", status: "Active", availabilityStatus: "Active", gmail: "tanveer0713@gmail.com", phone: "9041990211", domain: "Tech", aadhar: "827367367601" },
+      { id: "usr-saksham", username: "saksham", password: "saksham123", fullname: "Saksham (Data Analytics)", role: "Software Developer", reportingManagerId: "usr-rashika", status: "Active", availabilityStatus: "Active", gmail: "jainsaksham286@gmail.com", phone: "8330954134", domain: "Tech", aadhar: "280887258140" },
 
       // Research
-      { id: "usr-rikhil", username: "rikhil", password: "rikhil123", fullname: "Rikhil Singh (Chief Research Officer)", role: "Manager", reportingManagerId: "usr-sambhav", status: "Active", availabilityStatus: "Active", gmail: "rikhil.medastrax@gmail.com", phone: "9083008600", domain: "R&D", aadhar: "791236576114" },
+      { id: "usr-rikhil", username: "rikhil", password: "rikhil123", fullname: "Rikhil Singh (Chief Research Officer)", role: "Admin", reportingManagerId: "usr-sambhav", status: "Active", availabilityStatus: "Active", gmail: "rikhil.medastrax@gmail.com", phone: "9083008600", domain: "R&D", aadhar: "791236576114" },
 
       // Finance
       { id: "usr-vivek", username: "vivek", password: "vivek123", fullname: "Vivek (Chief Financial Officer)", role: "Manager", reportingManagerId: "usr-sambhav", status: "Active", availabilityStatus: "Active", gmail: "vivek.finance@gmail.com", phone: "N/A", domain: "Finance", aadhar: "N/A" },
@@ -173,15 +173,15 @@ async function initDb() {
       { id: "usr-spandan", username: "spandan", password: "spandan123", fullname: "Spandan (Head of Graphic Designing)", role: "Manager", reportingManagerId: "usr-sambhav", status: "Active", availabilityStatus: "Active", gmail: "sarkar1980sumitra@gmail.com", phone: "8100080568", domain: "Graphic Designing", aadhar: "950768361022" },
 
       // Marketing
-      { id: "usr-parneet", username: "parneet", password: "parneet123", fullname: "Parneet Kaur (Director General of Marketing)", role: "Team Lead", reportingManagerId: "usr-sambhav", status: "Active", availabilityStatus: "Active", gmail: "parneetkaur21009353@cumail.in", phone: "8054871267", domain: "Marketing", aadhar: "661128889286" },
-      { id: "usr-prabhroop", username: "prabhroop", password: "prabhroop123", fullname: "Prabhroop Kaur (Senior Marketing Manager)", role: "Manager", reportingManagerId: "usr-parneet", status: "Active", availabilityStatus: "Active", gmail: "prabhroopkaur21@gmail.com", phone: "9988710469", domain: "Marketing", aadhar: "530227341023" },
-      { id: "usr-mahakpreet", username: "mahakpreet", password: "mahakpreet123", fullname: "Mahakpreet Kaur (Marketing Manager)", role: "Team Lead", reportingManagerId: "usr-parneet", status: "Active", availabilityStatus: "Active", gmail: "mahak170905@gmail.com", phone: "9779937381", domain: "Marketing", aadhar: "386504010824" },
-      { id: "usr-rudrakshi", username: "rudrakshi", password: "rudrakshi123", fullname: "Rudrakshi (Marketing & Sales Executive)", role: "Team Lead", reportingManagerId: "usr-mahakpreet", status: "Active", availabilityStatus: "Active", gmail: "rajputrudrakshi86@gmail.com", phone: "8847067953", domain: "Marketing", aadhar: "675041024864" },
-      { id: "usr-dakshi", username: "dakshi", password: "dakshi123", fullname: "Dakshi (Marketing & Sales Executive)", role: "Team Lead", reportingManagerId: "usr-mahakpreet", status: "Active", availabilityStatus: "Active", gmail: "dakshianand123@gmail.com", phone: "9779060285", domain: "Marketing", aadhar: "408425021956" },
-      { id: "usr-kiranveer", username: "kiranveer", password: "kiranveer123", fullname: "Kiranveer Kaur (Marketing & Sales Executive)", role: "Team Lead", reportingManagerId: "usr-mahakpreet", status: "Active", availabilityStatus: "Active", gmail: "veerdhillon0070@gmail.com", phone: "7717580012", domain: "Marketing", aadhar: "345596162781" },
-      { id: "usr-mehakdeep", username: "mehakdeep", password: "mehakdeep123", fullname: "Mehakdeep (Marketing & Sales Executive)", role: "Team Lead", reportingManagerId: "usr-mahakpreet", status: "Active", availabilityStatus: "Active", gmail: "mehakgrewalmehak@gmail.com", phone: "7696546005", domain: "Marketing", aadhar: "918957796517" },
-      { id: "usr-aditi", username: "aditi", password: "aditi123", fullname: "Aditi (Marketing & Sales Executive)", role: "Employee", reportingManagerId: "usr-dakshi", status: "Active", availabilityStatus: "Active", gmail: "puniaaditi5@gmail.com", phone: "7898659651", domain: "Marketing", aadhar: "801434040805" },
-      { id: "usr-harmandeep", username: "harmandeep", password: "harmandeep123", fullname: "Harmandeep Kaur (Marketing & Sales Executive)", role: "Employee", reportingManagerId: "usr-rudrakshi", status: "Active", availabilityStatus: "Active", gmail: "harmandeepdhesa2306@gmail.com", phone: "8146030993", domain: "Marketing", aadhar: "302243524648" }
+      { id: "usr-parneet", username: "parneet", password: "parneet123", fullname: "Parneet Kaur (Director General of Marketing)", role: "Team Lead", reportingManagerId: "usr-shakcham", status: "Active", availabilityStatus: "Active", gmail: "parneetkaur21009353@cumail.in", phone: "8054871267", domain: "Marketing", aadhar: "661128889286" },
+      { id: "usr-prabhroop", username: "prabhroop", password: "prabhroop123", fullname: "Prabhroop Kaur (Senior Marketing Manager)", role: "Manager", reportingManagerId: "usr-shakcham", status: "Active", availabilityStatus: "Active", gmail: "prabhroopkaur21@gmail.com", phone: "9988710469", domain: "Marketing", aadhar: "530227341023" },
+      { id: "usr-mahakpreet", username: "mahakpreet", password: "mahakpreet123", fullname: "Mahakpreet Kaur (Marketing Manager)", role: "Team Lead", reportingManagerId: "usr-prabhroop", status: "Active", availabilityStatus: "Active", gmail: "mahak170905@gmail.com", phone: "9779937381", domain: "Marketing", aadhar: "386504010824" },
+      { id: "usr-rudrakshi", username: "rudrakshi", password: "rudrakshi123", fullname: "Rudrakshi (MSE (Team Lead))", role: "Team Lead", reportingManagerId: "usr-mahakpreet", status: "Active", availabilityStatus: "Active", gmail: "rajputrudrakshi86@gmail.com", phone: "8847067953", domain: "Marketing", aadhar: "675041024864" },
+      { id: "usr-dakshi", username: "dakshi", password: "dakshi123", fullname: "Dakshi (MSE (Team Lead))", role: "Team Lead", reportingManagerId: "usr-mahakpreet", status: "Active", availabilityStatus: "Active", gmail: "dakshianand123@gmail.com", phone: "9779060285", domain: "Marketing", aadhar: "408425021956" },
+      { id: "usr-kiranveer", username: "kiranveer", password: "kiranveer123", fullname: "Kiranveer Kaur (MSE (Team Lead))", role: "Team Lead", reportingManagerId: "usr-mahakpreet", status: "Active", availabilityStatus: "Active", gmail: "veerdhillon0070@gmail.com", phone: "7717580012", domain: "Marketing", aadhar: "345596162781" },
+      { id: "usr-mehakdeep", username: "mehakdeep", password: "mehakdeep123", fullname: "Mehakdeep (MSE (Team Lead))", role: "Team Lead", reportingManagerId: "usr-mahakpreet", status: "Active", availabilityStatus: "Active", gmail: "mehakgrewalmehak@gmail.com", phone: "7696546005", domain: "Marketing", aadhar: "918957796517" },
+      { id: "usr-aditi", username: "aditi", password: "aditi123", fullname: "Aditi (MSE)", role: "Employee", reportingManagerId: "usr-dakshi", status: "Active", availabilityStatus: "Active", gmail: "puniaaditi5@gmail.com", phone: "7898659651", domain: "Marketing", aadhar: "801434040805" },
+      { id: "usr-harmandeep", username: "harmandeep", password: "harmandeep123", fullname: "Harmandeep Kaur (MSE)", role: "Employee", reportingManagerId: "usr-rudrakshi", status: "Active", availabilityStatus: "Active", gmail: "harmandeepdhesa2306@gmail.com", phone: "8146030993", domain: "Marketing", aadhar: "302243524648" }
     ];
 
     for (const u of defaultUsers) {
@@ -264,13 +264,20 @@ async function initDb() {
     if (parseInt(meetingsCount.rows[0].count) === 0) {
       console.log('[DB] Seeding default meetings...');
       const techTeamParticipants = ["usr-vibha", "usr-rashika", "usr-amit", "usr-naina", "usr-aryan", "usr-tanveer", "usr-saksham"];
+      const marketingTeamParticipants = ["usr-prabhroop", "usr-mahakpreet", "usr-rudrakshi", "usr-dakshi", "usr-kiranveer", "usr-mehakdeep", "usr-aditi", "usr-harmandeep"];
+      const foundersParticipants = ["usr-saksham", "usr-sambhav", "usr-shivangi"];
+      
       await client.query(
         `INSERT INTO meetings (id, title, "time", participants, "isFixed", "roomCode") VALUES
          ($1, $2, $3, $4, $5, $6),
-         ($7, $8, $9, $10, $11, $12)`,
+         ($7, $8, $9, $10, $11, $12),
+         ($13, $14, $15, $16, $17, $18),
+         ($19, $20, $21, $22, $23, $24)`,
         [
-          'mtg-daily', 'Daily Meeting', '17:30', JSON.stringify(techTeamParticipants), true, 'tech-daily-meeting',
-          'mtg-eod', 'EOD Meeting', '20:30', JSON.stringify(techTeamParticipants), true, 'tech-eod-meeting'
+          'mtg-daily', 'Tech Daily Meeting', '17:30', JSON.stringify(techTeamParticipants), true, 'tech-daily-meeting',
+          'mtg-eod', 'Tech EOD Meeting', '20:30', JSON.stringify(techTeamParticipants), true, 'tech-eod-meeting',
+          'mtg-mkt-eod', 'Marketing EOD Meeting', '20:00', JSON.stringify(marketingTeamParticipants), true, 'marketing-eod-meeting',
+          'mtg-founders-eod', 'Founders & Data EOD Meeting', '18:00', JSON.stringify(foundersParticipants), true, 'founders-eod-meeting'
         ]
       );
     }
