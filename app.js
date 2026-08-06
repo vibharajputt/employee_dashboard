@@ -9866,6 +9866,59 @@ function renderEmployeeAttendanceDashboard() {
   const totalDays = myLogs.length;
   const percentage = totalDays === 0 ? 0 : Math.round((presentCount / totalDays) * 100);
   document.getElementById("att-stats-rate").innerText = `${percentage}%`;
+
+  // --- Chart.js Graph logic for Daily vs EOD Meetings ---
+  const chartCanvas = document.getElementById("employee-attendance-chart");
+  if (chartCanvas && typeof Chart !== 'undefined') {
+    const dailyLogs = myLogs.filter(log => log.meetingType === "Daily Meeting");
+    const dailyPresent = dailyLogs.filter(log => log.status === "Present").length;
+    const dailyPercentage = dailyLogs.length === 0 ? 0 : Math.round((dailyPresent / dailyLogs.length) * 100);
+
+    const eodLogs = myLogs.filter(log => log.meetingType === "EOD Meeting");
+    const eodPresent = eodLogs.filter(log => log.status === "Present").length;
+    const eodPercentage = eodLogs.length === 0 ? 0 : Math.round((eodPresent / eodLogs.length) * 100);
+
+    if (window.employeeAttChart) {
+      window.employeeAttChart.destroy();
+    }
+
+    const ctx = chartCanvas.getContext("2d");
+    window.employeeAttChart = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: ['Daily Meeting', 'EOD Meeting'],
+        datasets: [{
+          label: 'Attendance Percentage (%)',
+          data: [dailyPercentage, eodPercentage],
+          backgroundColor: ['#087f8c', '#10b981'],
+          borderRadius: 4
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          y: {
+            beginAtZero: true,
+            max: 100,
+            ticks: {
+              stepSize: 20
+            }
+          }
+        },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: function(context) {
+                return context.parsed.y + '%';
+              }
+            }
+          }
+        }
+      }
+    });
+  }
 }
 
 // ==================== MEETINGS PORTAL IMPLEMENTATION ====================
