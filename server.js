@@ -253,7 +253,7 @@ async function initDb() {
       console.log('[DB] Seeding default meetings...');
       const techTeamParticipants = ["usr-vibha", "usr-rashika", "usr-amit", "usr-naina", "usr-aryan", "usr-tanveer", "usr-saksham"];
       const marketingTeamParticipants = ["usr-prabhroop", "usr-mahakpreet", "usr-rudrakshi", "usr-dakshi", "usr-kiranveer", "usr-mehakdeep", "usr-aditi", "usr-harmandeep"];
-      const foundersParticipants = ["usr-saksham", "usr-sambhav", "usr-shivangi"];
+      const foundersParticipants = ["usr-shakcham", "usr-sambhav", "usr-shivangi"];
       
       await client.query(
         `INSERT INTO meetings (id, title, "time", participants, "isFixed", "roomCode") VALUES
