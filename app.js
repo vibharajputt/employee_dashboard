@@ -9334,10 +9334,30 @@ function showLeaveChainModal(leaveId) {
 
   // 2. Chain approval nodes
   const chain = leave.approvalChain || [];
+  const users = db.getUsers() || [];
+
+  // Top-level heads (no reporting manager, Admin role) — dynamically derived
+  const topLevelHeadIds = users
+    .filter(u => u.role === "Admin" && (!u.reportingManagerId || u.reportingManagerId === "none"))
+    .map(u => u.id);
+
+  // If the current viewer is a top-level head, they "own" all record-only steps
+  const viewerIsHead = topLevelHeadIds.includes(currentUser.id);
+
   chain.forEach(step => {
     let dotColor = "var(--text-muted)";
     let statusColor = "var(--text-muted)";
     let displayStatus = step.status;
+
+    // For isRecord steps: if viewer is a co-founder, show THEIR name (not the stored one)
+    let displayName = step.approverName;
+    let displayRole = step.approverRole;
+    if (step.isRecord && viewerIsHead) {
+      displayName = (currentUser.fullname || currentUser.username).replace(/\s*\(.*\)\s*/g, "");
+      displayRole = (currentUser.fullname && currentUser.fullname.match(/\(([^)]+)\)/))
+        ? currentUser.fullname.match(/\(([^)]+)\)/)[1]
+        : currentUser.role;
+    }
 
     if (step.isRecord && step.status === "Approved") {
       dotColor = "#3b82f6";
@@ -9360,7 +9380,7 @@ function showLeaveChainModal(leaveId) {
       <div class="chain-node" style="position: relative;">
         <div class="chain-dot" style="position: absolute; left: -33px; top: 4px; width: 16px; height: 16px; border-radius: 50%; background-color: ${dotColor}; border: 3px solid var(--card-bg);"></div>
         <div class="chain-content">
-          <h4 style="margin: 0; font-size: 0.95rem; color: var(--text-primary);">${step.approverName} (${step.approverRole})${recordBadge}</h4>
+          <h4 style="margin: 0; font-size: 0.95rem; color: var(--text-primary);">${displayName} (${displayRole})${recordBadge}</h4>
           <p style="margin: 4px 0 0 0; font-size: 0.8rem; color: ${statusColor}; font-weight: 600;">Status: ${displayStatus}</p>
           <p style="margin: 2px 0 0 0; font-size: 0.8rem; color: var(--text-muted);">${actionDate}</p>
         </div>
@@ -9368,6 +9388,7 @@ function showLeaveChainModal(leaveId) {
     `;
     container.innerHTML += stepHtml;
   });
+
 
   const modal = document.getElementById("leave-chain-modal");
   if (modal) modal.classList.remove("hidden");
