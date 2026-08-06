@@ -1,4 +1,4 @@
-﻿/**
+/**
 
 
 
@@ -3388,7 +3388,10 @@ function renderHierarchyTab() {
     }
   } else {
     // For the three co-founder admins: show tri-admin peer row at top
-    const coFounderIds = ["usr-sambhav", "usr-shakcham", "usr-shivangi"];
+    // Dynamically derive top-level heads: Admin role with no reporting manager
+    const coFounderIds = users
+      .filter(u => u.role === "Admin" && (!u.reportingManagerId || u.reportingManagerId === "none"))
+      .map(u => u.id);
     if (coFounderIds.includes(currentUser.id)) {
       // Reorder: logged-in admin always in center
       const allAdmins = coFounderIds.map(id => users.find(u => u.id === id)).filter(Boolean);
@@ -8677,7 +8680,10 @@ function buildApprovalChain(user, usersList) {
   const list = Array.isArray(usersList) ? usersList : [];
 
   // Co-founder IDs â€” appear in the chain as record-only (leave auto-approves when it reaches them)
-  const coFounderIds = ["usr-sambhav", "usr-shakcham", "usr-shivangi"];
+  // Dynamically derive top-level heads: Admin role with no reporting manager — they appear as record-only
+  const coFounderIds = list
+    .filter(u => u.role === "Admin" && (!u.reportingManagerId || u.reportingManagerId === "none"))
+    .map(u => u.id);
 
   // Custom hierarchy for Vibha and Rikhil (C-Level directly under founders)
   if (user.id === "usr-vibha" || user.id === "usr-rikhil") {
