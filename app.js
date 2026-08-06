@@ -9240,10 +9240,25 @@ function renderLeavesTab() {
 
           if (currentUser.role === "Admin") {
             stageText = currentStepIndex !== -1 ? `Level ${currentStepIndex + 1}/${chain.length} Pending` : "All Levels Approved";
+            
+            // Derive top-level heads dynamically
+            const topHeadIds = users
+              .filter(u => u.role === "Admin" && (!u.reportingManagerId || u.reportingManagerId === "none"))
+              .map(u => u.id);
+            const viewerIsHead = topHeadIds.includes(currentUser.id);
+            const viewerDisplayName = (currentUser.fullname || currentUser.username).replace(/\s*\(.*\)\s*/g, "");
+            const viewerDisplayRole = (currentUser.fullname && currentUser.fullname.match(/\(([^)]+)\)/))
+                ? currentUser.fullname.match(/\(([^)]+)\)/)[1]
+                : currentUser.role;
+
             if (lv.status === "Approved") {
               const approvedSteps = chain.filter(s => s.status === "Approved");
               if (approvedSteps.length > 0) {
-                const names = approvedSteps.map(s => s.approverName).join(" â†’ ");
+                const names = approvedSteps.map(s => {
+                  // For record-only steps: show current viewer's name if they are a top-level head
+                  if (s.isRecord && viewerIsHead) return viewerDisplayName;
+                  return s.approverName;
+                }).join(" → ");
                 stageText = `Approved by: ${names}`;
               } else {
                 stageText = "Approved";
@@ -9255,7 +9270,13 @@ function renderLeavesTab() {
 
             const tooltipLines = chain.map(step => {
               const dateStr = step.actionDate ? new Date(step.actionDate).toLocaleString() : "N/A";
-              return `${step.approverName} (${step.approverRole}): ${step.status} on ${dateStr}`;
+              let displayName = step.approverName;
+              let displayRole = step.approverRole;
+              if (step.isRecord && viewerIsHead) {
+                  displayName = viewerDisplayName;
+                  displayRole = viewerDisplayRole;
+              }
+              return `${displayName} (${displayRole}): ${step.status} on ${dateStr}`;
             }).join("\n");
 
             cellHtml = `
