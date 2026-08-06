@@ -3373,7 +3373,17 @@ function renderHierarchyTab() {
   if (currentUser.role === "Admin") {
     rootNode = rawUsers.find(u => u.id === currentUser.id);
   } else if (currentUser.role === "Manager" || currentUser.role === "Technical Lead" || currentUser.role === "Team Lead") {
-    rootNode = rawUsers.find(u => u.id === currentUser.id);
+    if (currentUser.id === "usr-prabhroop" || currentUser.id === "usr-mahakpreet") {
+      rootNode = {
+        id: "dual-marketing",
+        isDual: true,
+        parent1: rawUsers.find(u => u.id === "usr-mahakpreet"),
+        parent2: rawUsers.find(u => u.id === "usr-prabhroop"),
+        reportingManagerId: "usr-parneet"
+      };
+    } else {
+      rootNode = rawUsers.find(u => u.id === currentUser.id);
+    }
   } else {
     // Employee: trace reporting manager line to the top parent
     let current = currentUser;
@@ -3527,8 +3537,8 @@ function buildTreeHTML(node, usersList) {
         children.push({
           id: "dual-marketing",
           isDual: true,
-          parent1: usersList.find(u => u.id === "usr-prabhroop"),
-          parent2: usersList.find(u => u.id === "usr-mahakpreet"),
+          parent1: usersList.find(u => u.id === "usr-mahakpreet"),
+          parent2: usersList.find(u => u.id === "usr-prabhroop"),
           reportingManagerId: node.id
         });
       }
