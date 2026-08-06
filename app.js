@@ -1853,8 +1853,16 @@ function renderOverviewTab() {
 
   const activities = db.getActivities();
   
-  // Hide team attendance graph for non-heads
-  const isHead = currentUser.role === "Admin" || currentUser.role === "Manager" || currentUser.role === "Technical Lead" || currentUser.role === "Team Lead";
+  // Hide team attendance
+  let isHead = currentUser.role === "Admin" || currentUser.role === "Manager" || currentUser.role === "Technical Lead" || currentUser.role === "Team Lead";
+
+  // Marketing specific restriction: only Parneet, Prabhroop, and Mahakpreet can mark team attendance
+  if (currentUser.domain === "Marketing") {
+    if (!["usr-parneet", "usr-prabhroop", "usr-mahakpreet"].includes(currentUser.id)) {
+      isHead = false;
+    }
+  }
+
   const graphWrapper = document.getElementById("attendance-graph-wrapper");
   if (graphWrapper) {
     if (isHead) {
@@ -9474,7 +9482,13 @@ function showLeaveChainModal(leaveId) {
 window.showLeaveChainModal = showLeaveChainModal;
 
 function renderAttendanceTab() {
-  const isHead = currentUser.role === "Admin" || currentUser.role === "Manager" || currentUser.role === "Technical Lead" || currentUser.role === "Team Lead";
+  let isHead = currentUser.role === "Admin" || currentUser.role === "Manager" || currentUser.role === "Technical Lead" || currentUser.role === "Team Lead";
+  
+  if (currentUser.domain === "Marketing") {
+    if (!["usr-parneet", "usr-prabhroop", "usr-mahakpreet"].includes(currentUser.id)) {
+      isHead = false;
+    }
+  }
 
   const toggleWrapper = document.getElementById("attendance-toggle-wrapper");
   const btnMyAttendance = document.getElementById("btn-toggle-my-attendance");
