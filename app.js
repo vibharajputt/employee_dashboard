@@ -9603,13 +9603,6 @@ function renderManagerAttendanceSheet() {
   }
 
   // If valid, enable submit button
-  const users = db.getUsers() || [];
-  let subordinates = [];
-  if (currentUser.role === "Admin") {
-    subordinates = users.filter(u => u.id !== currentUser.id);
-  } else {
-    subordinates = getSubordinates(currentUser.id, users);
-  }
   if (btnSubmit) {
     btnSubmit.disabled = false;
     btnSubmit.style.opacity = 1;
@@ -9624,17 +9617,7 @@ function renderManagerAttendanceSheet() {
   if (currentUser.role === "Admin") {
     subordinates = users.filter(u => u.id !== currentUser.id);
   } else {
-    // Recursively retrieve all direct and indirect reports in the hierarchy
-    const getReports = (mgrId) => {
-      let reports = [];
-      const direct = users.filter(u => u.reportingManagerId === mgrId);
-      direct.forEach(d => {
-        reports.push(d);
-        reports = reports.concat(getReports(d.id));
-      });
-      return reports;
-    };
-    subordinates = getReports(currentUser.id);
+    subordinates = getSubordinates(currentUser.id, users);
   }
 
   if (subordinates.length === 0) {
