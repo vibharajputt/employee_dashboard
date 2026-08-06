@@ -1,4 +1,4 @@
-/**
+﻿/**
 
 
 
@@ -19,8 +19,8 @@
 
 
  */
-// 🚀 [MedAstraX] Version 2.5 - PostgreSQL Mode Active
-console.log("🚀 [MedAstraX] Version 2.5 - PostgreSQL Mode Active");
+// ðŸš€ [MedAstraX] Version 2.5 - PostgreSQL Mode Active
+console.log("ðŸš€ [MedAstraX] Version 2.5 - PostgreSQL Mode Active");
 
 
 
@@ -36,664 +36,28 @@ console.log("🚀 [MedAstraX] Version 2.5 - PostgreSQL Mode Active");
 
 
 
-const DEFAULT_USERS = [
 
+// All real users are seeded and managed via the PostgreSQL backend (server.js).
+// Fake/placeholder users (Alok Verma, Vikram, Neha, Aman, Priya, Rohan) have been removed.
+const DEFAULT_USERS = [];
 
 
-  {
 
 
 
-    id: "usr-admin",
 
+// No default tasks â€” all tasks are created by real team members via the portal
+const DEFAULT_TASKS = [];
 
-
-    username: "admin",
-
-
-
-    password: "admin123",
-
-
-
-    fullname: "Dr. Alok Verma (Director)",
-
-
-
-    role: "Admin",
-
-
-
-    reportingManagerId: "none",
-
-
-
-    status: "Active",
-
-
-
-    availabilityStatus: "Active",
-
-
-
-    gmail: "alok.verma@gmail.com",
-
-
-
-    phone: "+91 98765 43210",
-
-
-
-    domain: "Other",
-
-
-
-    aadhar: "1234 5678 9012"
-
-
-
-  },
-
-
-
-  {
-
-
-
-    id: "usr-mgr-1",
-
-
-
-    username: "manager1",
-
-
-
-    password: "manager123",
-
-
-
-    fullname: "Vikram Malhotra (R&D Head)",
-
-
-
-    role: "Manager",
-
-
-
-    reportingManagerId: "usr-admin",
-
-
-
-    status: "Active",
-
-
-
-    availabilityStatus: "Active",
-
-
-
-    gmail: "vikram.m@gmail.com",
-
-
-
-    phone: "+91 98765 43211",
-
-
-
-    domain: "R&D",
-
-
-
-    aadhar: "2345 6789 0123"
-
-
-
-  },
-
-
-
-  {
-
-
-
-    id: "usr-mgr-2",
-
-
-
-    username: "manager2",
-
-
-
-    password: "manager223",
-
-
-
-    fullname: "Neha Sen (Operations Head)",
-
-
-
-    role: "Manager",
-
-
-
-    reportingManagerId: "usr-admin",
-
-
-
-    status: "Active",
-
-
-
-    availabilityStatus: "Active",
-
-
-
-    gmail: "neha.sen@gmail.com",
-
-
-
-    phone: "+91 98765 43212",
-
-
-
-    domain: "Marketing",
-
-
-
-    aadhar: "3456 7890 1234"
-
-
-
-  },
-
-
-
-  {
-
-
-
-    id: "usr-emp-1",
-
-
-
-    username: "employee1",
-
-
-
-    password: "emp123",
-
-
-
-    fullname: "Aman Sharma (Senior Dev)",
-
-
-
-    role: "Employee",
-
-
-
-    reportingManagerId: "usr-mgr-1",
-
-
-
-    status: "Active",
-
-
-
-    availabilityStatus: "Active",
-
-
-
-    gmail: "aman.sharma@gmail.com",
-
-
-
-    phone: "+91 98765 43213",
-
-
-
-    domain: "Tech",
-
-
-
-    aadhar: "4567 8901 2345"
-
-
-
-  },
-
-
-
-  {
-
-
-
-    id: "usr-emp-2",
-
-
-
-    username: "employee2",
-
-
-
-    password: "emp223",
-
-
-
-    fullname: "Priya Verma (Data Analyst)",
-
-
-
-    role: "Employee",
-
-
-
-    reportingManagerId: "usr-mgr-1",
-
-
-
-    status: "Active",
-
-
-
-    availabilityStatus: "Active",
-
-
-
-    gmail: "priya.v@gmail.com",
-
-
-
-    phone: "+91 98765 43214",
-
-
-
-    domain: "Tech",
-
-
-
-    aadhar: "5678 9012 3456"
-
-
-
-  },
-
-
-
-  {
-
-
-
-    id: "usr-emp-3",
-
-
-
-    username: "employee3",
-
-
-
-    password: "emp323",
-
-
-
-    fullname: "Rohan Das (Systems Exec)",
-
-
-
-    role: "Employee",
-
-
-
-    reportingManagerId: "usr-mgr-2",
-
-
-
-    status: "Active",
-
-
-
-    availabilityStatus: "Active",
-
-
-
-    gmail: "rohan.das@gmail.com",
-
-
-
-    phone: "+91 98765 43215",
-
-
-
-    domain: "Other",
-
-
-
-    aadhar: "6789 0123 4567"
-
-
-
-  }
-
-
-
-];
-
-
-
-
-
-
-
-const DEFAULT_TASKS = [
-
-
-
-  {
-
-
-
-    id: "tsk-101",
-
-
-
-    title: "Calibrate Biotech Sensor Array",
-
-
-
-    description: "Run diagnostic loops and optimize the calibration metrics for the Phase-II biometric sensors in the main lab.",
-
-
-
-    assigneeId: "usr-emp-1",
-
-
-
-    priority: "High",
-
-
-
-    dueDate: "2026-06-30",
-
-
-
-    status: "Pending",
-
-
-
-    assignedById: "usr-mgr-1",
-
-
-
-    referenceLink: "https://docs.google.com/document/d/1_calibrate_biotech_sensor",
-
-
-
-    deliverableLink: "",
-
-
-
-    feedback: "",
-
-
-
-    comments: [
-
-
-
-      { author: "Vikram Malhotra (R&D Head)", text: "Please use the latest calibration files from the shared lab drive.", timestamp: "2026-06-25T11:00:00.000Z" }
-
-
-
-    ]
-
-
-
-  },
-
-
-
-  {
-
-
-
-    id: "tsk-102",
-
-
-
-    title: "Document Imaging Pipeline API",
-
-
-
-    description: "Write complete OpenAPI documentation for the core image processing workflow and share with clinical partners.",
-
-
-
-    assigneeId: "usr-emp-2",
-
-
-
-    priority: "Medium",
-
-
-
-    dueDate: "2026-07-05",
-
-
-
-    status: "In Progress",
-
-
-
-    assignedById: "usr-mgr-1",
-
-
-
-    referenceLink: "https://github.com/medastrax/imaging-pipeline",
-
-
-
-    deliverableLink: "",
-
-
-
-    feedback: "",
-
-
-
-    comments: []
-
-
-
-  },
-
-
-
-  {
-
-
-
-    id: "tsk-103",
-
-
-
-    title: "Onboard Internship Candidates",
-
-
-
-    description: "Conduct credential setup, workspace allocation, and documentation collection for the summer cohort.",
-
-
-
-    assigneeId: "usr-emp-3",
-
-
-
-    priority: "Low",
-
-
-
-    dueDate: "2026-06-24",
-
-
-
-    status: "Completed",
-
-
-
-    assignedById: "usr-mgr-2",
-
-
-
-    referenceLink: "",
-
-
-
-    deliverableLink: "https://docs.google.com/spreadsheets/d/intern_onboarding_tracker",
-
-
-
-    feedback: "",
-
-
-
-    comments: [
-
-
-
-      { author: "Rohan Das (Systems Exec)", text: "Credentials generated and shared. Ready for approval.", timestamp: "2026-06-25T11:15:00.000Z" }
-
-
-
-    ]
-
-
-
-  },
-
-
-
-  {
-
-
-
-    id: "tsk-104",
-
-
-
-    title: "Approve Q2 Lab Expansion Budget",
-
-
-
-    description: "Review procurement manifests and sign off on facility improvements for building C biotechnology wings.",
-
-
-
-    assigneeId: "usr-mgr-1",
-
-
-
-    priority: "Critical",
-
-
-
-    dueDate: "2026-06-29",
-
-
-
-    status: "Pending",
-
-
-
-    assignedById: "usr-admin",
-
-
-
-    referenceLink: "https://docs.google.com/spreadsheets/d/q2_expansion_budget",
-
-
-
-    deliverableLink: "",
-
-
-
-    feedback: "",
-
-
-
-    comments: []
-
-
-
-  }
-
-
-
-];
-
-
-
-
-
-
-
+// Default activity log â€” only the system init message is kept
 const DEFAULT_ACTIVITIES = [
-
-
-
   {
-
-
-
     id: "act-1",
-
-
-
     timestamp: "2026-06-25T10:00:00.000Z",
-
-
-
     type: "system",
-
-
-
     message: "MedAstraX portal database initialized successfully."
-
-
-
-  },
-
-
-
-  {
-
-
-
-    id: "act-2",
-
-
-
-    timestamp: "2026-06-25T11:30:00.000Z",
-
-
-
-    type: "success",
-
-
-
-    message: "Task 'Onboard Internship Candidates' marked as Completed by Rohan Das."
-
-
-
   }
-
-
-
 ];
-
-
-
-
-
 
 
 // Initialize local database if not exists
@@ -4069,7 +3433,7 @@ function renderHierarchyTab() {
 
       ul.appendChild(topLi);
     } else {
-      // For Manager / Team Lead — construct the complete downwards tree
+      // For Manager / Team Lead â€” construct the complete downwards tree
       ul.appendChild(buildTreeHTML(rootNode, users));
     }
   }
@@ -7413,7 +6777,7 @@ window.openTaskDetails = function(taskId) {
 
 
 
-                📷 ${item.name} ${item.size ? `(${item.size})` : ''}
+                ðŸ“· ${item.name} ${item.size ? `(${item.size})` : ''}
 
 
 
@@ -7449,7 +6813,7 @@ window.openTaskDetails = function(taskId) {
 
 
 
-                🎥 ${item.name} ${item.size ? `(${item.size})` : ''}
+                ðŸŽ¥ ${item.name} ${item.size ? `(${item.size})` : ''}
 
 
 
@@ -9303,19 +8667,21 @@ function initECG() {
 
 
 }
-// ──────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // 10.5. Leave Management Core Functionality
-// ──────────────────────────────────────────────────────────────────────────
+// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function buildApprovalChain(user, usersList) {
   const chain = [];
   if (!user) return chain;
 
   const list = Array.isArray(usersList) ? usersList : [];
 
-  // Custom hierarchy for Vibha and Rikhil
+  // Co-founder IDs â€” appear in the chain as record-only (leave auto-approves when it reaches them)
+  const coFounderIds = ["usr-sambhav", "usr-shakcham", "usr-shivangi"];
+
+  // Custom hierarchy for Vibha and Rikhil (C-Level directly under founders)
   if (user.id === "usr-vibha" || user.id === "usr-rikhil") {
     const customApprovers = ["usr-sambhav", "usr-shakcham", "usr-shivangi"];
-    
     customApprovers.forEach(approverId => {
       const manager = list.find(u => u.id === approverId);
       if (manager) {
@@ -9324,17 +8690,17 @@ function buildApprovalChain(user, usersList) {
           approverName: (manager.fullname || manager.username || "Approver").replace(/\s*\(.*\)\s*/g, ""),
           approverRole: (manager.fullname && manager.fullname.match(/\(([^)]+)\)/)) ? manager.fullname.match(/\(([^)]+)\)/)[1] : (manager.role || "Admin"),
           status: "Pending",
-          actionDate: null
+          actionDate: null,
+          isRecord: false
         });
       }
     });
-    
-    return chain; // Return early for custom hierarchy
+    return chain;
   }
 
   let current = user;
   const visited = new Set([user.id]);
-  
+
   while (current && current.reportingManagerId && current.reportingManagerId !== "none") {
     const manager = list.find(u => u.id === current.reportingManagerId);
     if (manager && !visited.has(manager.id)) {
@@ -9344,7 +8710,8 @@ function buildApprovalChain(user, usersList) {
         approverName: (manager.fullname || manager.username || "Manager").replace(/\s*\(.*\)\s*/g, ""),
         approverRole: (manager.fullname && manager.fullname.match(/\(([^)]+)\)/)) ? manager.fullname.match(/\(([^)]+)\)/)[1] : (manager.role || "Manager"),
         status: "Pending",
-        actionDate: null
+        actionDate: null,
+        isRecord: coFounderIds.includes(manager.id) // Co-founders: record only, no action needed
       });
       current = manager;
     } else {
@@ -9352,20 +8719,7 @@ function buildApprovalChain(user, usersList) {
     }
   }
 
-  const adminUser = list.find(u => u.role === "Admin" && u.id !== user.id);
-  if (adminUser) {
-    const hasAdmin = chain.some(item => item.approverId === adminUser.id);
-    if (!hasAdmin && user.id !== adminUser.id) {
-      chain.push({
-        approverId: adminUser.id,
-        approverName: (adminUser.fullname || "Admin").replace(/\s*\(.*\)\s*/g, ""),
-        approverRole: (adminUser.fullname && adminUser.fullname.match(/\(([^)]+)\)/)) ? adminUser.fullname.match(/\(([^)]+)\)/)[1] : (adminUser.role || "Admin"),
-        status: "Pending",
-        actionDate: null
-      });
-    }
-  }
-
+  // No extra admin appended â€” chain naturally ends at co-founder level
   return chain;
 }
 function getWeekRange(dateString) {
@@ -9508,9 +8862,8 @@ function handleLeaveSubmit(e) {
   let currentApproverId = null;
 
   if (chain.length > 0) {
-    const firstApprover = users.find(u => u.id === chain[0].approverId);
-    if (firstApprover && firstApprover.role === "Admin") {
-      // Admin is only for record, auto-approve Admin step
+    if (chain[0].isRecord === true) {
+      // First step is co-founder record-only â€” auto-approve immediately
       chain[0].status = "Approved";
       chain[0].actionDate = new Date().toISOString();
       currentApproverId = null;
@@ -9574,10 +8927,8 @@ function approveLeaveRequest(leaveId) {
 
   const nextStepIndex = leave.approvalChain.findIndex(step => step.status === "Pending");
   if (nextStepIndex !== -1) {
-    const users = db.getUsers() || [];
-    const nextApprover = users.find(u => u.id === leave.approvalChain[nextStepIndex].approverId);
-    if (nextApprover && nextApprover.role === "Admin") {
-      // Admin is only for record, auto-approve Admin step
+    if (leave.approvalChain[nextStepIndex].isRecord === true) {
+      // Next step is co-founder record-only â€” auto-approve and finalize leave as Approved
       leave.approvalChain[nextStepIndex].status = "Approved";
       leave.approvalChain[nextStepIndex].actionDate = new Date().toISOString();
       leave.currentApproverId = null;
@@ -9886,7 +9237,7 @@ function renderLeavesTab() {
             if (lv.status === "Approved") {
               const approvedSteps = chain.filter(s => s.status === "Approved");
               if (approvedSteps.length > 0) {
-                const names = approvedSteps.map(s => s.approverName).join(" → ");
+                const names = approvedSteps.map(s => s.approverName).join(" â†’ ");
                 stageText = `Approved by: ${names}`;
               } else {
                 stageText = "Approved";
@@ -9980,7 +9331,13 @@ function showLeaveChainModal(leaveId) {
   chain.forEach(step => {
     let dotColor = "var(--text-muted)";
     let statusColor = "var(--text-muted)";
-    if (step.status === "Approved") {
+    let displayStatus = step.status;
+
+    if (step.isRecord && step.status === "Approved") {
+      dotColor = "#3b82f6";
+      statusColor = "#3b82f6";
+      displayStatus = "On Record";
+    } else if (step.status === "Approved") {
       dotColor = "#10b981";
       statusColor = "#10b981";
     } else if (step.status === "Rejected") {
@@ -9988,13 +9345,17 @@ function showLeaveChainModal(leaveId) {
       statusColor = "#ef4444";
     }
 
+    const recordBadge = step.isRecord
+      ? `<span style="font-size:0.68rem; background:#3b82f620; color:#3b82f6; padding:1px 7px; border-radius:4px; margin-left:6px; vertical-align:middle;">Record Only</span>`
+      : "";
+
     const actionDate = step.actionDate ? new Date(step.actionDate).toLocaleString() : "Awaiting action";
     let stepHtml = `
       <div class="chain-node" style="position: relative;">
         <div class="chain-dot" style="position: absolute; left: -33px; top: 4px; width: 16px; height: 16px; border-radius: 50%; background-color: ${dotColor}; border: 3px solid var(--card-bg);"></div>
         <div class="chain-content">
-          <h4 style="margin: 0; font-size: 0.95rem; color: var(--text-primary);">${step.approverName} (${step.approverRole})</h4>
-          <p style="margin: 4px 0 0 0; font-size: 0.8rem; color: ${statusColor}; font-weight: 600;">Status: ${step.status}</p>
+          <h4 style="margin: 0; font-size: 0.95rem; color: var(--text-primary);">${step.approverName} (${step.approverRole})${recordBadge}</h4>
+          <p style="margin: 4px 0 0 0; font-size: 0.8rem; color: ${statusColor}; font-weight: 600;">Status: ${displayStatus}</p>
           <p style="margin: 2px 0 0 0; font-size: 0.8rem; color: var(--text-muted);">${actionDate}</p>
         </div>
       </div>
@@ -10767,7 +10128,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     banner.style.fontFamily = "system-ui, sans-serif";
     banner.style.boxShadow = "0 4px 6px -1px rgba(0,0,0,0.2)";
     banner.innerHTML = `
-      ⚠️ Running directly from files. Database APIs are disabled. 
+      âš ï¸ Running directly from files. Database APIs are disabled. 
       Please open <a href="http://localhost:8000" target="_blank" style="color: #fff; text-decoration: underline; margin-left: 8px; font-weight: 700;">http://localhost:8000</a> in your browser.
     `;
     document.body.prepend(banner);
@@ -12206,7 +11567,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 
 
-// ── Deliverable Selector Helpers (Photo / Video / Link) ──────
+// â”€â”€ Deliverable Selector Helpers (Photo / Video / Link) â”€â”€â”€â”€â”€â”€
 
 
 
@@ -12234,15 +11595,15 @@ window.renderDeliverableInputs = function(activeTab = 'photo') {
 
 
 
-      <button type="button" class="del-tab-btn" id="btn-tab-photo" onclick="renderDeliverableInputs('photo')" style="flex: 1; padding: 6px; font-size: 0.72rem; border: none; border-radius: 4px; background: ${activeTab === 'photo' ? '#fff' : 'transparent'}; font-weight: 600; cursor: pointer; color: ${activeTab === 'photo' ? 'var(--color-primary)' : 'var(--text-secondary)'}; box-shadow: ${activeTab === 'photo' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'};">📷 Image</button>
+      <button type="button" class="del-tab-btn" id="btn-tab-photo" onclick="renderDeliverableInputs('photo')" style="flex: 1; padding: 6px; font-size: 0.72rem; border: none; border-radius: 4px; background: ${activeTab === 'photo' ? '#fff' : 'transparent'}; font-weight: 600; cursor: pointer; color: ${activeTab === 'photo' ? 'var(--color-primary)' : 'var(--text-secondary)'}; box-shadow: ${activeTab === 'photo' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'};">ðŸ“· Image</button>
 
 
 
-      <button type="button" class="del-tab-btn" id="btn-tab-video" onclick="renderDeliverableInputs('video')" style="flex: 1; padding: 6px; font-size: 0.72rem; border: none; border-radius: 4px; background: ${activeTab === 'video' ? '#fff' : 'transparent'}; font-weight: 600; cursor: pointer; color: ${activeTab === 'video' ? 'var(--color-primary)' : 'var(--text-secondary)'}; box-shadow: ${activeTab === 'video' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'};">🎥 Video</button>
+      <button type="button" class="del-tab-btn" id="btn-tab-video" onclick="renderDeliverableInputs('video')" style="flex: 1; padding: 6px; font-size: 0.72rem; border: none; border-radius: 4px; background: ${activeTab === 'video' ? '#fff' : 'transparent'}; font-weight: 600; cursor: pointer; color: ${activeTab === 'video' ? 'var(--color-primary)' : 'var(--text-secondary)'}; box-shadow: ${activeTab === 'video' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'};">ðŸŽ¥ Video</button>
 
 
 
-      <button type="button" class="del-tab-btn" id="btn-tab-link" onclick="renderDeliverableInputs('link')" style="flex: 1; padding: 6px; font-size: 0.72rem; border: none; border-radius: 4px; background: ${activeTab === 'link' ? '#fff' : 'transparent'}; font-weight: 600; cursor: pointer; color: ${activeTab === 'link' ? 'var(--color-primary)' : 'var(--text-secondary)'}; box-shadow: ${activeTab === 'link' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'};">🔗 Link</button>
+      <button type="button" class="del-tab-btn" id="btn-tab-link" onclick="renderDeliverableInputs('link')" style="flex: 1; padding: 6px; font-size: 0.72rem; border: none; border-radius: 4px; background: ${activeTab === 'link' ? '#fff' : 'transparent'}; font-weight: 600; cursor: pointer; color: ${activeTab === 'link' ? 'var(--color-primary)' : 'var(--text-secondary)'}; box-shadow: ${activeTab === 'link' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'};">ðŸ”— Link</button>
 
 
 

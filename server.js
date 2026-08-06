@@ -141,13 +141,19 @@ async function initDb() {
 
     // Seed default users if empty or update existing on startup
     console.log('[DB] Seeding default workspace users...');
+
+    // Remove legacy placeholder/fake users that are no longer part of the real team
+    const legacyUserIds = ['usr-admin', 'usr-mgr-1', 'usr-mgr-2', 'usr-emp-1', 'usr-emp-2', 'usr-emp-3'];
+    for (const legacyId of legacyUserIds) {
+      await client.query(`DELETE FROM users WHERE id = $1`, [legacyId]);
+    }
+    // Remove legacy placeholder tasks linked to fake users
+    const legacyTaskIds = ['tsk-101', 'tsk-102', 'tsk-103', 'tsk-104'];
+    for (const legacyId of legacyTaskIds) {
+      await client.query(`DELETE FROM tasks WHERE id = $1`, [legacyId]);
+    }
+
     const defaultUsers = [
-      { id: "usr-admin", username: "admin", password: "admin123", fullname: "Dr. Alok Verma (Director)", role: "Admin", reportingManagerId: "none", status: "Active", availabilityStatus: "Active", gmail: "alok.verma@gmail.com", phone: "+91 98765 43210", domain: "Other", aadhar: "1234 5678 9012" },
-      { id: "usr-mgr-1", username: "manager1", password: "manager123", fullname: "Vikram Malhotra (R&D Head)", role: "Manager", reportingManagerId: "usr-admin", status: "Active", availabilityStatus: "Active", gmail: "vikram.m@gmail.com", phone: "+91 98765 43211", domain: "R&D", aadhar: "2345 6789 0123" },
-      { id: "usr-mgr-2", username: "manager2", password: "manager223", fullname: "Neha Sen (Operations Head)", role: "Manager", reportingManagerId: "usr-admin", status: "Active", availabilityStatus: "Active", gmail: "neha.sen@gmail.com", phone: "+91 98765 43212", domain: "Marketing", aadhar: "3456 7890 1234" },
-      { id: "usr-emp-1", username: "employee1", password: "emp123", fullname: "Aman Sharma (Senior Dev)", role: "Employee", reportingManagerId: "usr-mgr-1", status: "Active", availabilityStatus: "Active", gmail: "aman.sharma@gmail.com", phone: "+91 98765 43213", domain: "Tech", aadhar: "4567 8901 2345" },
-      { id: "usr-emp-2", username: "employee2", password: "emp223", fullname: "Priya Verma (Data Analyst)", role: "Employee", reportingManagerId: "usr-mgr-1", status: "Active", availabilityStatus: "Active", gmail: "priya.v@gmail.com", phone: "+91 98765 43214", domain: "Tech", aadhar: "5678 9012 3456" },
-      { id: "usr-emp-3", username: "employee3", password: "emp323", fullname: "Rohan Das (Systems Exec)", role: "Employee", reportingManagerId: "usr-mgr-2", status: "Active", availabilityStatus: "Active", gmail: "rohan.das@gmail.com", phone: "+91 98765 43215", domain: "Other", aadhar: "6789 0123 4567" },
 
       // CO-FOUNDERS & C-Level
       { id: "usr-sambhav", username: "sambhav", password: "sambhav123", fullname: "Sambhav Kaushik Singh (CO - Founder & Chief Executive Officer)", role: "Admin", reportingManagerId: "none", status: "Active", availabilityStatus: "Active", gmail: "sambhavceo25@gmail.com", phone: "7527910223", domain: "Other", aadhar: "645713250752" },
@@ -204,25 +210,7 @@ async function initDb() {
       );
     }
 
-    // Seed default tasks if empty
-    const tasksCount = await client.query('SELECT COUNT(*) FROM tasks');
-    if (parseInt(tasksCount.rows[0].count) === 0) {
-      console.log('[DB] Seeding default tasks...');
-      const defaultTasks = [
-        { id: "tsk-101", title: "Calibrate Biotech Sensor Array", description: "Run diagnostic loops and optimize the calibration metrics for the Phase-II biometric sensors in the main lab.", assigneeId: "usr-emp-1", priority: "High", dueDate: "2026-06-30", status: "Pending", assignedById: "usr-mgr-1", referenceLink: "https://docs.google.com/document/d/1_calibrate_biotech_sensor", deliverableLink: "", feedback: "", comments: JSON.stringify([{ author: "Vikram Malhotra (R&D Head)", text: "Please use the latest calibration files from the shared lab drive.", timestamp: "2026-06-25T11:00:00.000Z" }]) },
-        { id: "tsk-102", title: "Document Imaging Pipeline API", description: "Write complete OpenAPI documentation for the core image processing workflow and share with clinical partners.", assigneeId: "usr-emp-2", priority: "Medium", dueDate: "2026-07-05", status: "In Progress", assignedById: "usr-mgr-1", referenceLink: "https://github.com/medastrax/imaging-pipeline", deliverableLink: "", feedback: "", comments: JSON.stringify([]) },
-        { id: "tsk-103", title: "Onboard Internship Candidates", description: "Conduct credential setup, workspace allocation, and documentation collection for the summer cohort.", assigneeId: "usr-emp-3", priority: "Low", dueDate: "2026-06-24", status: "Completed", assignedById: "usr-mgr-2", referenceLink: "", deliverableLink: "https://docs.google.com/spreadsheets/d/intern_onboarding_tracker", feedback: "", comments: JSON.stringify([{ author: "Rohan Das (Systems Exec)", text: "Credentials generated and shared. Ready for approval.", timestamp: "2026-06-25T11:15:00.000Z" }]) },
-        { id: "tsk-104", title: "Approve Q2 Lab Expansion Budget", description: "Review procurement manifests and sign off on facility improvements for building C biotechnology wings.", assigneeId: "usr-mgr-1", priority: "Critical", dueDate: "2026-06-29", status: "Pending", assignedById: "usr-admin", referenceLink: "https://docs.google.com/spreadsheets/d/q2_expansion_budget", deliverableLink: "", feedback: "", comments: JSON.stringify([]) }
-      ];
-
-      for (const t of defaultTasks) {
-        await client.query(
-          `INSERT INTO tasks (id, title, description, "assigneeId", priority, "dueDate", status, "assignedById", "referenceLink", "deliverableLink", feedback, comments) 
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
-          [t.id, t.title, t.description, t.assigneeId, t.priority, t.dueDate, t.status, t.assignedById, t.referenceLink, t.deliverableLink, t.feedback, t.comments]
-        );
-      }
-    }
+    // No default task seeding — tasks are created by real users only
 
     // Seed default activities if empty
     const activitiesCount = await client.query('SELECT COUNT(*) FROM activities');
