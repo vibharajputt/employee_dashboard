@@ -9476,8 +9476,9 @@ window.showLeaveChainModal = showLeaveChainModal;
 function renderAttendanceTab() {
   const isHead = currentUser.role === "Admin" || currentUser.role === "Manager" || currentUser.role === "Technical Lead" || currentUser.role === "Team Lead";
 
-  document.getElementById("attendance-manager-view").classList.add("hidden");
-  document.getElementById("attendance-employee-view").classList.add("hidden");
+  // Always show the employee's own attendance dashboard
+  document.getElementById("attendance-employee-view").classList.remove("hidden");
+  renderEmployeeAttendanceDashboard();
 
   if (isHead) {
     document.getElementById("attendance-manager-view").classList.remove("hidden");
@@ -9514,8 +9515,7 @@ function renderAttendanceTab() {
       };
     }
   } else {
-    document.getElementById("attendance-employee-view").classList.remove("hidden");
-    renderEmployeeAttendanceDashboard();
+    document.getElementById("attendance-manager-view").classList.add("hidden");
   }
 }
 
@@ -9826,6 +9826,7 @@ function renderEmployeeAttendanceDashboard() {
   document.getElementById("att-stats-absent").innerText = absentCount;
 
   const totalDays = myLogs.length;
+  const percentage = totalDays === 0 ? 0 : Math.round((presentCount / totalDays) * 100);
   document.getElementById("att-stats-rate").innerText = `${percentage}%`;
 }
 
