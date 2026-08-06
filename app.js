@@ -4023,8 +4023,55 @@ function renderHierarchyTab() {
       ul.appendChild(list);
     }
   } else {
-    // For Admin or Manager, construct the complete downwards tree
-    ul.appendChild(buildTreeHTML(rootNode, users));
+    // For the three co-founder admins: show tri-admin peer row at top
+    const coFounderIds = ["usr-sambhav", "usr-shakcham", "usr-shivangi"];
+    if (coFounderIds.includes(currentUser.id)) {
+      // Reorder: logged-in admin always in center
+      const allAdmins = coFounderIds.map(id => users.find(u => u.id === id)).filter(Boolean);
+      const others = allAdmins.filter(u => u.id !== currentUser.id);
+      const orderedAdmins = [others[0], users.find(u => u.id === currentUser.id), others[1]];
+
+      // Get shared children (canonical source: Sambhav's direct reports)
+      let sharedChildren = users.filter(u => u.reportingManagerId === "usr-sambhav");
+      // Apply spandan dummy-node transformation
+      sharedChildren = sharedChildren.map(u => {
+        if (u.id === "usr-spandan") {
+          return { id: "dummy-" + u.id, fullname: "", role: "Dummy", isDummy: true, reportingManagerId: "usr-sambhav", actualChild: u };
+        }
+        return u;
+      });
+
+      const topLi = document.createElement("li");
+      const triContainer = document.createElement("div");
+      triContainer.className = "tri-admin-container";
+
+      orderedAdmins.forEach((admin, idx) => {
+        const isCenter = idx === 1;
+        const card = createNodeCard(admin, users, isCenter && sharedChildren.length > 0);
+        if (!isCenter) card.classList.add("admin-peer-card");
+        triContainer.appendChild(card);
+      });
+
+      topLi.appendChild(triContainer);
+
+      if (sharedChildren.length > 0) {
+        const childUl = document.createElement("ul");
+        sharedChildren.forEach(child => childUl.appendChild(buildTreeHTML(child, users)));
+        topLi.appendChild(childUl);
+
+        // Only the center (logged-in) admin card toggles the subtree
+        const centerCard = triContainer.children[1];
+        centerCard.addEventListener("click", () => {
+          childUl.classList.toggle("collapsed");
+          centerCard.classList.toggle("node-collapsed");
+        });
+      }
+
+      ul.appendChild(topLi);
+    } else {
+      // For Manager / Team Lead — construct the complete downwards tree
+      ul.appendChild(buildTreeHTML(rootNode, users));
+    }
   }
 
   container.appendChild(ul);

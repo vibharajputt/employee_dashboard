@@ -1390,6 +1390,31 @@ tr:hover td {
   z-index: 6;
 }
 
+/* Tri-admin row: all 3 co-founder admins side-by-side at the top */
+.tri-admin-container {
+  display: flex;
+  gap: 24px;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  z-index: 6;
+}
+
+/* Peer admin cards (not the logged-in admin) — slightly dimmed */
+.admin-peer-card {
+  opacity: 0.72;
+  transform: scale(0.94);
+  filter: saturate(0.8);
+  transition: opacity var(--transition-normal), transform var(--transition-normal), filter var(--transition-normal);
+  cursor: default !important;
+}
+
+.admin-peer-card:hover {
+  opacity: 1;
+  transform: scale(0.97) translateY(-4px);
+  filter: saturate(1);
+}
+
 /* Node cards design */
 .node-card {
   width: 180px;
