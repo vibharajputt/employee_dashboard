@@ -3301,45 +3301,24 @@ function renderPerformanceTab() {
 
 
 function getSubordinates(managerId, usersList) {
+  let directSubordinates = usersList.filter(u => u.reportingManagerId === managerId);
 
-
-
-  const directSubordinates = usersList.filter(u => u.reportingManagerId === managerId);
-
-
+  // Marketing dual-node logic: Prabhroop and Mahakpreet share subordinates
+  if (managerId === "usr-prabhroop") {
+    directSubordinates = directSubordinates.concat(usersList.filter(u => u.reportingManagerId === "usr-mahakpreet"));
+  } else if (managerId === "usr-mahakpreet") {
+    directSubordinates = directSubordinates.concat(usersList.filter(u => u.reportingManagerId === "usr-prabhroop"));
+  }
 
   let allSubordinates = [...directSubordinates];
 
-
-
-  
-
-
-
   directSubordinates.forEach(sub => {
-
-
-
     const nestedSubordinates = getSubordinates(sub.id, usersList);
-
-
-
     allSubordinates = allSubordinates.concat(nestedSubordinates);
-
-
-
   });
 
-
-
-  
-
-
-
-  return allSubordinates;
-
-
-
+  // Deduplicate array by user id to prevent double-counting when top managers fetch reports
+  return allSubordinates.filter((u, index, self) => index === self.findIndex(t => t.id === u.id));
 }
 
 
@@ -9624,6 +9603,13 @@ function renderManagerAttendanceSheet() {
   }
 
   // If valid, enable submit button
+  const users = db.getUsers() || [];
+  let subordinates = [];
+  if (currentUser.role === "Admin") {
+    subordinates = users.filter(u => u.id !== currentUser.id);
+  } else {
+    subordinates = getSubordinates(currentUser.id, users);
+  }
   if (btnSubmit) {
     btnSubmit.disabled = false;
     btnSubmit.style.opacity = 1;
