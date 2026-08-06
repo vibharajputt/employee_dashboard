@@ -9702,6 +9702,9 @@ function renderManagerAttendanceSheet() {
     };
   });
 
+  if (typeof renderTeamAttendanceChart === 'function') {
+    renderTeamAttendanceChart();
+  }
   lucide.createIcons();
 }
 async function submitManagerAttendance() {

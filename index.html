@@ -467,14 +467,6 @@
                 <!-- Dynamically rendered activities -->
               </div>
             </div>
-
-            <!-- Attendance Graph -->
-            <div class="dashboard-card attendance-graph-card" style="width: 100%;" id="attendance-graph-wrapper">
-              <h3><i data-lucide="bar-chart-2" class="text-accent"></i> Team Attendance</h3>
-              <div style="position: relative; height: 300px; width: 100%;">
-                <canvas id="teamAttendanceChart"></canvas>
-              </div>
-            </div>
           </div>
         </section>
 
@@ -1221,6 +1213,14 @@
                 </button>
               </div>
             </div>
+
+            <!-- Attendance Graph -->
+            <div class="card attendance-graph-card" style="width: 100%; margin-top: 24px;" id="attendance-graph-wrapper">
+              <h3 style="margin-top: 0; margin-bottom: 16px; color: var(--text-primary);"><i data-lucide="bar-chart-2" class="text-accent"></i> Team Attendance</h3>
+              <div style="position: relative; height: 300px; width: 100%;">
+                <canvas id="teamAttendanceChart"></canvas>
+              </div>
+            </div>
           </div>
 
           <!-- Employee View: My Attendance Summary and History -->
@@ -1276,7 +1276,7 @@
             </div>
 
             <!-- Chart Card -->
-            <div class="card" style="padding: 24px; margin-bottom: 24px;">
+            <div id="attendance-chart-card" class="card hidden" style="padding: 24px; margin-bottom: 24px;">
               <h3 style="margin-top: 0; margin-bottom: 16px; color: var(--text-primary);">Meeting Attendance Comparison</h3>
               <div style="position: relative; height: 260px; max-width: 500px; margin: 0 auto;">
                 <canvas id="employee-attendance-chart"></canvas>
