@@ -78,7 +78,7 @@ socket.on("newMessage", (msg) => {
 function appendSingleMessage(container, msg, currentUserName) {
   const isSentByMe = msg.sender === currentUserName || msg.sender === "Current User";
   const messageEl = document.createElement("div");
-  messageEl.className = \message-bubble \;
+  messageEl.className = `message-bubble ${isSentByMe ? 'sent' : 'received'}`;
   if (msg._id) messageEl.setAttribute("data-msg-id", msg._id);
 
   const textEl = document.createElement("div");
@@ -95,7 +95,7 @@ function appendSingleMessage(container, msg, currentUserName) {
   container.appendChild(messageEl);
 }
 
-\nconst DEFAULT_USERS = [];
+const DEFAULT_USERS = [];
 
 
 
@@ -12830,7 +12830,6 @@ async function handleVideoSseEvent(event) {
 
 
 
-\n
 function renderChatTab() {
   const chatUsers = document.querySelectorAll(".chat-user");
   const chatHeader = document.querySelector(".chat-header strong");
