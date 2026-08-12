@@ -133,8 +133,39 @@ async function initDb() {
         "id" SERIAL PRIMARY KEY,
         "sender" VARCHAR(100) NOT NULL,
         "receiver" VARCHAR(100) NOT NULL,
+        "senderId" VARCHAR(50),
+        "receiverId" VARCHAR(50),
         "message" TEXT NOT NULL,
+        "isGroup" BOOLEAN DEFAULT false,
+        "readBy" JSONB DEFAULT '[]',
         "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    await client.query(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS "senderId" VARCHAR(50);`);
+    await client.query(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS "receiverId" VARCHAR(50);`);
+    await client.query(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS "isGroup" BOOLEAN DEFAULT false;`);
+    await client.query(`ALTER TABLE messages ADD COLUMN IF NOT EXISTS "readBy" JSONB DEFAULT '[]';`);
+
+    // Create groups table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS groups (
+        "id" VARCHAR(50) PRIMARY KEY,
+        "name" VARCHAR(100) NOT NULL,
+        "createdById" VARCHAR(50) REFERENCES users(id) ON DELETE CASCADE,
+        "members" JSONB DEFAULT '[]',
+        "createdAt" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Create user_chat_preferences table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS user_chat_preferences (
+        "id" SERIAL PRIMARY KEY,
+        "userId" VARCHAR(50) NOT NULL,
+        "chatId" VARCHAR(50) NOT NULL,
+        "isArchived" BOOLEAN DEFAULT false,
+        "lastReadTimestamp" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE("userId", "chatId")
       )
     `);
 
@@ -600,10 +631,25 @@ app.post('/api/video/join', (req, res) => {
       .filter(c => c.room === room && c.userId !== userId)
       .map(c => ({ userId: c.userId, username: c.username }));
       
+    io.emit("employeeStatusChanged", { userId, status: 'in_meeting' });
     res.json({ existingUsers });
   } else {
     res.status(404).json({ error: "Client event stream not found." });
   }
+});
+
+app.post('/api/video/leave', (req, res) => {
+  const { userId, room } = req.body;
+  const client = videoClients.find(c => c.userId === userId);
+  if (client) {
+    client.room = null;
+    broadcastToRoom(room, userId, {
+      type: 'user-left',
+      userId
+    });
+  }
+  io.emit("employeeStatusChanged", { userId, status: 'free' });
+  res.json({ success: true });
 });
 
 app.post('/api/video/signal', (req, res) => {
@@ -622,6 +668,183 @@ app.post('/api/video/signal', (req, res) => {
 });
 
 // --------------------------------------------------
+// Live Employee Status API
+// --------------------------------------------------
+app.get('/api/employees/status', async (req, res) => {
+  try {
+    const usersRes = await pool.query('SELECT id, fullname, username FROM users');
+    const users = usersRes.rows;
+    
+    // Get active video users
+    const videoUserIds = new Set(
+      videoClients.filter(c => c.room !== null).map(c => c.userId)
+    );
+
+    // Get today's date in YYYY-MM-DD
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    // Fetch approved leaves
+    const leavesRes = await pool.query(
+      `SELECT * FROM leaves WHERE status = 'Approved'`
+    );
+    const approvedLeaves = leavesRes.rows;
+
+    const statusMap = {};
+    for (const u of users) {
+      if (videoUserIds.has(u.id)) {
+        statusMap[u.id] = { status: 'in_meeting', label: 'In Meeting' };
+      } else {
+        const onLeave = approvedLeaves.some(l => {
+          if (l.userId !== u.id) return false;
+          const from = (l.fromDate || '').split('T')[0];
+          const to = (l.toDate || '').split('T')[0];
+          return from <= todayStr && todayStr <= to;
+        });
+        if (onLeave) {
+          statusMap[u.id] = { status: 'on_leave', label: 'On Leave' };
+        } else {
+          statusMap[u.id] = { status: 'free', label: 'Free' };
+        }
+      }
+    }
+
+    res.json(statusMap);
+  } catch (err) {
+    console.error("Error computing employee status:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// --------------------------------------------------
+// Groups API
+// --------------------------------------------------
+app.get("/api/groups", async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM groups ORDER BY "createdAt" ASC');
+    res.json(result.rows);
+  } catch (error) {
+    console.error("Error fetching groups:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post("/api/groups", async (req, res) => {
+  try {
+    const { name, createdById, members } = req.body;
+    if (!name || !members || !Array.isArray(members)) {
+      return res.status(400).json({ error: "Group name and members array are required" });
+    }
+    const groupId = `grp-${Date.now()}`;
+    const result = await pool.query(
+      `INSERT INTO groups (id, name, "createdById", members) VALUES ($1, $2, $3, $4) RETURNING *`,
+      [groupId, name, createdById, JSON.stringify(members)]
+    );
+    const newGroup = result.rows[0];
+    io.emit("groupCreated", newGroup);
+    res.status(201).json(newGroup);
+  } catch (error) {
+    console.error("Error creating group:", error);
+    res.status(500).json({ error: "Failed to create group" });
+  }
+});
+
+// --------------------------------------------------
+// Chat Preferences (Archive / Mark Read) API
+// --------------------------------------------------
+app.get("/api/chat/preferences", async (req, res) => {
+  try {
+    const { userId } = req.query;
+    if (!userId) return res.status(400).json({ error: "userId is required" });
+    const result = await pool.query('SELECT * FROM user_chat_preferences WHERE "userId" = $1', [userId]);
+    res.json(result.rows);
+  } catch (error) {
+    console.error("Error fetching chat preferences:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post("/api/chat/archive", async (req, res) => {
+  try {
+    const { userId, chatId, isArchived } = req.body;
+    if (!userId || !chatId) return res.status(400).json({ error: "userId and chatId are required" });
+    const result = await pool.query(
+      `INSERT INTO user_chat_preferences ("userId", "chatId", "isArchived") 
+       VALUES ($1, $2, $3)
+       ON CONFLICT ("userId", "chatId") 
+       DO UPDATE SET "isArchived" = EXCLUDED."isArchived" RETURNING *`,
+      [userId, chatId, isArchived]
+    );
+    io.emit("chatPreferenceUpdated", { userId, chatId, isArchived });
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error("Error updating archive preference:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post("/api/chat/mark-all-read", async (req, res) => {
+  try {
+    const { userId } = req.body;
+    if (!userId) return res.status(400).json({ error: "userId is required" });
+    const msgs = await pool.query('SELECT id, "readBy" FROM messages');
+    for (const m of msgs.rows) {
+      let readBy = Array.isArray(m.readBy) ? m.readBy : [];
+      if (!readBy.includes(userId)) {
+        readBy.push(userId);
+        await pool.query('UPDATE messages SET "readBy" = $1 WHERE id = $2', [JSON.stringify(readBy), m.id]);
+      }
+    }
+    await pool.query(
+      `INSERT INTO user_chat_preferences ("userId", "chatId", "lastReadTimestamp") 
+       SELECT $1, id, CURRENT_TIMESTAMP FROM users
+       ON CONFLICT ("userId", "chatId") DO UPDATE SET "lastReadTimestamp" = CURRENT_TIMESTAMP`,
+      [userId]
+    );
+    io.emit("chatsMarkedRead", { userId });
+    res.json({ success: true });
+  } catch (error) {
+    console.error("Error marking all read:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post("/api/chat/mark-read", async (req, res) => {
+  try {
+    const { userId, chatId } = req.body;
+    if (!userId || !chatId) return res.status(400).json({ error: "userId and chatId are required" });
+    
+    // Update user preferences
+    await pool.query(
+      `INSERT INTO user_chat_preferences ("userId", "chatId", "lastReadTimestamp") 
+       VALUES ($1, $2, CURRENT_TIMESTAMP)
+       ON CONFLICT ("userId", "chatId") DO UPDATE SET "lastReadTimestamp" = CURRENT_TIMESTAMP`,
+      [userId, chatId]
+    );
+
+    // Update readBy on relevant messages
+    const msgs = await pool.query(
+      `SELECT id, "readBy", "senderId", "receiverId", "isGroup" FROM messages`
+    );
+    for (const m of msgs.rows) {
+      const isTargetChat = (m.senderId === chatId || m.receiverId === chatId);
+      if (isTargetChat && m.senderId !== userId) {
+        let readBy = Array.isArray(m.readBy) ? m.readBy : [];
+        if (!readBy.includes(userId)) {
+          readBy.push(userId);
+          await pool.query('UPDATE messages SET "readBy" = $1 WHERE id = $2', [JSON.stringify(readBy), m.id]);
+        }
+      }
+    }
+
+    io.emit("chatMarkedRead", { userId, chatId });
+    res.json({ success: true });
+  } catch (err) {
+    console.error("Error marking chat read:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// --------------------------------------------------
 // Chat API
 // --------------------------------------------------
 app.get("/api/messages", async (req, res) => {
@@ -636,16 +859,16 @@ app.get("/api/messages", async (req, res) => {
 
 app.post("/api/messages", async (req, res) => {
   try {
-    const { sender, receiver, message } = req.body;
+    const { sender, receiver, senderId, receiverId, message, isGroup } = req.body;
     if (!sender || !receiver || !message) {
       return res.status(400).json({ error: "sender, receiver and message are required" });
     }
     const result = await pool.query(
-      `INSERT INTO messages (sender, receiver, message) VALUES ($1, $2, $3) RETURNING *`,
-      [sender, receiver, message]
+      `INSERT INTO messages (sender, receiver, "senderId", "receiverId", message, "isGroup", "readBy") 
+       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+      [sender, receiver, senderId || null, receiverId || null, message, isGroup || false, JSON.stringify(senderId ? [senderId] : [])]
     );
     const savedMessage = result.rows[0];
-    // Rename id to _id so frontend works without changing its expectation of MongoDB-like _id
     savedMessage._id = savedMessage.id;
     io.emit("newMessage", savedMessage);
     res.status(201).json(savedMessage);
@@ -661,19 +884,6 @@ io.on("connection", (socket) => {
   socket.on("disconnect", () => {
     console.log("User disconnected:", socket.id);
   });
-});
-
-app.post('/api/video/leave', (req, res) => {
-  const { userId, room } = req.body;
-  const client = videoClients.find(c => c.userId === userId);
-  if (client) {
-    client.room = null;
-    broadcastToRoom(room, userId, {
-      type: 'user-left',
-      userId
-    });
-  }
-  res.json({ success: true });
 });
 
 function broadcastToRoom(room, senderId, eventData) {

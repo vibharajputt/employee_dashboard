@@ -678,28 +678,131 @@
 
         <!-- ==================== TAB: CHAT ==================== -->
 
-        <section id="tab-chat" class="tab-pane hidden">
-          <div class="dashboard-header">
-            <h2>Employee Chat</h2>
-            <p class="section-desc">Connect and communicate with your team members in real-time.</p>
-          </div>
+        <!-- ==================== TAB: CHAT (WHATSAPP WEB STYLE) ==================== -->
 
-          <div class="chat-container">
-            <div class="chat-users">
-              <h3>Direct Messages</h3>
-              <!-- Users will be populated here -->
+        <section id="tab-chat" class="tab-pane hidden">
+          <div class="wa-chat-container">
+            <!-- Left Sidebar -->
+            <div class="wa-sidebar">
+              <!-- Sidebar Header -->
+              <div class="wa-sidebar-header">
+                <div class="wa-current-user-info">
+                  <div class="wa-user-avatar" id="wa-current-user-avatar">
+                    <span id="wa-current-user-initials">ME</span>
+                  </div>
+                  <div class="wa-current-user-title">
+                    <strong id="wa-current-user-name">Employee</strong>
+                    <small id="wa-current-user-role">Role</small>
+                  </div>
+                </div>
+                <div class="wa-header-actions">
+                  <button class="wa-action-btn" id="wa-btn-new-group" title="Create New Group">
+                    <i data-lucide="plus"></i>
+                  </button>
+                  <div class="wa-menu-dropdown-container">
+                    <button class="wa-action-btn" id="wa-btn-more-options" title="Menu">
+                      <i data-lucide="more-vertical"></i>
+                    </button>
+                    <div class="wa-dropdown-menu hidden" id="wa-menu-dropdown">
+                      <button class="wa-dropdown-item" id="wa-menu-new-group">
+                        <i data-lucide="users"></i> New Group
+                      </button>
+                      <button class="wa-dropdown-item" id="wa-menu-mark-all-read">
+                        <i data-lucide="check-check"></i> Mark all as read
+                      </button>
+                      <button class="wa-dropdown-item" id="wa-menu-view-archived">
+                        <i data-lucide="archive"></i> Archived Chats
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Search Bar -->
+              <div class="wa-search-container">
+                <div class="wa-search-box">
+                  <i data-lucide="search" class="wa-search-icon"></i>
+                  <input type="text" id="wa-chat-search" placeholder="Search or start a new chat">
+                  <button id="wa-search-clear" class="wa-search-clear hidden">&times;</button>
+                </div>
+              </div>
+
+              <!-- Filter Pills -->
+              <div class="wa-filter-pills">
+                <button class="wa-pill active" data-filter="all">All</button>
+                <button class="wa-pill" data-filter="unread">Unread <span class="wa-pill-badge hidden" id="wa-unread-total-badge">0</span></button>
+                <button class="wa-pill" data-filter="groups">Groups</button>
+                <button class="wa-pill" data-filter="archived">Archived</button>
+              </div>
+
+              <!-- Archived Header Row Banner -->
+              <div class="wa-archived-banner hidden" id="wa-archived-banner">
+                <div class="wa-archived-left">
+                  <i data-lucide="archive"></i>
+                  <span>Archived Chats</span>
+                </div>
+                <span class="wa-archived-count-badge" id="wa-archived-count-badge">0</span>
+              </div>
+
+              <!-- Chat List Container -->
+              <div class="wa-chat-list" id="wa-chat-list">
+                <!-- Dynamically populated employees & groups -->
+              </div>
             </div>
 
-            <div class="chat-window">
-              <div class="chat-header">
-                <strong>Select an employee</strong>
+            <!-- Right Chat Window Panel -->
+            <div class="wa-chat-panel">
+              <!-- Empty State Placeholder -->
+              <div class="wa-empty-state" id="wa-empty-state">
+                <div class="wa-empty-icon-wrap">
+                  <i data-lucide="message-square"></i>
+                </div>
+                <h3>MedAstraX WhatsApp Chat</h3>
+                <p>Select any employee or group from the list to start messaging in real-time.</p>
+                <div class="wa-empty-security">
+                  <i data-lucide="shield-check"></i> Real-time status badges: 🟢 Free &bull; 🔴 In Meeting &bull; 🔴 On Leave
+                </div>
               </div>
-              <div class="chat-messages">
-                <!-- Messages will appear here -->
-              </div>
-              <div class="chat-input">
-                <input type="text" placeholder="Type a message...">
-                <button>Send</button>
+
+              <!-- Active Chat Interface -->
+              <div class="wa-active-chat hidden" id="wa-active-chat">
+                <!-- Chat Header -->
+                <div class="wa-chat-header">
+                  <div class="wa-chat-header-info">
+                    <div class="wa-chat-header-avatar" id="wa-active-avatar">
+                      <span id="wa-active-initials">--</span>
+                      <span class="wa-status-dot free" id="wa-active-status-dot"></span>
+                    </div>
+                    <div class="wa-chat-header-text">
+                      <h4 id="wa-active-title">Select Chat</h4>
+                      <div class="wa-chat-header-sub">
+                        <span class="wa-status-badge-inline free" id="wa-active-status-badge">🟢 Free</span>
+                        <span id="wa-active-role-domain" class="wa-role-domain-text">Developer</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div class="wa-chat-header-actions">
+                    <button class="wa-action-btn" id="wa-btn-chat-meeting" title="Join Video Meeting">
+                      <i data-lucide="video"></i>
+                    </button>
+                    <button class="wa-action-btn" id="wa-btn-toggle-archive" title="Archive / Unarchive Chat">
+                      <i data-lucide="archive"></i>
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Chat Messages Scroll Container -->
+                <div class="wa-messages-container" id="wa-messages-container">
+                  <!-- Messages will appear here -->
+                </div>
+
+                <!-- Input Footer Bar -->
+                <div class="wa-chat-input-bar">
+                  <input type="text" id="wa-message-input" placeholder="Type a message..." autocomplete="off">
+                  <button class="wa-send-btn" id="wa-btn-send" title="Send Message">
+                    <i data-lucide="send"></i>
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -2305,6 +2408,31 @@
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" id="cancel-edit-mtg-btn">Cancel</button>
           <button type="submit" class="btn btn-primary">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  <!-- ==================== MODAL: CREATE NEW GROUP ==================== -->
+  <div id="create-group-modal" class="modal-overlay hidden">
+    <div class="modal-card" style="max-width: 480px;">
+      <div class="modal-header">
+        <h2>Create New Group Chat</h2>
+        <button class="close-modal-btn" id="close-group-modal">&times;</button>
+      </div>
+      <form id="create-group-form">
+        <div class="form-group" style="margin-bottom: 16px;">
+          <label for="group-name-input" style="font-weight: 600; display: block; margin-bottom: 6px;">Group Subject / Name</label>
+          <input type="text" id="group-name-input" placeholder="e.g. Tech Core Team" required style="width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); background: var(--bg-secondary); color: var(--text-primary);">
+        </div>
+        <div class="form-group" style="margin-bottom: 16px;">
+          <label style="font-weight: 600; display: block; margin-bottom: 6px;">Select Group Members</label>
+          <input type="text" id="group-member-search" placeholder="Search employees..." style="width: 100%; margin-bottom: 8px; font-size: 0.85rem; padding: 8px 12px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); background: var(--bg-secondary); color: var(--text-primary);">
+          <div id="group-members-list" style="max-height: 220px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 8px; background: var(--bg-secondary);">
+            <!-- Populated dynamically with checkboxes -->
+          </div>
+        </div>
+        <div class="modal-footer" style="margin-top: 16px; display: flex; gap: 8px; justify-content: flex-end;">
+          <button type="button" class="btn btn-secondary" id="btn-cancel-group">Cancel</button>
+          <button type="submit" class="btn btn-primary">Create Group</button>
         </div>
       </form>
     </div>

@@ -49,32 +49,6 @@ socket.on("connect", () => {
   console.log("SOCKET CONNECTED:", socket.id);
 });
 
-socket.on("newMessage", (msg) => {
-  console.log("REAL-TIME MESSAGE RECEIVED:", msg);
-  if (!activeChatEmployee) return;
-
-  const currentUserName = (typeof currentUser !== 'undefined' && currentUser && currentUser.fullname) ? currentUser.fullname : "Current User";
-  const isCurrentConversation =
-    (msg.sender === currentUserName && (msg.receiver === activeChatEmployee || msg.receiver.includes(activeChatEmployee))) ||
-    ((msg.sender === activeChatEmployee || msg.sender.includes(activeChatEmployee)) && msg.receiver === currentUserName) ||
-    (msg.sender === "Current User" && (msg.receiver === activeChatEmployee || msg.receiver.includes(activeChatEmployee))) ||
-    ((msg.sender === activeChatEmployee || msg.sender.includes(activeChatEmployee)) && msg.receiver === "Current User");
-
-  if (!isCurrentConversation) return;
-
-  const chatMessages = document.querySelector(".chat-messages");
-  if (!chatMessages) return;
-
-  if (msg._id && renderedMessageIds.has(msg._id)) return;
-  if (msg._id) renderedMessageIds.add(msg._id);
-
-  const emptyMsg = chatMessages.querySelector(".empty-chat-message");
-  if (emptyMsg) emptyMsg.remove();
-
-  appendSingleMessage(chatMessages, msg, currentUserName);
-  chatMessages.scrollTop = chatMessages.scrollHeight;
-});
-
 function appendSingleMessage(container, msg, currentUserName) {
   const isSentByMe = msg.sender === currentUserName || msg.sender === "Current User";
   const messageEl = document.createElement("div");
@@ -1551,9 +1525,7 @@ function switchTab(tabId) {
   else if (tabId === "attendance") renderAttendanceTab();
   else if (tabId === "settings") renderSettingsTab();
   else if (tabId === "meetings") renderMeetingsTab();
-
-
-
+  else if (tabId === "chat") renderChatTab();
   else if (tabId === "performance") renderPerformanceTab();
 
 
@@ -12929,99 +12901,756 @@ async function handleVideoSseEvent(event) {
 
 
 
-function renderChatTab() {
-  const chatUsers = document.querySelectorAll(".chat-user");
-  const chatHeader = document.querySelector(".chat-header strong");
-  const chatMessages = document.querySelector(".chat-messages");
-  const chatInput = document.querySelector(".chat-input input");
-  const sendButton = document.querySelector(".chat-input button");
+let waActiveChat = null; // { id, type: 'direct'|'group', name, role, domain }
+let waChatFilter = 'all';
+let waSearchQuery = '';
+let waEmployeesStatus = {};
+let waUserPreferences = {};
+let waAllEmployees = [];
+let waAllGroups = [];
+let waAllMessages = [];
 
-  const currentUserName = (typeof currentUser !== 'undefined' && currentUser && currentUser.fullname) ? currentUser.fullname : "Current User";
+async function renderChatTab() {
+  const currentUserId = currentUser ? currentUser.id : '';
+  const currentUserName = currentUser ? currentUser.fullname : 'Current User';
+  const currentUserRole = currentUser ? currentUser.role : 'Employee';
 
-  chatUsers.forEach(user => {
-    user.onclick = async function () {
-      chatUsers.forEach(u => u.classList.remove("active"));
-      this.classList.add("active");
-      const strongEl = this.querySelector("strong");
-      activeChatEmployee = strongEl ? strongEl.textContent.trim() : this.textContent.trim();
-      chatHeader.textContent = activeChatEmployee;
-      await loadMessages();
+  // Update Sidebar Header Current User Info
+  const waInitialsEl = document.getElementById('wa-current-user-initials');
+  const waNameEl = document.getElementById('wa-current-user-name');
+  const waRoleEl = document.getElementById('wa-current-user-role');
+
+  if (waInitialsEl) waInitialsEl.textContent = getInitials(currentUserName);
+  if (waNameEl) waNameEl.textContent = currentUserName;
+  if (waRoleEl) waRoleEl.textContent = currentUserRole;
+
+  // Initialize UI event listeners once
+  initWaChatEvents();
+
+  // Load initial data
+  await refreshWaChatData();
+}
+
+async function refreshWaChatData() {
+  try {
+    const currentUserId = currentUser ? currentUser.id : '';
+
+    // Parallel fetch
+    const [usersRes, groupsRes, statusRes, prefRes, msgRes] = await Promise.all([
+      fetch('/api/users'),
+      fetch('/api/groups'),
+      fetch('/api/employees/status'),
+      fetch(`/api/chat/preferences?userId=${currentUserId}`),
+      fetch('/api/messages')
+    ]);
+
+    waAllEmployees = await usersRes.json();
+    waAllGroups = await groupsRes.json();
+    waEmployeesStatus = await statusRes.json();
+
+    const prefs = await prefRes.json();
+    waUserPreferences = {};
+    if (Array.isArray(prefs)) {
+      prefs.forEach(p => { waUserPreferences[p.chatId] = p; });
+    }
+
+    waAllMessages = await msgRes.json();
+
+    // Render list
+    renderWaChatList();
+
+    // Update active chat if selected
+    if (waActiveChat) {
+      loadWaActiveChatMessages();
+    }
+  } catch (err) {
+    console.error("Error refreshing WhatsApp chat data:", err);
+  }
+}
+
+function renderWaChatList() {
+  const listContainer = document.getElementById('wa-chat-list');
+  if (!listContainer) return;
+
+  const currentUserId = currentUser ? currentUser.id : '';
+  const currentUserName = currentUser ? currentUser.fullname : '';
+
+  // Combine employees and groups
+  let chatItems = [];
+
+  // Add all company employees (everyone: CEO to developer)
+  waAllEmployees.forEach(emp => {
+    if (emp.id === currentUserId) return; // Don't list self as chat item
+
+    const pref = waUserPreferences[emp.id] || {};
+    const isArchived = !!pref.isArchived;
+
+    // Get last message between currentUser and emp
+    const chatMsgs = waAllMessages.filter(m => 
+      (m.senderId === currentUserId && m.receiverId === emp.id) ||
+      (m.senderId === emp.id && m.receiverId === currentUserId) ||
+      (m.sender === currentUserName && (m.receiver === emp.fullname || m.receiver.includes(emp.fullname))) ||
+      ((m.sender === emp.fullname || m.sender.includes(emp.fullname)) && m.receiver === currentUserName)
+    );
+
+    const lastMsg = chatMsgs.length > 0 ? chatMsgs[chatMsgs.length - 1] : null;
+
+    // Calculate unread count
+    const lastRead = pref.lastReadTimestamp ? new Date(pref.lastReadTimestamp) : new Date(0);
+    const unreadMsgs = chatMsgs.filter(m => {
+      if (m.senderId === currentUserId || m.sender === currentUserName) return false;
+      const readBy = Array.isArray(m.readBy) ? m.readBy : [];
+      if (readBy.includes(currentUserId)) return false;
+      if (m.createdAt && new Date(m.createdAt) > lastRead) return true;
+      return !readBy.includes(currentUserId);
+    });
+
+    const statusObj = waEmployeesStatus[emp.id] || { status: 'free', label: 'Free' };
+
+    chatItems.push({
+      id: emp.id,
+      type: 'direct',
+      name: emp.fullname,
+      role: emp.role,
+      domain: emp.domain || emp.role,
+      status: statusObj.status,
+      statusLabel: statusObj.label,
+      lastMsg: lastMsg ? lastMsg.message : 'No messages yet',
+      lastTime: lastMsg ? formatChatTime(lastMsg.createdAt) : '',
+      lastTimestamp: lastMsg ? new Date(lastMsg.createdAt).getTime() : 0,
+      unreadCount: unreadMsgs.length,
+      isArchived: isArchived,
+      empObj: emp
+    });
+  });
+
+  // Add groups where user is member
+  waAllGroups.forEach(grp => {
+    const members = Array.isArray(grp.members) ? grp.members : [];
+    if (!members.includes(currentUserId) && grp.createdById !== currentUserId) return;
+
+    const pref = waUserPreferences[grp.id] || {};
+    const isArchived = !!pref.isArchived;
+
+    const groupMsgs = waAllMessages.filter(m => m.receiverId === grp.id || m.receiver === grp.name);
+    const lastMsg = groupMsgs.length > 0 ? groupMsgs[groupMsgs.length - 1] : null;
+
+    const lastRead = pref.lastReadTimestamp ? new Date(pref.lastReadTimestamp) : new Date(0);
+    const unreadMsgs = groupMsgs.filter(m => {
+      if (m.senderId === currentUserId || m.sender === currentUserName) return false;
+      const readBy = Array.isArray(m.readBy) ? m.readBy : [];
+      if (readBy.includes(currentUserId)) return false;
+      if (m.createdAt && new Date(m.createdAt) > lastRead) return true;
+      return false;
+    });
+
+    chatItems.push({
+      id: grp.id,
+      type: 'group',
+      name: grp.name,
+      role: `${members.length} members`,
+      domain: 'Group Chat',
+      status: 'free',
+      statusLabel: 'Group',
+      lastMsg: lastMsg ? `${lastMsg.sender.split(' ')[0]}: ${lastMsg.message}` : 'Group created',
+      lastTime: lastMsg ? formatChatTime(lastMsg.createdAt) : formatChatTime(grp.createdAt),
+      lastTimestamp: lastMsg ? new Date(lastMsg.createdAt).getTime() : new Date(grp.createdAt || 0).getTime(),
+      unreadCount: unreadMsgs.length,
+      isArchived: isArchived,
+      grpObj: grp
+    });
+  });
+
+  // Sort chat items by last message timestamp descending
+  chatItems.sort((a, b) => b.lastTimestamp - a.lastTimestamp);
+
+  // Calculate stats for badges
+  const totalUnread = chatItems.reduce((acc, item) => acc + item.unreadCount, 0);
+  const totalArchived = chatItems.filter(item => item.isArchived).length;
+
+  const unreadBadge = document.getElementById('wa-unread-total-badge');
+  if (unreadBadge) {
+    if (totalUnread > 0) {
+      unreadBadge.textContent = totalUnread;
+      unreadBadge.classList.remove('hidden');
+    } else {
+      unreadBadge.classList.add('hidden');
+    }
+  }
+
+  const archivedBanner = document.getElementById('wa-archived-banner');
+  const archivedCountBadge = document.getElementById('wa-archived-count-badge');
+  if (archivedBanner && archivedCountBadge) {
+    if (totalArchived > 0) {
+      archivedCountBadge.textContent = totalArchived;
+      if (waChatFilter === 'all') {
+        archivedBanner.classList.remove('hidden');
+      } else {
+        archivedBanner.classList.add('hidden');
+      }
+    } else {
+      archivedBanner.classList.add('hidden');
+    }
+  }
+
+  // Filter based on active tab pill & search query
+  let filteredItems = chatItems.filter(item => {
+    // Search query filter
+    if (waSearchQuery) {
+      const q = waSearchQuery.toLowerCase();
+      const matchName = item.name.toLowerCase().includes(q);
+      const matchRole = item.role.toLowerCase().includes(q);
+      const matchDomain = item.domain.toLowerCase().includes(q);
+      if (!matchName && !matchRole && !matchDomain) return false;
+    }
+
+    // Filter pill tab
+    if (waChatFilter === 'archived') {
+      return item.isArchived;
+    } else {
+      if (item.isArchived) return false;
+      if (waChatFilter === 'unread') return item.unreadCount > 0;
+      if (waChatFilter === 'groups') return item.type === 'group';
+      return true; // 'all'
+    }
+  });
+
+  listContainer.innerHTML = '';
+
+  if (filteredItems.length === 0) {
+    listContainer.innerHTML = `
+      <div style="padding: 30px 15px; text-align: center; color: var(--text-muted); font-size: 0.85rem;">
+        <i data-lucide="search-x" style="width: 32px; height: 32px; margin-bottom: 8px; opacity: 0.5;"></i>
+        <p>No chats found matching your query.</p>
+      </div>
+    `;
+    lucide.createIcons();
+    return;
+  }
+
+  filteredItems.forEach(item => {
+    const el = document.createElement('div');
+    el.className = `wa-chat-item ${waActiveChat && waActiveChat.id === item.id ? 'active' : ''}`;
+    
+    let statusDotClass = 'free';
+    let statusText = '🟢 Free';
+    if (item.type === 'direct') {
+      if (item.status === 'in_meeting') {
+        statusDotClass = 'in_meeting';
+        statusText = '🔴 (in meeting)';
+      } else if (item.status === 'on_leave') {
+        statusDotClass = 'on_leave';
+        statusText = '🔴 (on leave)';
+      }
+    } else {
+      statusText = '👥 Group';
+    }
+
+    el.innerHTML = `
+      <div class="wa-avatar-wrapper">
+        <div class="wa-item-avatar ${item.type === 'group' ? 'group' : ''}">
+          ${getInitials(item.name)}
+        </div>
+        ${item.type === 'direct' ? `<span class="wa-status-dot ${statusDotClass}"></span>` : ''}
+      </div>
+      <div class="wa-chat-item-content">
+        <div class="wa-chat-item-top">
+          <span class="wa-chat-item-title">${item.name}</span>
+          <span class="wa-chat-item-time">${item.lastTime}</span>
+        </div>
+        <div class="wa-chat-item-bottom">
+          <span class="wa-chat-item-snippet">${item.lastMsg}</span>
+          <div style="display: flex; align-items: center; gap: 4px;">
+            ${item.type === 'direct' ? `<span class="wa-status-badge-inline ${statusDotClass}">${statusText}</span>` : ''}
+            ${item.unreadCount > 0 ? `<span class="wa-unread-badge">${item.unreadCount}</span>` : ''}
+          </div>
+        </div>
+      </div>
+    `;
+
+    el.onclick = () => selectWaChat(item);
+    listContainer.appendChild(el);
+  });
+
+  lucide.createIcons();
+}
+
+function selectWaChat(chatItem) {
+  waActiveChat = chatItem;
+  
+  // Hide empty state & show active chat UI
+  const emptyState = document.getElementById('wa-empty-state');
+  const activeChatUI = document.getElementById('wa-active-chat');
+  if (emptyState) emptyState.classList.add('hidden');
+  if (activeChatUI) activeChatUI.classList.remove('hidden');
+
+  // Update Header
+  const initialsEl = document.getElementById('wa-active-initials');
+  const statusDotEl = document.getElementById('wa-active-status-dot');
+  const titleEl = document.getElementById('wa-active-title');
+  const statusBadgeEl = document.getElementById('wa-active-status-badge');
+  const roleDomainEl = document.getElementById('wa-active-role-domain');
+
+  if (initialsEl) initialsEl.textContent = getInitials(chatItem.name);
+  if (titleEl) titleEl.textContent = chatItem.name;
+  if (roleDomainEl) roleDomainEl.textContent = `${chatItem.role} • ${chatItem.domain}`;
+
+  if (statusDotEl && statusBadgeEl) {
+    statusDotEl.className = 'wa-status-dot';
+    statusBadgeEl.className = 'wa-status-badge-inline';
+
+    if (chatItem.type === 'direct') {
+      statusDotEl.classList.remove('hidden');
+      if (chatItem.status === 'in_meeting') {
+        statusDotEl.classList.add('in_meeting');
+        statusBadgeEl.classList.add('in_meeting');
+        statusBadgeEl.textContent = '🔴 (in meeting)';
+      } else if (chatItem.status === 'on_leave') {
+        statusDotEl.classList.add('on_leave');
+        statusBadgeEl.classList.add('on_leave');
+        statusBadgeEl.textContent = '🔴 (on leave)';
+      } else {
+        statusDotEl.classList.add('free');
+        statusBadgeEl.classList.add('free');
+        statusBadgeEl.textContent = '🟢 Free';
+      }
+    } else {
+      statusDotEl.classList.add('hidden');
+      statusBadgeEl.classList.add('free');
+      statusBadgeEl.textContent = '👥 Group Chat';
+    }
+  }
+
+  // Mark chat as read locally & on server
+  const currentUserId = currentUser ? currentUser.id : '';
+  
+  if (!waUserPreferences[chatItem.id]) {
+    waUserPreferences[chatItem.id] = {};
+  }
+  waUserPreferences[chatItem.id].lastReadTimestamp = new Date().toISOString();
+
+  waAllMessages.forEach(m => {
+    const isTargetChat = (m.senderId === chatItem.id || m.receiverId === chatItem.id || m.sender === chatItem.name || m.receiver === chatItem.name);
+    if (isTargetChat && m.senderId !== currentUserId) {
+      if (!Array.isArray(m.readBy)) m.readBy = [];
+      if (!m.readBy.includes(currentUserId)) {
+        m.readBy.push(currentUserId);
+      }
+    }
+  });
+
+  chatItem.unreadCount = 0;
+  renderWaChatList();
+
+  fetch('/api/chat/mark-read', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ userId: currentUserId, chatId: chatItem.id })
+  });
+
+  // Load messages for active chat
+  loadWaActiveChatMessages();
+}
+
+function loadWaActiveChatMessages() {
+  if (!waActiveChat) return;
+
+  const container = document.getElementById('wa-messages-container');
+  if (!container) return;
+
+  const currentUserId = currentUser ? currentUser.id : '';
+  const currentUserName = currentUser ? currentUser.fullname : '';
+
+  // Filter messages for active chat
+  let msgs = [];
+  if (waActiveChat.type === 'direct') {
+    msgs = waAllMessages.filter(m => 
+      (m.senderId === currentUserId && m.receiverId === waActiveChat.id) ||
+      (m.senderId === waActiveChat.id && m.receiverId === currentUserId) ||
+      (m.sender === currentUserName && (m.receiver === waActiveChat.name || m.receiver.includes(waActiveChat.name))) ||
+      ((m.sender === waActiveChat.name || m.sender.includes(waActiveChat.name)) && m.receiver === currentUserName)
+    );
+  } else {
+    msgs = waAllMessages.filter(m => m.receiverId === waActiveChat.id || m.receiver === waActiveChat.name);
+  }
+
+  container.innerHTML = '';
+
+  if (msgs.length === 0) {
+    container.innerHTML = `
+      <div style="margin: auto; text-align: center; color: var(--text-muted); font-size: 0.88rem; background: var(--bg-secondary); padding: 12px 20px; border-radius: 16px; border: 1px solid var(--border-color);">
+         👋 Start of conversation with <strong>${waActiveChat.name}</strong>. Say hi!
+      </div>
+    `;
+    return;
+  }
+
+  msgs.forEach(m => {
+    const isOutgoing = (m.senderId === currentUserId || m.sender === currentUserName || m.sender === 'Current User');
+    const bubble = document.createElement('div');
+    bubble.className = `wa-msg-bubble ${isOutgoing ? 'outgoing' : 'incoming'}`;
+
+    let senderHeader = '';
+    if (waActiveChat.type === 'group' && !isOutgoing) {
+      senderHeader = `<div class="wa-msg-sender">${m.sender}</div>`;
+    }
+
+    bubble.innerHTML = `
+      ${senderHeader}
+      <div class="wa-msg-text">${escapeHtml(m.message)}</div>
+      <div class="wa-msg-meta">
+        <span>${formatChatTime(m.createdAt)}</span>
+        ${isOutgoing ? `<span class="wa-msg-ticks">✓✓</span>` : ''}
+      </div>
+    `;
+
+    container.appendChild(bubble);
+  });
+
+  // Scroll to bottom
+  container.scrollTop = container.scrollHeight;
+}
+
+async function sendWaMessage() {
+  const inputEl = document.getElementById('wa-message-input');
+  if (!inputEl || !waActiveChat) return;
+
+  const text = inputEl.value.trim();
+  if (!text) return;
+
+  const currentUserId = currentUser ? currentUser.id : '';
+  const currentUserName = currentUser ? currentUser.fullname : 'Current User';
+
+  inputEl.value = '';
+
+  try {
+    const res = await fetch('/api/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        sender: currentUserName,
+        receiver: waActiveChat.name,
+        senderId: currentUserId,
+        receiverId: waActiveChat.id,
+        message: text,
+        isGroup: waActiveChat.type === 'group'
+      })
+    });
+
+    if (res.ok) {
+      const newMsg = await res.json();
+      if (!isMsgDuplicate(newMsg, waAllMessages)) {
+        waAllMessages.push(newMsg);
+        loadWaActiveChatMessages();
+        renderWaChatList();
+      }
+    }
+  } catch (err) {
+    console.error("Error sending message:", err);
+  }
+}
+
+function isMsgDuplicate(m, msgList) {
+  return msgList.some(existing => 
+    (existing.id && m.id && existing.id === m.id) ||
+    (existing._id && m._id && existing._id === m._id) ||
+    (existing.sender === m.sender && existing.receiver === m.receiver && existing.message === m.message && Math.abs(new Date(existing.createdAt || 0).getTime() - new Date(m.createdAt || 0).getTime()) < 4000)
+  );
+}
+
+let waEventsInitialized = false;
+function initWaChatEvents() {
+  if (waEventsInitialized) return;
+  waEventsInitialized = true;
+
+  // Search input
+  const searchInput = document.getElementById('wa-chat-search');
+  const searchClear = document.getElementById('wa-search-clear');
+  if (searchInput) {
+    searchInput.oninput = (e) => {
+      waSearchQuery = e.target.value;
+      if (searchClear) {
+        if (waSearchQuery) searchClear.classList.remove('hidden');
+        else searchClear.classList.add('hidden');
+      }
+      renderWaChatList();
+    };
+  }
+  if (searchClear) {
+    searchClear.onclick = () => {
+      if (searchInput) searchInput.value = '';
+      waSearchQuery = '';
+      searchClear.classList.add('hidden');
+      renderWaChatList();
+    };
+  }
+
+  // Filter Pills
+  const pills = document.querySelectorAll('.wa-pill');
+  pills.forEach(p => {
+    p.onclick = function () {
+      pills.forEach(x => x.classList.remove('active'));
+      this.classList.add('active');
+      waChatFilter = this.getAttribute('data-filter') || 'all';
+      renderWaChatList();
     };
   });
 
-  async function loadMessages() {
-    if (!activeChatEmployee) return;
-    try {
-      const response = await fetch("/api/messages");
-      const messages = await response.json();
-      chatMessages.innerHTML = "";
-      renderedMessageIds.clear();
-
-      const employeeMessages = messages.filter(msg =>
-        (msg.sender === currentUserName && (msg.receiver === activeChatEmployee || msg.receiver.includes(activeChatEmployee))) ||
-        ((msg.sender === activeChatEmployee || msg.sender.includes(activeChatEmployee)) && msg.receiver === currentUserName) ||
-        (msg.sender === "Current User" && (msg.receiver === activeChatEmployee || msg.receiver.includes(activeChatEmployee))) ||
-        ((msg.sender === activeChatEmployee || msg.sender.includes(activeChatEmployee)) && msg.receiver === "Current User")
-      );
-
-      if (employeeMessages.length === 0) {
-        const emptyMessage = document.createElement("div");
-        emptyMessage.className = "empty-chat-message";
-        emptyMessage.textContent = "No messages yet. Say hello!";
-        chatMessages.appendChild(emptyMessage);
-        return;
-      }
-
-      employeeMessages.forEach(msg => {
-        if (msg._id) renderedMessageIds.add(msg._id);
-        appendSingleMessage(chatMessages, msg, currentUserName);
-      });
-      chatMessages.scrollTop = chatMessages.scrollHeight;
-    } catch (error) {
-      console.error("Error loading messages:", error);
-    }
+  // Archived Banner Click
+  const archivedBanner = document.getElementById('wa-archived-banner');
+  if (archivedBanner) {
+    archivedBanner.onclick = () => {
+      pills.forEach(x => x.classList.remove('active'));
+      const archivedPill = document.querySelector('.wa-pill[data-filter="archived"]');
+      if (archivedPill) archivedPill.classList.add('active');
+      waChatFilter = 'archived';
+      renderWaChatList();
+    };
   }
 
-  async function sendMessage() {
-    const messageText = chatInput.value.trim();
-    if (!activeChatEmployee) {
-      alert("Please select an employee first.");
-      return;
-    }
-    if (!messageText) return;
-
-    try {
-      chatInput.value = "";
-      const response = await fetch("/api/messages", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sender: "Current User", receiver: activeChatEmployee, message: messageText })
-      });
-      const newMessage = await response.json();
-      if (!response.ok) {
-        console.error("Error saving message:", newMessage);
-        return;
-      }
-      if (newMessage._id && !renderedMessageIds.has(newMessage._id)) {
-        renderedMessageIds.add(newMessage._id);
-        const emptyMsg = chatMessages.querySelector(".empty-chat-message");
-        if (emptyMsg) emptyMsg.remove();
-        appendSingleMessage(chatMessages, newMessage, currentUserName);
-        chatMessages.scrollTop = chatMessages.scrollHeight;
-      }
-    } catch (error) {
-      console.error("Error sending message:", error);
-      alert("Could not connect to chat server.");
-    }
+  // Menu Dropdown toggle
+  const menuBtn = document.getElementById('wa-btn-more-options');
+  const dropdown = document.getElementById('wa-menu-dropdown');
+  if (menuBtn && dropdown) {
+    menuBtn.onclick = (e) => {
+      e.stopPropagation();
+      dropdown.classList.toggle('hidden');
+    };
+    document.addEventListener('click', () => {
+      if (dropdown) dropdown.classList.add('hidden');
+    });
   }
 
-  sendButton.onclick = sendMessage;
-  if (chatInput) {
-    chatInput.onkeydown = function (e) {
-      if (e.key === "Enter") {
+  // Mark all as read menu item
+  const markAllReadBtn = document.getElementById('wa-menu-mark-all-read');
+  if (markAllReadBtn) {
+    markAllReadBtn.onclick = async () => {
+      const currentUserId = currentUser ? currentUser.id : '';
+      await fetch('/api/chat/mark-all-read', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: currentUserId })
+      });
+      showToast("All chats marked as read", "success");
+      await refreshWaChatData();
+    };
+  }
+
+  // Archived menu item
+  const viewArchivedBtn = document.getElementById('wa-menu-view-archived');
+  if (viewArchivedBtn) {
+    viewArchivedBtn.onclick = () => {
+      pills.forEach(x => x.classList.remove('active'));
+      const archivedPill = document.querySelector('.wa-pill[data-filter="archived"]');
+      if (archivedPill) archivedPill.classList.add('active');
+      waChatFilter = 'archived';
+      renderWaChatList();
+    };
+  }
+
+  // Archive / Unarchive Active Chat Toggle
+  const toggleArchiveBtn = document.getElementById('wa-btn-toggle-archive');
+  if (toggleArchiveBtn) {
+    toggleArchiveBtn.onclick = async () => {
+      if (!waActiveChat) return;
+      const currentUserId = currentUser ? currentUser.id : '';
+      const currentIsArchived = waActiveChat.isArchived;
+      await fetch('/api/chat/archive', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: currentUserId, chatId: waActiveChat.id, isArchived: !currentIsArchived })
+      });
+      showToast(currentIsArchived ? "Chat unarchived" : "Chat archived", "info");
+      await refreshWaChatData();
+    };
+  }
+
+  // Meeting button in chat header -> jump to meeting tab
+  const meetingBtn = document.getElementById('wa-btn-chat-meeting');
+  if (meetingBtn) {
+    meetingBtn.onclick = () => {
+      switchTab('meetings');
+    };
+  }
+
+  // Send message on click & enter key
+  const sendBtn = document.getElementById('wa-btn-send');
+  const msgInput = document.getElementById('wa-message-input');
+  if (sendBtn) sendBtn.onclick = sendWaMessage;
+  if (msgInput) {
+    msgInput.onkeydown = (e) => {
+      if (e.key === 'Enter') {
         e.preventDefault();
-        sendMessage();
+        sendWaMessage();
       }
     };
   }
+
+  // Create Group Modal Triggers
+  const btnNewGroup = document.getElementById('wa-btn-new-group');
+  const menuNewGroup = document.getElementById('wa-menu-new-group');
+  const groupModal = document.getElementById('create-group-modal');
+  const closeGroupModal = document.getElementById('close-group-modal');
+  const btnCancelGroup = document.getElementById('btn-cancel-group');
+  const groupForm = document.getElementById('create-group-form');
+  const groupSearch = document.getElementById('group-member-search');
+
+  function openGroupModal() {
+    if (groupModal) groupModal.classList.remove('hidden');
+    populateGroupMembersList('');
+  }
+  function closeGroupModalFunc() {
+    if (groupModal) groupModal.classList.add('hidden');
+  }
+
+  if (btnNewGroup) btnNewGroup.onclick = openGroupModal;
+  if (menuNewGroup) menuNewGroup.onclick = openGroupModal;
+  if (closeGroupModal) closeGroupModal.onclick = closeGroupModalFunc;
+  if (btnCancelGroup) btnCancelGroup.onclick = closeGroupModalFunc;
+
+  if (groupSearch) {
+    groupSearch.oninput = (e) => {
+      populateGroupMembersList(e.target.value);
+    };
+  }
+
+  if (groupForm) {
+    groupForm.onsubmit = async (e) => {
+      e.preventDefault();
+      const nameInput = document.getElementById('group-name-input');
+      const groupName = nameInput ? nameInput.value.trim() : '';
+      if (!groupName) return;
+
+      const checkedBoxes = document.querySelectorAll('.group-member-checkbox:checked');
+      const selectedMemberIds = Array.from(checkedBoxes).map(cb => cb.value);
+
+      const currentUserId = currentUser ? currentUser.id : '';
+      if (!selectedMemberIds.includes(currentUserId)) {
+        selectedMemberIds.push(currentUserId);
+      }
+
+      if (selectedMemberIds.length < 2) {
+        showToast("Please select at least one employee to create a group", "warning");
+        return;
+      }
+
+      try {
+        const res = await fetch('/api/groups', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: groupName,
+            createdById: currentUserId,
+            members: selectedMemberIds
+          })
+        });
+
+        if (res.ok) {
+          showToast(`Group "${groupName}" created!`, "success");
+          closeGroupModalFunc();
+          if (nameInput) nameInput.value = '';
+          await refreshWaChatData();
+        }
+      } catch (err) {
+        console.error("Error creating group:", err);
+      }
+    };
+  }
+
+  // Real-time Socket.IO Listeners
+  if (typeof socket !== 'undefined' && socket) {
+    socket.on("newMessage", (msg) => {
+      if (!isMsgDuplicate(msg, waAllMessages)) {
+        waAllMessages.push(msg);
+      }
+      if (waActiveChat && (
+        (waActiveChat.type === 'direct' && (msg.senderId === waActiveChat.id || msg.receiverId === waActiveChat.id || msg.sender === waActiveChat.name || msg.receiver === waActiveChat.name)) ||
+        (waActiveChat.type === 'group' && (msg.receiverId === waActiveChat.id || msg.receiver === waActiveChat.name))
+      )) {
+        loadWaActiveChatMessages();
+      }
+      renderWaChatList();
+    });
+
+    socket.on("employeeStatusChanged", () => {
+      fetch('/api/employees/status').then(res => res.json()).then(data => {
+        waEmployeesStatus = data;
+        renderWaChatList();
+        if (waActiveChat && waActiveChat.type === 'direct') {
+          const statusObj = waEmployeesStatus[waActiveChat.id] || { status: 'free', label: 'Free' };
+          waActiveChat.status = statusObj.status;
+          waActiveChat.statusLabel = statusObj.label;
+          selectWaChat(waActiveChat);
+        }
+      });
+    });
+
+    socket.on("groupCreated", () => {
+      refreshWaChatData();
+    });
+
+    socket.on("chatsMarkedRead", () => {
+      refreshWaChatData();
+    });
+
+    socket.on("chatMarkedRead", ({ userId, chatId }) => {
+      if (waUserPreferences[chatId]) {
+        waUserPreferences[chatId].lastReadTimestamp = new Date().toISOString();
+      }
+      waAllMessages.forEach(m => {
+        if ((m.senderId === chatId || m.receiverId === chatId) && m.senderId !== userId) {
+          if (!Array.isArray(m.readBy)) m.readBy = [];
+          if (!m.readBy.includes(userId)) m.readBy.push(userId);
+        }
+      });
+      renderWaChatList();
+    });
+  }
+}
+
+function populateGroupMembersList(query) {
+  const container = document.getElementById('group-members-list');
+  if (!container) return;
+
+  const currentUserId = currentUser ? currentUser.id : '';
+  const q = query.toLowerCase();
+
+  const filtered = waAllEmployees.filter(emp => {
+    if (emp.id === currentUserId) return false;
+    if (!q) return true;
+    return emp.fullname.toLowerCase().includes(q) || emp.role.toLowerCase().includes(q);
+  });
+
+  container.innerHTML = '';
+  filtered.forEach(emp => {
+    const row = document.createElement('label');
+    row.style.cssText = 'display: flex; align-items: center; gap: 8px; padding: 6px; cursor: pointer; border-bottom: 1px solid var(--border-color); font-size: 0.85rem; color: var(--text-primary);';
+    row.innerHTML = `
+      <input type="checkbox" class="group-member-checkbox" value="${emp.id}">
+      <span><strong>${emp.fullname}</strong> (${emp.role})</span>
+    `;
+    container.appendChild(row);
+  });
+}
+
+function getInitials(name) {
+  if (!name) return '??';
+  const parts = name.trim().split(' ');
+  if (parts.length === 1) return parts[0].substring(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
+function formatChatTime(dateStr) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return '';
+  const today = new Date();
+  if (d.toDateString() === today.toDateString()) {
+    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  }
+  return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
+}
+
+function escapeHtml(str) {
+  return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
