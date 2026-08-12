@@ -1397,7 +1397,7 @@ function setupWorkspace() {
 
   const attendanceNavItem = document.getElementById("nav-item-attendance");
   if (attendanceNavItem) {
-    if (currentUser.role === "Admin") {
+    if (currentUser.role === "Admin" && currentUser.id !== "usr-vibha") {
       attendanceNavItem.classList.add("hidden");
     } else {
       attendanceNavItem.classList.remove("hidden");
@@ -9600,7 +9600,7 @@ function renderManagerAttendanceSheet() {
   const users = db.getUsers() || [];
   const attendance = db.getAttendance() || [];
   let subordinates = [];
-  if (currentUser.role === "Admin") {
+  if (currentUser.role === "Admin" && currentUser.id !== "usr-vibha") {
     subordinates = users.filter(u => u.id !== currentUser.id);
   } else {
     subordinates = getSubordinates(currentUser.id, users);
