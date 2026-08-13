@@ -49,6 +49,206 @@ socket.on("connect", () => {
   console.log("SOCKET CONNECTED:", socket.id);
 });
 
+// ── GLOBAL: Incoming Call Invite (must be registered at global scope so it fires during meetings) ──
+let _ringAudioCtx = null;
+let _ringInterval = null;
+let _callAutoDismiss = null;
+let _pendingCallRoom = null;
+let _pendingCallerId = null;
+
+function _playRingTone() {
+  _stopRingTone();
+  try { _ringAudioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) { return; }
+
+  // Nokia-style classic phone ring: pleasant rising chord pattern
+  const notes = [
+    { freq: 1318.5, dur: 0.12 }, // E6
+    { freq: 1174.7, dur: 0.12 }, // D6
+    { freq: 739.99, dur: 0.22 }, // F#5
+    { freq: 987.77, dur: 0.22 }, // B5
+  ];
+
+  function ringSequence() {
+    if (!_ringAudioCtx) return;
+    let time = _ringAudioCtx.currentTime;
+    notes.forEach(({ freq, dur }) => {
+      const osc  = _ringAudioCtx.createOscillator();
+      const gain = _ringAudioCtx.createGain();
+      osc.connect(gain); gain.connect(_ringAudioCtx.destination);
+      osc.type = 'triangle';
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0, time);
+      gain.gain.linearRampToValueAtTime(0.22, time + 0.01);
+      gain.gain.setValueAtTime(0.22, time + dur - 0.02);
+      gain.gain.linearRampToValueAtTime(0, time + dur);
+      osc.start(time); osc.stop(time + dur);
+      time += dur + 0.01;
+    });
+    // Short pause, then repeat the same 4 notes
+    time += 0.08;
+    notes.forEach(({ freq, dur }) => {
+      const osc  = _ringAudioCtx.createOscillator();
+      const gain = _ringAudioCtx.createGain();
+      osc.connect(gain); gain.connect(_ringAudioCtx.destination);
+      osc.type = 'triangle';
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0, time);
+      gain.gain.linearRampToValueAtTime(0.22, time + 0.01);
+      gain.gain.setValueAtTime(0.22, time + dur - 0.02);
+      gain.gain.linearRampToValueAtTime(0, time + dur);
+      osc.start(time); osc.stop(time + dur);
+      time += dur + 0.01;
+    });
+  }
+
+  ringSequence();
+  _ringInterval = setInterval(ringSequence, 2400);
+}
+
+function _stopRingTone() {
+  if (_ringInterval) { clearInterval(_ringInterval); _ringInterval = null; }
+  if (_ringAudioCtx) { try { _ringAudioCtx.close(); } catch(e) {} _ringAudioCtx = null; }
+}
+
+function _showIncomingCallBanner(callerName, room) {
+  const banner = document.getElementById('incoming-call-banner');
+  if (!banner) return;
+  const nameEl = document.getElementById('incoming-call-name');
+  const avatarEl = document.getElementById('incoming-call-avatar');
+  if (nameEl) nameEl.textContent = callerName || 'A colleague';
+  if (avatarEl) {
+    const init = (callerName || '?').split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase();
+    avatarEl.textContent = init;
+  }
+  _pendingCallRoom = room;
+  banner.classList.remove('hidden');
+  banner.style.display = 'flex';
+  banner.style.animation = 'none';
+  void banner.offsetWidth;
+  banner.style.animation = 'callBannerSlideIn 0.4s cubic-bezier(0.34,1.56,0.64,1) forwards';
+  if (typeof lucide !== 'undefined') lucide.createIcons();
+  _playRingTone();
+  if (_callAutoDismiss) clearTimeout(_callAutoDismiss);
+  _callAutoDismiss = setTimeout(_dismissIncomingCall, 30000);
+}
+
+function _dismissIncomingCall() {
+  const banner = document.getElementById('incoming-call-banner');
+  if (banner) {
+    banner.classList.add('hidden');
+    banner.style.display = 'none';
+  }
+  _stopRingTone();
+  _pendingCallRoom = null;
+  if (_callAutoDismiss) { clearTimeout(_callAutoDismiss); _callAutoDismiss = null; }
+}
+
+function _handleIncomingCallInvite(data) {
+  if (!currentUser || !data) return;
+  const myId = String(currentUser.id || "").toLowerCase().trim();
+  const rawTargets = data.targetUserIds || (data.targetUserId ? [data.targetUserId] : []);
+  const targetIds = rawTargets.map(id => String(id).toLowerCase().trim());
+
+  if (!targetIds.includes(myId)) return;
+
+  const caller = data.callerName || "Colleague";
+  const room = data.room || data.roomCode || "instant-meeting";
+  _pendingCallerId = data.callerId || null;
+
+  if (typeof addAppNotification === "function") {
+    addAppNotification({
+      type: "meeting",
+      title: `📞 Incoming Call from ${caller}`,
+      message: `${caller} is calling you to join meeting room: ${room}`,
+      sender: caller,
+      actionTab: "meetings"
+    });
+  }
+  _showIncomingCallBanner(caller, room);
+}
+
+socket.on("instant-call-invite", _handleIncomingCallInvite);
+socket.on("incoming-call", _handleIncomingCallInvite);
+
+socket.on("call-declined", (data) => {
+  if (!data) return;
+  const declinerId = data.targetUserId;
+  const declinerName = data.targetName || "Participant";
+
+  if (declinerId) {
+    if (typeof meetingParticipantsList !== "undefined" && meetingParticipantsList[declinerId]) {
+      delete meetingParticipantsList[declinerId];
+    }
+    const videoTile = document.getElementById(`video-container-${declinerId}`);
+    if (videoTile) videoTile.remove();
+    if (typeof peerConnections !== "undefined" && peerConnections[declinerId]) {
+      try { peerConnections[declinerId].close(); } catch(e){}
+      delete peerConnections[declinerId];
+    }
+    if (typeof renderParticipantsList === "function") renderParticipantsList();
+  }
+
+  if (typeof showToast === "function") {
+    showToast(`${declinerName} declined the meeting call.`, "info");
+  }
+});
+
+function _initCallBannerButtons() {
+  const btnAccept  = document.getElementById('btn-accept-call');
+  const btnDecline = document.getElementById('btn-decline-call');
+  if (btnAccept) {
+    btnAccept.onclick = () => {
+      const room = _pendingCallRoom;
+      _dismissIncomingCall();
+      if (room) {
+        // 1. Switch to Meetings Tab immediately
+        if (typeof switchTab === "function") {
+          switchTab("meetings");
+        } else {
+          const navItem = document.getElementById("nav-item-meetings");
+          if (navItem) navItem.click();
+        }
+
+        // 2. Ensure meetings tab handlers are active
+        if (typeof renderMeetingsTab === "function") {
+          renderMeetingsTab();
+        }
+
+        // 3. Set meeting room and join call directly (WhatsApp style pickup)
+        const inp = document.getElementById("meeting-room-input");
+        const btn = document.getElementById("btn-join-meeting");
+        if (inp) inp.value = room;
+
+        setTimeout(() => {
+          if (btn) btn.click();
+        }, 150);
+      }
+    };
+  }
+  if (btnDecline) {
+    btnDecline.onclick = () => {
+      const room = _pendingCallRoom;
+      const callerId = _pendingCallerId;
+      _dismissIncomingCall();
+      if (typeof socket !== 'undefined' && socket) {
+        socket.emit("call-declined", {
+          callerId: callerId,
+          targetUserId: currentUser ? currentUser.id : "user",
+          targetName: currentUser ? (currentUser.fullname || currentUser.username).replace(/\s*\(.*\)\s*/g, "") : "Colleague",
+          room: room
+        });
+      }
+      if (typeof showToast === 'function') showToast('Call declined', 'info');
+    };
+  }
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', _initCallBannerButtons);
+} else {
+  _initCallBannerButtons();
+}
+
 function appendSingleMessage(container, msg, currentUserName) {
   const isSentByMe = msg.sender === currentUserName || msg.sender === "Current User";
   const messageEl = document.createElement("div");
@@ -352,6 +552,7 @@ async function startRealtimeSync() {
         else if (tabId === "attendance") renderAttendanceTab();
         else if (tabId === "meetings") renderScheduledMeetings();
         else if (tabId === "employees") renderEmployeesTab();
+        else if (tabId === "notifications") renderNotificationsTab();
       }
     }
   } catch (err) {
@@ -705,59 +906,31 @@ window.selectPortal = function(type) {
 
   if (type === "admin") {
 
-
-
     portalTitle.textContent = "ADMIN PORTAL LOGIN";
-
-
 
     credentialsHint.innerHTML = `
 
+      <div><span>Admin Username:</span> <code>sambhav</code></div>
 
-
-      <div><span>Admin Username:</span> <code>admin</code></div>
-
-
-
-      <div><span>Admin Password:</span> <code>admin123</code></div>
-
-
+      <div><span>Admin Password:</span> <code>sambhav123</code></div>
 
     `;
-
-
 
     document.getElementById("username").placeholder = "Enter admin username";
 
-
-
   } else {
-
-
 
     portalTitle.textContent = "STAFF PORTAL LOGIN";
 
-
-
     credentialsHint.innerHTML = `
 
+      <div><span>Manager Username:</span> <code>rashika</code> / <code>rashika123</code></div>
 
-
-      <div><span>Manager Username:</span> <code>manager1</code> / <code>manager123</code></div>
-
-
-
-      <div><span>Employee Username:</span> <code>employee1</code> / <code>emp123</code></div>
-
-
+      <div><span>Employee Username:</span> <code>amit</code> / <code>amit123</code></div>
 
     `;
 
-
-
     document.getElementById("username").placeholder = "Enter manager or employee username";
-
-
 
   }
 
@@ -879,182 +1052,69 @@ window.selectPortal = function(type) {
 
 
 
-function handleLogin(username, password) {
+async function handleLogin(username, password) {
+  const portalType = document.getElementById("login-portal-type") ? document.getElementById("login-portal-type").value : 'admin';
+  const rememberMeEl = document.getElementById("remember-me");
+  const rememberMeChecked = rememberMeEl ? rememberMeEl.checked : false;
 
-
-
-  const portalType = document.getElementById("login-portal-type").value;
-
-
-
-  const rememberMeChecked = document.getElementById("remember-me").checked;
-
-
-
-  const users = db.getUsers();
-
-
-
-  const matchedUser = users.find(
-
-
-
-    u => u.username.toLowerCase() === username.toLowerCase() && u.password === password
-
-
-
-  );
-
-
-
-
-
-
-
-  if (matchedUser) {
-
-
-
-    if (matchedUser.status !== "Active") {
-
-
-
-      showToast("Your account has been deactivated. Contact Admin.", "error");
-
-
-
-      return;
-
-
-
+  let users = db.getUsers() || [];
+  if (!users || users.length === 0) {
+    try {
+      const res = await fetch('/api/users');
+      if (res.ok) {
+        users = await res.json();
+        cachedUsers = users;
+      }
+    } catch (err) {
+      console.error("Error fetching users for login:", err);
     }
-
-
-
-
-
-
-
-    // Role vs Portal validation
-
-
-
-    if (portalType === "admin" && matchedUser.role !== "Admin") {
-
-
-
-      showToast("Access Denied: This portal is reserved for Administrators.", "error");
-
-
-
-      return;
-
-
-
-    }
-
-
-
-    if (portalType === "staff" && matchedUser.role === "Admin") {
-
-
-
-      showToast("Access Denied: Administrators must use the Admin Portal.", "error");
-
-
-
-      return;
-
-
-
-    }
-
-
-
-
-
-
-
-    currentUser = matchedUser;
-
-
-
-    sessionStorage.setItem("medastrax_current_user", JSON.stringify(currentUser));
-
-
-
-
-
-
-
-    // Remember me logic
-
-
-
-    if (rememberMeChecked) {
-
-
-
-      localStorage.setItem("medastrax_remembered_user", JSON.stringify(currentUser));
-
-
-
-      localStorage.setItem(`medastrax_remember_username_${portalType}`, username);
-
-
-
-      localStorage.setItem(`medastrax_remember_checkbox_${portalType}`, "true");
-
-
-
-    } else {
-
-
-
-      localStorage.removeItem("medastrax_remembered_user");
-
-
-
-      localStorage.removeItem(`medastrax_remember_username_${portalType}`);
-
-
-
-      localStorage.removeItem(`medastrax_remember_checkbox_${portalType}`);
-
-
-
-    }
-
-
-
-
-
-
-
-    db.logActivity(`${currentUser.fullname} logged into the ${portalType} portal.`, "success");
-
-
-
-    setupWorkspace();
-
-
-
-    showToast(`Welcome back, ${currentUser.fullname}!`, "success");
-
-
-
-  } else {
-
-
-
-    showToast("Invalid username or password.", "error");
-
-
-
   }
 
+  const cleanInput = (username || "").trim().toLowerCase();
+  const cleanPass = (password || "").trim();
 
+  const matchedUser = users.find(u => {
+    const uName = (u.username || "").trim().toLowerCase();
+    const uEmail = (u.email || "").trim().toLowerCase();
+    const uPass = (u.password || "").trim();
+    return (uName === cleanInput || uEmail === cleanInput) && uPass === cleanPass;
+  });
 
+  if (matchedUser) {
+    if (matchedUser.status && matchedUser.status !== "Active") {
+      showToast("Your account has been deactivated. Contact Admin.", "error");
+      return;
+    }
+
+    if (portalType === "admin" && matchedUser.role !== "Admin") {
+      showToast("Access Denied: This portal is reserved for Administrators.", "error");
+      return;
+    }
+
+    if (portalType === "staff" && matchedUser.role === "Admin") {
+      showToast("Access Denied: Administrators must use the Admin Portal.", "error");
+      return;
+    }
+
+    currentUser = matchedUser;
+    sessionStorage.setItem("medastrax_current_user", JSON.stringify(currentUser));
+
+    if (rememberMeChecked) {
+      localStorage.setItem("medastrax_remembered_user", JSON.stringify(currentUser));
+      localStorage.setItem(`medastrax_remember_username_${portalType}`, username);
+      localStorage.setItem(`medastrax_remember_checkbox_${portalType}`, "true");
+    } else {
+      localStorage.removeItem("medastrax_remembered_user");
+      localStorage.removeItem(`medastrax_remember_username_${portalType}`);
+      localStorage.removeItem(`medastrax_remember_checkbox_${portalType}`);
+    }
+
+    db.logActivity(`${currentUser.fullname} logged into the ${portalType} portal.`, "success");
+    setupWorkspace();
+    showToast(`Welcome back, ${currentUser.fullname}!`, "success");
+  } else {
+    showToast("Invalid username/email or password.", "error");
+  }
 }
 
 
@@ -1430,14 +1490,70 @@ function setupWorkspace() {
 
 
 
+let isPipMinimized = false;
+
+function syncMeetingPipWidget(activeTab) {
+  const pipWidget = document.getElementById("meeting-pip-widget");
+  const pipVideoArea = document.getElementById("meeting-pip-video-container");
+  const mainVideoGrid = document.getElementById("video-grid");
+  
+  if (!pipWidget || !pipVideoArea || !mainVideoGrid) return;
+
+  if (currentRoom && activeTab !== "meetings") {
+    pipWidget.classList.remove("hidden");
+    
+    // Move video containers to PiP widget
+    const videoContainers = mainVideoGrid.querySelectorAll("[id^='video-container-']");
+    videoContainers.forEach(container => {
+      container.style.borderRadius = "4px";
+      pipVideoArea.appendChild(container);
+    });
+
+    const pipMinimizeBtn = document.getElementById("btn-pip-minimize");
+    const pipExpandBtn = document.getElementById("btn-pip-expand");
+    
+    if (pipMinimizeBtn) {
+      pipMinimizeBtn.onclick = (e) => {
+        e.stopPropagation();
+        isPipMinimized = !isPipMinimized;
+        if (isPipMinimized) {
+          pipWidget.style.width = "180px";
+          pipWidget.style.height = "38px";
+          pipVideoArea.style.display = "none";
+          pipMinimizeBtn.innerHTML = '<i data-lucide="plus" style="width: 14px; height: 14px;"></i>';
+        } else {
+          pipWidget.style.width = "280px";
+          pipWidget.style.height = "180px";
+          pipVideoArea.style.display = "grid";
+          pipMinimizeBtn.innerHTML = '<i data-lucide="minus" style="width: 14px; height: 14px;"></i>';
+        }
+        lucide.createIcons();
+      };
+    }
+    
+    if (pipExpandBtn) {
+      pipExpandBtn.onclick = (e) => {
+        e.stopPropagation();
+        switchTab("meetings");
+      };
+    }
+  } else {
+    pipWidget.classList.add("hidden");
+    
+    // Move video containers back to main grid
+    const videoContainers = pipVideoArea.querySelectorAll("[id^='video-container-']");
+    videoContainers.forEach(container => {
+      container.style.borderRadius = "8px";
+      mainVideoGrid.appendChild(container);
+    });
+  }
+}
+
 function switchTab(tabId) {
-
-
+  // PiP floating widget interceptor
+  syncMeetingPipWidget(tabId);
 
   // Update nav links
-
-
-
   document.querySelectorAll(".nav-link").forEach(link => {
 
 
@@ -1527,6 +1643,7 @@ function switchTab(tabId) {
   else if (tabId === "meetings") renderMeetingsTab();
   else if (tabId === "chat") renderChatTab();
   else if (tabId === "performance") renderPerformanceTab();
+  else if (tabId === "notifications") renderNotificationsTab();
 
 
 
@@ -5104,6 +5221,50 @@ window.updateTaskStatus = function(taskId, newStatus) {
 
 
 
+    if (newStatus === "Completed") {
+
+
+
+      if (typeof addAppNotification === 'function') {
+
+
+
+        addAppNotification({
+
+
+
+          type: "task_completed",
+
+
+
+          title: "Task Completed",
+
+
+
+          message: `Task '${tasks[taskIndex].title}' was marked as Completed.`,
+
+
+
+          sender: typeof currentUser !== 'undefined' && currentUser ? currentUser.fullname : "System",
+
+
+
+          actionTab: "tasks"
+
+
+
+        });
+
+
+
+      }
+
+
+
+    }
+
+
+
 
 
 
@@ -6505,6 +6666,22 @@ function handleCreateTask(e) {
 
 
   db.saveTasks(tasks);
+
+
+
+
+
+
+
+  if (typeof addAppNotification === 'function') {
+    addAppNotification({
+      type: "task_assigned",
+      title: "New Task Assigned",
+      message: `Task '${title}' was assigned to ${assigneeUser ? assigneeUser.fullname : 'you'} by ${currentUser.fullname || 'Manager'}.`,
+      sender: currentUser.fullname || 'Manager',
+      actionTab: "tasks"
+    });
+  }
 
 
 
@@ -9903,6 +10080,8 @@ function renderEmployeeAttendanceDashboard() {
 // ==================== MEETINGS PORTAL IMPLEMENTATION ====================
 let notifiedMeetings = {};
 
+let activeMeetingFilterTab = "upcoming";
+
 function initMeetingsPortal() {
   const scheduleModal = document.getElementById("schedule-meeting-modal");
   const editModal = document.getElementById("edit-meeting-modal");
@@ -9911,6 +10090,637 @@ function initMeetingsPortal() {
   // Request browser notification permission if not asked yet
   if ("Notification" in window && Notification.permission === "default") {
     Notification.requestPermission();
+  }
+
+  // Prevent accidental refresh / tab close during call
+  window.addEventListener("beforeunload", (e) => {
+    if (currentRoom) {
+      e.preventDefault();
+      e.returnValue = "Are you sure you want to leave the active meeting?";
+      return e.returnValue;
+    }
+  });
+
+  // Auto-reconnect on refresh
+  const savedRoom = localStorage.getItem("activeMeetingRoom");
+  if (savedRoom) {
+    setTimeout(() => {
+      const roomInput = document.getElementById("meeting-room-input");
+      const btnJoin = document.getElementById("btn-join-meeting");
+      if (roomInput && btnJoin) {
+        roomInput.value = savedRoom;
+        btnJoin.click();
+        showToast("Automatically reconnected to your active call.", "success");
+      }
+    }, 1200);
+  }
+
+  // Set up personal details in Meetings Welcome banner
+  if (currentUser) {
+    const firstName = currentUser.fullname.replace(/\s*\(.*\)\s*/g, "").trim().split(' ')[0];
+    const welcomeText = document.getElementById("meetings-welcome-text");
+    if (welcomeText) {
+      welcomeText.textContent = `Hello, ${currentUser.fullname.replace(/\s*\(.*\)\s*/g, "").trim()}`;
+    }
+    const avatarEl = document.getElementById("meetings-user-avatar");
+    if (avatarEl) {
+      avatarEl.textContent = firstName.charAt(0).toUpperCase();
+    }
+  }
+
+  // Quick Action Dropdown Trigger
+  const quickActionBtn = document.getElementById("meetings-quick-action-btn");
+  const quickMenu = document.getElementById("meetings-quick-menu");
+  if (quickActionBtn && quickMenu) {
+    quickActionBtn.onclick = (e) => {
+      e.stopPropagation();
+      quickMenu.classList.toggle("hidden");
+    };
+    document.addEventListener("click", () => {
+      quickMenu.classList.add("hidden");
+    });
+  }
+
+  // Filter tabs setup
+  const btnUpcoming = document.getElementById("filter-upcoming-meetings");
+  const btnPrevious = document.getElementById("filter-previous-meetings");
+  if (btnUpcoming && btnPrevious) {
+    btnUpcoming.onclick = () => {
+      btnUpcoming.classList.add("active");
+      btnPrevious.classList.remove("active");
+      activeMeetingFilterTab = "upcoming";
+      renderScheduledMeetings();
+    };
+    btnPrevious.onclick = () => {
+      btnPrevious.classList.add("active");
+      btnUpcoming.classList.remove("active");
+      activeMeetingFilterTab = "previous";
+      renderScheduledMeetings();
+    };
+  }
+
+  // Search filter setup
+  const searchInput = document.getElementById("meetings-search-input");
+  if (searchInput) {
+    searchInput.oninput = () => {
+      renderScheduledMeetings();
+    };
+  }
+
+  // Actions click bindings
+  const btnMeetNow = document.getElementById("card-meet-now");
+  const menuMeetNow = document.getElementById("menu-meet-now");
+  
+  let lobbyLocalStream = null;
+  let lobbyIsCamOn = true;
+  let lobbyIsMicOn = true;
+
+  const lobbyModal = document.getElementById("meeting-lobby-modal");
+  
+  const closeLobby = () => {
+    if (lobbyLocalStream) {
+      lobbyLocalStream.getTracks().forEach(track => track.stop());
+      lobbyLocalStream = null;
+    }
+    const previewVideo = document.getElementById("lobby-camera-preview");
+    if (previewVideo) previewVideo.srcObject = null;
+    if (lobbyModal) lobbyModal.classList.add("hidden");
+  };
+
+  function renderLobbyInviteList() {
+    const container = document.getElementById("lobby-invite-list");
+    if (!container) return;
+    container.innerHTML = "";
+    
+    const users = db.getUsers() || [];
+    users.forEach(user => {
+      if (user.id === currentUser.id) return;
+      const label = document.createElement("label");
+      label.style.display = "flex";
+      label.style.alignItems = "center";
+      label.style.gap = "8px";
+      label.style.fontSize = "12px";
+      label.style.cursor = "pointer";
+      label.style.color = "var(--text-primary)";
+      label.style.marginBottom = "4px";
+      
+      label.innerHTML = `
+        <input type="checkbox" class="lobby-invite-chk" value="${user.id}" style="cursor:pointer;">
+        <span>${user.fullname.replace(/\s*\(.*\)\s*/g, "")} (${user.role})</span>
+      `;
+      container.appendChild(label);
+    });
+  }
+
+  const openMeetingLobby = async (room) => {
+    lobbyIsCamOn = true;
+    lobbyIsMicOn = true;
+
+    // Reset warnings and alerts
+    const noCamWarning = document.getElementById("lobby-no-cam-warning");
+    if (noCamWarning) noCamWarning.classList.add("hidden");
+
+    // Populate display details
+    const roomCodeDisplay = document.getElementById("lobby-room-code");
+    if (roomCodeDisplay) roomCodeDisplay.textContent = room;
+
+    const displayNameInput = document.getElementById("lobby-display-name");
+    if (displayNameInput) displayNameInput.value = currentUser.fullname.replace(/\s*\(.*\)\s*/g, "");
+
+    // Populate invitation list
+    renderLobbyInviteList();
+
+    // Reset overlay
+    const camOffAvatar = document.getElementById("lobby-camera-off-avatar");
+    if (camOffAvatar) camOffAvatar.classList.add("hidden");
+    const avatarChar = document.getElementById("lobby-avatar-char");
+    if (avatarChar) avatarChar.textContent = currentUser.fullname.trim().charAt(0).toUpperCase();
+
+    // Populate devices select list
+    const videoSelect = document.getElementById("lobby-video-input");
+    const audioSelect = document.getElementById("lobby-audio-input");
+    const speakerSelect = document.getElementById("lobby-speaker-input");
+    if (videoSelect && audioSelect) {
+      videoSelect.innerHTML = "";
+      audioSelect.innerHTML = "";
+      try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        devices.forEach(device => {
+          const option = document.createElement("option");
+          option.value = device.deviceId;
+          if (device.kind === "videoinput") {
+            option.textContent = device.label || `Camera ${videoSelect.length + 1}`;
+            videoSelect.appendChild(option);
+          } else if (device.kind === "audioinput") {
+            option.textContent = device.label || `Microphone ${audioSelect.length + 1}`;
+            audioSelect.appendChild(option);
+          } else if (device.kind === "audiooutput" && speakerSelect) {
+            const opt = document.createElement("option");
+            opt.value = device.deviceId;
+            opt.textContent = device.label || `Speaker ${speakerSelect.length}`;
+            speakerSelect.appendChild(opt);
+          }
+        });
+      } catch (err) {
+        console.error("Lobby listing devices error:", err);
+      }
+    }
+
+    // Toggle switch inputs state
+    const camToggleSwitch = document.getElementById("lobby-toggle-cam-checkbox");
+    const micToggleSwitch = document.getElementById("lobby-toggle-mic-checkbox");
+    if (camToggleSwitch) camToggleSwitch.checked = true;
+    if (micToggleSwitch) micToggleSwitch.checked = true;
+
+    // Start camera preview
+    const previewVideo = document.getElementById("lobby-camera-preview");
+    if (previewVideo) {
+      try {
+        const vId = videoSelect && videoSelect.value;
+        const aId = audioSelect && audioSelect.value;
+        
+        lobbyLocalStream = await navigator.mediaDevices.getUserMedia({
+          video: vId ? { deviceId: { exact: vId } } : true,
+          audio: aId ? { deviceId: { exact: aId } } : true
+        });
+        previewVideo.srcObject = lobbyLocalStream;
+      } catch (err) {
+        console.error("Lobby preview capture error:", err);
+        if (noCamWarning) noCamWarning.classList.remove("hidden");
+      }
+    }
+
+    // Mirror checklist binding
+    const mirrorChk = document.getElementById("lobby-mirror-chk");
+    if (mirrorChk && previewVideo) {
+      mirrorChk.onchange = () => {
+        previewVideo.style.transform = mirrorChk.checked ? "scaleX(-1)" : "scaleX(1)";
+      };
+      previewVideo.style.transform = mirrorChk.checked ? "scaleX(-1)" : "scaleX(1)";
+    }
+
+    // Switch toggles events
+    if (camToggleSwitch) {
+      camToggleSwitch.onchange = () => {
+        lobbyIsCamOn = camToggleSwitch.checked;
+        if (lobbyLocalStream) {
+          lobbyLocalStream.getVideoTracks().forEach(track => track.enabled = lobbyIsCamOn);
+        }
+        if (camOffAvatar) {
+          if (lobbyIsCamOn) camOffAvatar.classList.add("hidden");
+          else camOffAvatar.classList.remove("hidden");
+        }
+      };
+    }
+
+    if (micToggleSwitch) {
+      micToggleSwitch.onchange = () => {
+        lobbyIsMicOn = micToggleSwitch.checked;
+        if (lobbyLocalStream) {
+          lobbyLocalStream.getAudioTracks().forEach(track => track.enabled = lobbyIsMicOn);
+        }
+      };
+    }
+
+    // Device change refresh preview
+    if (videoSelect) {
+      videoSelect.onchange = async () => {
+        if (lobbyLocalStream) {
+          lobbyLocalStream.getTracks().forEach(t => t.stop());
+        }
+        try {
+          if (noCamWarning) noCamWarning.classList.add("hidden");
+          lobbyLocalStream = await navigator.mediaDevices.getUserMedia({
+            video: { deviceId: { exact: videoSelect.value } },
+            audio: audioSelect.value ? { deviceId: { exact: audioSelect.value } } : true
+          });
+          if (previewVideo) previewVideo.srcObject = lobbyLocalStream;
+          lobbyLocalStream.getVideoTracks().forEach(track => track.enabled = lobbyIsCamOn);
+          lobbyLocalStream.getAudioTracks().forEach(track => track.enabled = lobbyIsMicOn);
+        } catch (err) {
+          console.error("Refresh preview video error:", err);
+          if (noCamWarning) noCamWarning.classList.remove("hidden");
+        }
+      };
+    }
+
+    if (audioSelect) {
+      audioSelect.onchange = async () => {
+        if (lobbyLocalStream) {
+          lobbyLocalStream.getTracks().forEach(t => t.stop());
+        }
+        try {
+          lobbyLocalStream = await navigator.mediaDevices.getUserMedia({
+            video: videoSelect.value ? { deviceId: { exact: videoSelect.value } } : true,
+            audio: { deviceId: { exact: audioSelect.value } }
+          });
+          if (previewVideo) previewVideo.srcObject = lobbyLocalStream;
+          lobbyLocalStream.getVideoTracks().forEach(track => track.enabled = lobbyIsCamOn);
+          lobbyLocalStream.getAudioTracks().forEach(track => track.enabled = lobbyIsMicOn);
+        } catch (err) {
+          console.error("Refresh preview audio error:", err);
+        }
+      };
+    }
+
+    if (lobbyModal) lobbyModal.classList.remove("hidden");
+    lucide.createIcons();
+  };
+
+  // Bind controls inside Lobby modal
+  const btnCloseLobby = document.getElementById("close-lobby-modal");
+  const btnCancelLobby = document.getElementById("btn-cancel-lobby");
+  if (btnCloseLobby) btnCloseLobby.onclick = closeLobby;
+  if (btnCancelLobby) btnCancelLobby.onclick = closeLobby;
+
+  // Sound test button binding
+  const btnTestSound = document.getElementById("lobby-btn-test-sound");
+  if (btnTestSound) {
+    btnTestSound.onclick = () => {
+      try {
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+        oscillator.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+        oscillator.type = "sine";
+        oscillator.frequency.value = 440;
+        gainNode.gain.setValueAtTime(0.08, audioCtx.currentTime);
+        oscillator.start();
+        oscillator.stop(audioCtx.currentTime + 0.35);
+      } catch (err) {
+        console.error("Audio test sound context error:", err);
+      }
+    };
+  }
+
+  const btnLobbyJoin = document.getElementById("btn-lobby-join-meeting");
+  if (btnLobbyJoin) {
+    btnLobbyJoin.onclick = () => {
+      const roomCodeDisplay = document.getElementById("lobby-room-code");
+      const room = roomCodeDisplay ? roomCodeDisplay.textContent : "";
+      
+      // Save display name overrides
+      const displayNameInput = document.getElementById("lobby-display-name");
+      if (displayNameInput && displayNameInput.value.trim()) {
+        currentUser.fullname = displayNameInput.value.trim();
+      }
+
+      // Check if any invitations were selected and send them
+      const checkedInvitations = document.querySelectorAll(".lobby-invite-chk:checked");
+      if (checkedInvitations.length > 0 && socket) {
+        const invitedUserIds = Array.from(checkedInvitations).map(chk => chk.value);
+        socket.emit("meeting-scheduled", {
+          roomCode: room,
+          title: "Instant Meeting (" + currentUser.fullname.replace(/\s*\(.*\)\s*/g, "") + ")",
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          participants: invitedUserIds,
+          scheduledBy: currentUser.fullname.replace(/\s*\(.*\)\s*/g, "")
+        });
+        showToast(`Sent call invitations to ${checkedInvitations.length} colleagues.`, "success");
+      }
+
+      // Sync toggles and devices config
+      isCamOn = lobbyIsCamOn;
+      isMicOn = lobbyIsMicOn;
+
+      // Pass the lobby stream to localStream directly to prevent hardware locks!
+      localStream = lobbyLocalStream;
+      lobbyLocalStream = null;
+      if (localStream) {
+        localStream.getVideoTracks().forEach(track => track.enabled = isCamOn);
+        localStream.getAudioTracks().forEach(track => track.enabled = isMicOn);
+      }
+      
+      const previewVideo = document.getElementById("lobby-camera-preview");
+      if (previewVideo) previewVideo.srcObject = null;
+      if (lobbyModal) lobbyModal.classList.add("hidden");
+
+      // Set input code and start call join
+      document.getElementById("meeting-room-input").value = room;
+      document.getElementById("btn-join-meeting").click();
+      
+      // Show Welcome Invite Overlay modal inside the call
+      setTimeout(() => {
+        const inviteOverlay = document.getElementById("meeting-invite-overlay-modal");
+        if (inviteOverlay) inviteOverlay.classList.remove("hidden");
+      }, 1000);
+    };
+  }
+
+  const startMeetNow = () => {
+    const room = "meet-" + Math.random().toString(36).substring(2, 8);
+    openMeetingLobby(room);
+  };
+  if (btnMeetNow) btnMeetNow.onclick = startMeetNow;
+  if (menuMeetNow) menuMeetNow.onclick = startMeetNow;
+
+  // ── INVITE OVERLAY: Close ─────────────────────────────────────────────────
+  const closeInviteOverlay = document.getElementById("close-invite-overlay-btn");
+  if (closeInviteOverlay) {
+    closeInviteOverlay.onclick = () => {
+      document.getElementById("meeting-invite-overlay-modal").classList.add("hidden");
+    };
+  }
+
+  // ── COPY INVITATION ───────────────────────────────────────────────────────
+  const inviteCopy = document.getElementById("btn-invite-copy-invitation");
+  if (inviteCopy) {
+    inviteCopy.onclick = () => {
+      const room = currentRoom;
+      const host = window.location.origin;
+      const text =
+        `You're invited to a MedAstraX video meeting!\n\n` +
+        `📋 Room Code : ${room}\n` +
+        `🔗 Join Link : ${host}/?join=${room}\n\n` +
+        `Click the link above or paste the room code in the Meetings tab to join.`;
+      navigator.clipboard.writeText(text).then(() => {
+        const orig = inviteCopy.innerHTML;
+        inviteCopy.innerHTML = `<i data-lucide="check" style="width:16px;height:16px;color:#82b834;"></i> Copied!`;
+        inviteCopy.style.borderColor = "#82b834";
+        lucide.createIcons();
+        setTimeout(() => { inviteCopy.innerHTML = orig; inviteCopy.style.borderColor = ""; lucide.createIcons(); }, 2000);
+      }).catch(() => showToast("Could not copy — please copy manually.", "error"));
+    };
+  }
+
+  // ── COPY LINK ─────────────────────────────────────────────────────────────
+  const inviteCopyLink = document.getElementById("btn-invite-copy-link");
+  if (inviteCopyLink) {
+    inviteCopyLink.onclick = () => {
+      const host = window.location.origin;
+      const link = `${host}/?join=${currentRoom}`;
+      navigator.clipboard.writeText(link).then(() => {
+        const orig = inviteCopyLink.innerHTML;
+        inviteCopyLink.innerHTML = `<i data-lucide="check" style="width:16px;height:16px;color:#82b834;"></i> Copied!`;
+        inviteCopyLink.style.borderColor = "#82b834";
+        lucide.createIcons();
+        setTimeout(() => { inviteCopyLink.innerHTML = orig; inviteCopyLink.style.borderColor = ""; lucide.createIcons(); }, 2000);
+      }).catch(() => showToast("Could not copy — please copy manually.", "error"));
+    };
+  }
+
+  // ── ADD PARTICIPANTS: Pre-loaded user cache ─────────────────────────────────
+  let _apUserCache = [];
+
+  // Pre-fetch users so list is instant when modal opens
+  async function _apPreloadUsers() {
+    let users = (typeof db !== "undefined") ? db.getUsers() : [];
+    if (!users || users.length === 0) {
+      try {
+        const res = await fetch('/api/users');
+        if (res.ok) users = await res.json();
+      } catch(e) {}
+    }
+    if (!users || users.length === 0) users = waAllEmployees || [];
+    _apUserCache = users;
+  }
+
+  // Helper: get avatar gradient based on name
+  function apAvatarGradient(name) {
+    const colors = [
+      ["#0ea5e9","#6366f1"],["#f59e0b","#ef4444"],["#10b981","#06b6d4"],
+      ["#8b5cf6","#ec4899"],["#82b834","#059669"],["#f97316","#eab308"]
+    ];
+    const idx = (name || "?").charCodeAt(0) % colors.length;
+    return `linear-gradient(135deg, ${colors[idx][0]}, ${colors[idx][1]})`;
+  }
+
+  // Synchronous render from cache — no async, no waiting
+  function populateAddParticipantsList(query) {
+    const container = document.getElementById("add-participants-list");
+    if (!container) return;
+
+    const q = (query || "").toLowerCase().trim();
+    const allUsers = _apUserCache.length ? _apUserCache : (waAllEmployees || []);
+    const filtered = allUsers.filter(u => {
+      if (u.id === (currentUser && currentUser.id)) return false;
+      if (!q) return true;
+      return (u.fullname || "").toLowerCase().includes(q) || (u.role || "").toLowerCase().includes(q);
+    });
+
+    container.innerHTML = "";
+    if (filtered.length === 0) {
+      container.innerHTML = `<div style="text-align:center;padding:24px 0;color:#475569;font-size:13px;">${_apUserCache.length === 0 ? "Loading employees..." : "No employees found"}</div>`;
+      return;
+    }
+    filtered.forEach(emp => {
+      const initials = (emp.fullname || "?").split(" ").map(w => w[0]).join("").substring(0, 2).toUpperCase();
+      const row = document.createElement("label");
+      row.className = "ap-employee-row";
+      row.style.cssText = "display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:10px;cursor:pointer;transition:background 0.15s;user-select:none;";
+      row.innerHTML = `
+        <input type="checkbox" class="ap-emp-checkbox" value="${emp.id}" style="width:16px;height:16px;accent-color:#82b834;cursor:pointer;flex-shrink:0;">
+        <div class="ap-avatar" style="width:36px;height:36px;border-radius:50%;background:${apAvatarGradient(emp.fullname)};display:flex;align-items:center;justify-content:center;font-size:0.85rem;font-weight:700;color:#fff;flex-shrink:0;">${initials}</div>
+        <div style="flex:1;min-width:0;">
+          <div class="ap-emp-name" style="font-size:13px;font-weight:600;color:#e2e8f0;">${emp.fullname || emp.username || emp.id}</div>
+          <div class="ap-emp-role" style="font-size:11px;color:#64748b;margin-top:1px;">${emp.role || emp.department || ""}</div>
+        </div>
+      `;
+      const chk = row.querySelector(".ap-emp-checkbox");
+      chk.addEventListener("change", updateApCount);
+      container.appendChild(row);
+    });
+    updateApCount();
+  }
+
+  // Open Add Participants Modal
+  const inviteAddUsers = document.getElementById("btn-invite-add-users");
+  const addParticipantsModal = document.getElementById("add-participants-modal");
+
+  function openAddParticipantsModal() {
+    // 1. Force-hide invite overlay completely
+    const inviteOverlay = document.getElementById("meeting-invite-overlay-modal");
+    if (inviteOverlay) {
+      inviteOverlay.classList.add("hidden");
+      inviteOverlay.style.setProperty("display", "none", "important");
+    }
+
+    const modal = document.getElementById("add-participants-modal");
+    if (!modal) return;
+
+    // 2. Show add-participants-modal immediately with absolute maximum z-index
+    modal.classList.remove("hidden");
+    modal.style.setProperty("display", "flex", "important");
+    modal.style.setProperty("z-index", "2147483647", "important");
+
+    const searchEl = document.getElementById("add-participants-search");
+    if (searchEl) {
+      searchEl.value = "";
+      setTimeout(() => searchEl.focus(), 50);
+    }
+
+    // 3. Render employee list immediately
+    populateAddParticipantsList("");
+    if (typeof lucide !== "undefined") lucide.createIcons();
+
+    // 4. Pre-fetch in background and re-render if needed
+    _apPreloadUsers().then(() => {
+      populateAddParticipantsList(searchEl ? searchEl.value : "");
+      if (typeof lucide !== "undefined") lucide.createIcons();
+    });
+  }
+
+  function updateApCount() {
+    const checked = document.querySelectorAll(".ap-emp-checkbox:checked");
+    const countEl = document.getElementById("add-participants-count");
+    const sendBtn = document.getElementById("btn-send-call-invites");
+    if (countEl) countEl.textContent = `${checked.length} selected`;
+    if (sendBtn) {
+      if (checked.length > 0) {
+        sendBtn.style.opacity = "1";
+        sendBtn.style.pointerEvents = "auto";
+      } else {
+        sendBtn.style.opacity = "0.5";
+        sendBtn.style.pointerEvents = "none";
+      }
+    }
+  }
+
+  if (inviteAddUsers) {
+    inviteAddUsers.onclick = () => {
+      openAddParticipantsModal();
+    };
+  }
+
+  const closeApBtn = document.getElementById("close-add-participants-modal");
+  const cancelApBtn = document.getElementById("btn-cancel-add-participants");
+  const closeApModal = () => {
+    if (addParticipantsModal) addParticipantsModal.style.display = "none";
+  };
+  if (closeApBtn) closeApBtn.onclick = closeApModal;
+  if (cancelApBtn) cancelApBtn.onclick = closeApModal;
+
+  const apSearchInput = document.getElementById("add-participants-search");
+  if (apSearchInput) {
+    apSearchInput.oninput = (e) => populateAddParticipantsList(e.target.value);
+  }
+
+  const sendCallInvitesBtn = document.getElementById("btn-send-call-invites");
+  if (sendCallInvitesBtn) {
+    sendCallInvitesBtn.onclick = () => {
+      const selected = Array.from(document.querySelectorAll(".ap-emp-checkbox:checked")).map(cb => cb.value);
+      if (selected.length === 0) return;
+
+      const callerName = currentUser ? (currentUser.fullname || currentUser.username || "Colleague").replace(/\s*\(.*\)\s*/g, "") : "Colleague";
+      const room = currentRoom || "instant-meeting";
+
+      if (typeof socket !== "undefined" && socket) {
+        const payload = {
+          callerId: currentUser ? currentUser.id : "user",
+          callerName: callerName,
+          targetUserIds: selected,
+          targetUserId: selected[0],
+          room: room,
+          roomCode: room
+        };
+        socket.emit("instant-call-invite", payload);
+        socket.emit("incoming-call", payload);
+      }
+
+      showToast(`Invited ${selected.length} participant(s) to the call!`, "success");
+      closeApModal();
+    };
+  }
+
+  // Handle Escape key globally to dismiss overlays cleanly
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      const apModal = document.getElementById("add-participants-modal");
+      if (apModal && apModal.style.display !== "none") {
+        apModal.style.display = "none";
+      }
+      const invOverlay = document.getElementById("meeting-invite-overlay-modal");
+      if (invOverlay && !invOverlay.classList.contains("hidden")) {
+        invOverlay.classList.add("hidden");
+        invOverlay.style.display = "none";
+      }
+    }
+  });
+
+
+
+  const btnSchedule = document.getElementById("card-schedule-meeting");
+
+
+  const menuSchedule = document.getElementById("menu-schedule-meeting");
+  const openSchedule = () => {
+    document.getElementById("btn-open-sched-modal").click();
+  };
+  if (btnSchedule) btnSchedule.onclick = openSchedule;
+  if (menuSchedule) menuSchedule.onclick = openSchedule;
+
+  // Join Meeting Prompt Modal
+  const btnJoinCard = document.getElementById("card-join-meeting");
+  const menuJoin = document.getElementById("menu-join-meeting");
+  const joinPromptModal = document.getElementById("join-meeting-prompt-modal");
+  const openJoinPrompt = () => {
+    document.getElementById("join-prompt-room-input").value = "";
+    joinPromptModal.classList.remove("hidden");
+    setTimeout(() => document.getElementById("join-prompt-room-input").focus(), 100);
+  };
+  if (btnJoinCard) btnJoinCard.onclick = openJoinPrompt;
+  if (menuJoin) menuJoin.onclick = openJoinPrompt;
+
+  // Close Join Prompt Modal
+  const closeJoinPrompt = () => joinPromptModal.classList.add("hidden");
+  const btnCloseJoinPrompt = document.getElementById("close-join-prompt-modal");
+  const btnCancelJoinPrompt = document.getElementById("cancel-join-prompt-btn");
+  if (btnCloseJoinPrompt) btnCloseJoinPrompt.onclick = closeJoinPrompt;
+  if (btnCancelJoinPrompt) btnCancelJoinPrompt.onclick = closeJoinPrompt;
+
+  // Submit Join Prompt
+  const joinPromptForm = document.getElementById("join-meeting-prompt-form");
+  if (joinPromptForm) {
+    joinPromptForm.onsubmit = (e) => {
+      e.preventDefault();
+      const room = document.getElementById("join-prompt-room-input").value.trim();
+      if (room) {
+        document.getElementById("meeting-room-input").value = room;
+        document.getElementById("btn-join-meeting").click();
+        closeJoinPrompt();
+      }
+    };
   }
 
   // Render scheduled meetings on portal initialization
@@ -9949,9 +10759,68 @@ function initMeetingsPortal() {
       document.getElementById("sched-time").value = "";
       document.getElementById("sched-desc").value = "";
       document.getElementById("sched-room").value = "room-" + Math.random().toString(36).substring(2, 8);
+
+      // Reset Recurring Meeting options
+      const chkRecurring = document.getElementById("sched-is-recurring");
+      const optionsRecurrence = document.getElementById("sched-recurrence-options");
+      if (chkRecurring) chkRecurring.checked = false;
+      if (optionsRecurrence) optionsRecurrence.classList.add("hidden");
+      if (typeof updateRecurrenceSummary === "function") updateRecurrenceSummary();
+
       scheduleModal.classList.remove("hidden");
     };
   }
+
+  // Recurring Meeting UI Handlers
+  const chkRecurring = document.getElementById("sched-is-recurring");
+  const optionsRecurrence = document.getElementById("sched-recurrence-options");
+  const selectRecurrenceType = document.getElementById("sched-recurrence-type");
+  const inputRepeatInterval = document.getElementById("sched-repeat-interval");
+  const spanRepeatUnit = document.getElementById("sched-repeat-unit");
+  const summaryRecurrence = document.getElementById("sched-recurring-summary");
+
+  function updateRecurrenceSummary() {
+    if (!chkRecurring || !chkRecurring.checked) {
+      if (summaryRecurrence) summaryRecurrence.textContent = "Does not repeat";
+      return;
+    }
+    const type = selectRecurrenceType ? selectRecurrenceType.value : "Daily";
+    const num = Math.max(1, parseInt(inputRepeatInterval ? inputRepeatInterval.value : 1) || 1);
+    
+    let unit = "day";
+    let summaryStr = "";
+
+    if (type === "Daily") {
+      unit = num === 1 ? "day" : "days";
+      summaryStr = num === 1 ? "Repeats every day at scheduled time" : `Repeats every ${num} days at scheduled time`;
+    } else if (type === "Weekly") {
+      unit = num === 1 ? "week" : "weeks";
+      summaryStr = num === 1 ? "Repeats every week at scheduled time" : `Repeats every ${num} weeks at scheduled time`;
+    } else if (type === "Weekdays") {
+      unit = "day";
+      summaryStr = "Repeats every weekday (Monday to Friday)";
+    } else if (type === "Monthly") {
+      unit = num === 1 ? "month" : "months";
+      summaryStr = num === 1 ? "Repeats every month at scheduled time" : `Repeats every ${num} months at scheduled time`;
+    }
+
+    if (spanRepeatUnit) spanRepeatUnit.textContent = unit;
+    if (summaryRecurrence) summaryRecurrence.textContent = summaryStr;
+  }
+
+  if (chkRecurring && optionsRecurrence) {
+    chkRecurring.onchange = () => {
+      if (chkRecurring.checked) {
+        optionsRecurrence.classList.remove("hidden");
+      } else {
+        optionsRecurrence.classList.add("hidden");
+      }
+      updateRecurrenceSummary();
+    };
+  }
+
+  if (selectRecurrenceType) selectRecurrenceType.onchange = updateRecurrenceSummary;
+  if (inputRepeatInterval) inputRepeatInterval.oninput = updateRecurrenceSummary;
 
   // Close Modals
   document.getElementById("close-sched-modal").onclick = () => scheduleModal.classList.add("hidden");
@@ -9964,11 +10833,6 @@ function initMeetingsPortal() {
   if (scheduleForm) {
     scheduleForm.onsubmit = async (e) => {
       e.preventDefault();
-      const canManage = currentUser.role === "Admin" || currentUser.id === "usr-vibha" || currentUser.id === "usr-rashika";
-      if (!canManage) {
-        showToast("Access denied: only Admins, Vibha, or Rashika can schedule meetings.", "error");
-        return;
-      }
       const title = document.getElementById("sched-title").value.trim();
       const time = document.getElementById("sched-time").value;
       const roomCode = document.getElementById("sched-room").value.trim();
@@ -9988,6 +10852,19 @@ function initMeetingsPortal() {
         return;
       }
 
+      const isRecurring = chkRecurring ? chkRecurring.checked : false;
+      let recurrence = null;
+      if (isRecurring) {
+        const endsTypeEl = document.querySelector('input[name="sched-ends"]:checked');
+        recurrence = {
+          type: selectRecurrenceType ? selectRecurrenceType.value : "Daily",
+          repeatInterval: parseInt(inputRepeatInterval ? inputRepeatInterval.value : 1) || 1,
+          endsType: endsTypeEl ? endsTypeEl.value : "never",
+          endDate: document.getElementById("sched-ends-date") ? document.getElementById("sched-ends-date").value : null,
+          afterCount: parseInt(document.getElementById("sched-ends-after-count") ? document.getElementById("sched-ends-after-count").value : 10) || 10
+        };
+      }
+
       const newMtg = {
         id: "mtg-" + Date.now(),
         title,
@@ -9995,12 +10872,23 @@ function initMeetingsPortal() {
         participants,
         isFixed: false,
         roomCode,
-        description
+        description,
+        isRecurring,
+        recurrence
       };
 
       await db.saveMeeting(newMtg);
+
+      // Send real-time notification to participants via socket
+      if (typeof socket !== 'undefined' && socket) {
+        socket.emit("meeting-scheduled", {
+          meeting: newMtg,
+          creatorName: currentUser.fullname
+        });
+      }
+
       scheduleModal.classList.add("hidden");
-      showToast("Meeting scheduled successfully!", "success");
+      showToast(isRecurring ? "Recurring meeting scheduled successfully!" : "Meeting scheduled successfully!", "success");
     };
   }
 
@@ -10009,11 +10897,6 @@ function initMeetingsPortal() {
   if (editForm) {
     editForm.onsubmit = async (e) => {
       e.preventDefault();
-      const canManage = currentUser.role === "Admin" || currentUser.id === "usr-vibha" || currentUser.id === "usr-rashika";
-      if (!canManage) {
-        showToast("Access denied: only Admins, Vibha, or Rashika can change meeting times.", "error");
-        return;
-      }
       const id = document.getElementById("edit-mtg-id").value;
       const time = document.getElementById("edit-mtg-time").value;
       const description = document.getElementById("edit-mtg-desc").value.trim();
@@ -10035,75 +10918,268 @@ function initMeetingsPortal() {
 
 function getTechTeamParticipants() {
   const users = db.getUsers() || [];
-  const participantIds = new Set();
-  
-  // Include Vibha and Rashika specifically
-  participantIds.add('usr-vibha');
-  participantIds.add('usr-rashika');
-  
-  // Include anyone in Tech domain
-  users.forEach(u => {
-    if (u.domain === 'Tech') {
-      participantIds.add(u.id);
-    }
-  });
-  
-  // Include anyone in the subordinates hierarchy of Vibha and Rashika
-  if (typeof getSubordinates === 'function') {
-    getSubordinates('usr-vibha', users).forEach(s => participantIds.add(s.id));
-    getSubordinates('usr-rashika', users).forEach(s => participantIds.add(s.id));
+  return users.map(u => u.id);
+}
+
+// ── MEETING HISTORY SYSTEM (Persistent across refreshes & logouts) ────────────
+let globalMeetingHistory = [];
+let activeCallStartTime = null;
+let currentMeetingTitle = "Instant Meeting";
+
+function getFormattedDateStr(d) {
+  const dateObj = new Date(d || Date.now());
+  const year = dateObj.getFullYear();
+  const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+  const day = String(dateObj.getDate()).padStart(2, '0');
+  return `${day}/${month}/${year}`;
+}
+
+function getDateGroupLabel(dateISOString) {
+  const mtgDate = new Date(dateISOString || Date.now());
+  const today = new Date();
+  const yesterday = new Date();
+  yesterday.setDate(today.getDate() - 1);
+
+  if (mtgDate.toDateString() === today.toDateString()) {
+    return "Today";
+  } else if (mtgDate.toDateString() === yesterday.toDateString()) {
+    return `Yesterday (${getFormattedDateStr(mtgDate)})`;
+  } else {
+    return getFormattedDateStr(mtgDate);
   }
+}
+
+function formatDurationSeconds(sec) {
+  const s = Math.max(1, parseInt(sec) || 0);
+  const mins = Math.floor(s / 60);
+  const remSec = s % 60;
+  if (mins === 0) return `${remSec}s`;
+  if (remSec === 0) return `${mins}min`;
+  return `${mins}min ${remSec}s`;
+}
+
+function getDefaultMeetingHistory() {
+  return []; // Return empty array - ONLY real meeting history recorded dynamically will be shown!
+}
+
+async function loadMeetingHistory() {
+  let loaded = [];
+  try {
+    const res = await fetch('/api/meeting-history');
+    if (res.ok) {
+      loaded = await res.json();
+    }
+  } catch (e) {}
+
+  const localSaved = localStorage.getItem("medastrax_meeting_history");
+  if (localSaved) {
+    try {
+      const parsedLocal = JSON.parse(localSaved);
+      if (Array.isArray(parsedLocal) && parsedLocal.length > 0) {
+        const existingIds = new Set(loaded.map(x => x.id));
+        parsedLocal.forEach(item => {
+          if (!existingIds.has(item.id)) {
+            loaded.push(item);
+            existingIds.add(item.id);
+          }
+        });
+      }
+    } catch(e) {}
+  }
+
+  // Filter out any legacy sample entries
+  loaded = (loaded || []).filter(h => !String(h.id).includes("sample"));
+
+  loaded.sort((a, b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0));
+  globalMeetingHistory = loaded;
+  localStorage.setItem("medastrax_meeting_history", JSON.stringify(globalMeetingHistory));
+}
+
+async function addMeetingHistoryRecord(record) {
+  if (!record || !record.id) return;
+  const exists = globalMeetingHistory.find(x => x.id === record.id);
+  if (!exists) {
+    globalMeetingHistory.unshift(record);
+  }
+  localStorage.setItem("medastrax_meeting_history", JSON.stringify(globalMeetingHistory));
+
+  try {
+    await fetch('/api/meeting-history', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(record)
+    });
+  } catch(e) {}
+
+  if (typeof renderScheduledMeetings === 'function') {
+    renderScheduledMeetings();
+  }
+}
+
+function updateMeetingsWelcomeUser() {
+  if (!currentUser) return;
+  const fullNameClean = (currentUser.fullname || currentUser.username || "User").replace(/\s*\(.*\)\s*/g, "").trim();
+  const firstName = fullNameClean.split(' ')[0] || "User";
   
-  return Array.from(participantIds);
+  const welcomeText = document.getElementById("meetings-welcome-text");
+  if (welcomeText) {
+    welcomeText.textContent = `Hello, ${fullNameClean}`;
+  }
+
+  const avatarEl = document.getElementById("meetings-user-avatar");
+  if (avatarEl) {
+    avatarEl.textContent = firstName.charAt(0).toUpperCase();
+  }
 }
 
 function renderScheduledMeetings() {
-  const listContainer = document.getElementById("scheduled-meetings-list");
+  updateMeetingsWelcomeUser();
+  const listContainer = document.getElementById("meetings-sidebar-list");
   if (!listContainer) return;
   listContainer.innerHTML = "";
 
-  if (!currentUser) return; // Prevent crashes when not logged in!
+  if (!currentUser) return;
 
+  if (globalMeetingHistory.length === 0) {
+    loadMeetingHistory();
+  }
+
+  const searchInput = document.getElementById("meetings-search-input");
+  const searchQuery = searchInput ? searchInput.value.toLowerCase().trim() : "";
+
+  // ── TAB: PREVIOUS (Date-wise History Timeline View) ──────────────────────────
+  if (activeMeetingFilterTab === "previous") {
+    let historyItems = globalMeetingHistory;
+    if (searchQuery) {
+      historyItems = historyItems.filter(h =>
+        (h.title && h.title.toLowerCase().includes(searchQuery)) ||
+        (h.time && h.time.toLowerCase().includes(searchQuery)) ||
+        (h.host && h.host.toLowerCase().includes(searchQuery)) ||
+        (h.roomCode && h.roomCode.toLowerCase().includes(searchQuery))
+      );
+    }
+
+    if (historyItems.length === 0) {
+      listContainer.innerHTML = `
+        <div class="meetings-empty-sidebar">
+          <i data-lucide="history"></i>
+          <p>No previous meeting history found.</p>
+        </div>
+      `;
+      if (typeof lucide !== "undefined") lucide.createIcons();
+      return;
+    }
+
+    // Group history items date-wise (Today, Yesterday, DD/MM/YYYY)
+    const groups = {};
+    historyItems.forEach(item => {
+      const label = getDateGroupLabel(item.timestamp || item.date);
+      if (!groups[label]) groups[label] = [];
+      groups[label].push(item);
+    });
+
+    const timelineContainer = document.createElement("div");
+    timelineContainer.className = "history-timeline-container";
+
+    Object.keys(groups).forEach(groupLabel => {
+      const groupEl = document.createElement("div");
+      groupEl.style.display = "flex";
+      groupEl.style.flexDirection = "column";
+
+      const headerEl = document.createElement("div");
+      headerEl.className = "history-date-header";
+      headerEl.textContent = groupLabel;
+      groupEl.appendChild(headerEl);
+
+      groups[groupLabel].forEach(h => {
+        const card = document.createElement("div");
+        card.className = "history-meeting-card";
+        const isMeHost = currentUser && ((h.hostId === currentUser.id) || (h.host === currentUser.fullname) || (h.host === "You"));
+        const hostName = isMeHost ? "You" : (h.host || "Colleague");
+        card.innerHTML = `
+          <div class="history-card-time">${h.time || '12:00 PM'}</div>
+          <h4 class="history-card-title">${h.title || 'Meeting'}</h4>
+          <div class="history-card-footer">
+            <span>Host: <strong>${hostName}</strong></span>
+            <span class="history-duration-badge">
+              <i data-lucide="clock" style="width: 12px; height: 12px;"></i> ${h.duration || '1min 00s'}
+            </span>
+          </div>
+        `;
+        groupEl.appendChild(card);
+      });
+
+      timelineContainer.appendChild(groupEl);
+    });
+
+    listContainer.appendChild(timelineContainer);
+    if (typeof lucide !== "undefined") lucide.createIcons();
+    return;
+  }
+
+  // ── TAB: RECORDINGS ─────────────────────────────────────────────────────────
+  if (activeMeetingFilterTab === "recordings") {
+    listContainer.innerHTML = `
+      <div class="meetings-empty-sidebar">
+        <i data-lucide="video"></i>
+        <p>No meeting recordings found.</p>
+        <span style="font-size: 11px; color: var(--text-muted);">Recorded meeting sessions will be saved here.</span>
+      </div>
+    `;
+    if (typeof lucide !== "undefined") lucide.createIcons();
+    return;
+  }
+
+  // ── TAB: UPCOMING ───────────────────────────────────────────────────────────
   const meetings = db.getMeetings() || [];
   const myMeetings = meetings.filter(m => {
     const participants = m.isFixed ? getTechTeamParticipants() : (m.participants || []);
     return participants.includes(currentUser.id);
   });
 
-  // Enable/disable schedule button
-  const canManage = currentUser.role === "Admin" || currentUser.id === "usr-vibha" || currentUser.id === "usr-rashika";
-  const btnOpenSched = document.getElementById("btn-open-sched-modal");
-  if (btnOpenSched) {
-    if (canManage) {
-      btnOpenSched.classList.remove("hidden");
-    } else {
-      btnOpenSched.classList.add("hidden");
-    }
-  }
+  const now = new Date();
+  const currentTotalMins = now.getHours() * 60 + now.getMinutes();
 
-  if (myMeetings.length === 0) {
-    listContainer.innerHTML = `<div style="text-align: center; color: var(--text-secondary); font-size: 13px; padding: 12px 0;">No meetings scheduled.</div>`;
+  let filteredMeetings = myMeetings.filter(m => {
+    const [hrs, mins] = m.time.split(':').map(Number);
+    const mtgTotalMins = hrs * 60 + mins;
+    const isUpcoming = mtgTotalMins >= currentTotalMins;
+
+    const matchesSearch = !searchQuery || 
+      m.title.toLowerCase().includes(searchQuery) ||
+      (m.description && m.description.toLowerCase().includes(searchQuery)) ||
+      m.roomCode.toLowerCase().includes(searchQuery);
+
+    return isUpcoming && matchesSearch;
+  });
+
+  if (filteredMeetings.length === 0) {
+    listContainer.innerHTML = `
+      <div class="meetings-empty-sidebar">
+        <i data-lucide="calendar"></i>
+        <p>No upcoming meetings found.</p>
+      </div>
+    `;
+    if (typeof lucide !== "undefined") lucide.createIcons();
     return;
   }
 
-  myMeetings.forEach(m => {
+  const canManage = true;
+
+  filteredMeetings.forEach(m => {
     const item = document.createElement("div");
-    item.style.backgroundColor = "rgba(5, 47, 95, 0.03)";
-    item.style.border = "1px solid var(--border-color)";
-    item.style.borderRadius = "var(--radius-sm)";
-    item.style.padding = "12px";
+    item.className = "meetings-sidebar-item";
     item.style.display = "flex";
     item.style.flexDirection = "column";
-    item.style.gap = "8px";
+    item.style.gap = "6px";
+    item.style.marginBottom = "8px";
 
-    // Format Time: 17:30 -> 05:30 PM
     const [hrs, mins] = m.time.split(':').map(Number);
     const ampm = hrs >= 12 ? 'PM' : 'AM';
     const dispHrs = hrs % 12 || 12;
     const dispMins = mins < 10 ? '0' + mins : mins;
     const timeStr = `${dispHrs}:${dispMins} ${ampm}`;
 
-    // Get participants names
     const participants = m.isFixed ? getTechTeamParticipants() : (m.participants || []);
     const participantNames = participants.map(pid => {
       const u = db.getUsers().find(x => x.id === pid);
@@ -10112,32 +11188,32 @@ function renderScheduledMeetings() {
 
     item.innerHTML = `
       <div style="display: flex; justify-content: space-between; align-items: start; gap: 8px;">
-        <div>
-          <strong style="color: var(--text-primary); font-size: 14px; display: block;">${m.title}</strong>
-          <span style="font-size: 12px; color: var(--text-secondary); display: flex; align-items: center; gap: 4px; margin-top: 2px;">
-            <i data-lucide="clock" style="width: 12px; height: 12px;"></i> ${timeStr} ${m.isFixed ? '<span class="badge badge-lead" style="font-size: 9px; padding: 1px 4px; margin-left: 4px;">Fixed</span>' : ''}
+        <div style="flex: 1; min-width: 0;">
+          <strong style="color: var(--text-primary); font-size: 13px; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${m.title}</strong>
+          <span style="font-size: 11px; color: var(--text-secondary); display: flex; align-items: center; gap: 4px; margin-top: 2px; flex-wrap: wrap;">
+            <i data-lucide="clock" style="width: 11px; height: 11px;"></i> ${timeStr} ${m.isFixed ? '<span class="badge badge-lead" style="font-size: 8px; padding: 1px 3px; margin-left: 2px;">Fixed</span>' : ''} ${m.isRecurring ? `<span class="badge" style="font-size: 8px; padding: 1px 4px; background: #10b981; color: #fff; margin-left: 3px; border-radius: 3px;">Recurring (${m.recurrence && m.recurrence.type ? m.recurrence.type : 'Daily'})</span>` : ''}
           </span>
         </div>
-        <button type="button" class="btn btn-primary btn-sm btn-join-mtg" data-room="${m.roomCode}" style="padding: 4px 8px; font-size: 12px; display: flex; align-items: center; gap: 4px;">
-          <i data-lucide="video" style="width: 12px; height: 12px;"></i> Join
+        <button type="button" class="btn btn-primary btn-sm btn-join-mtg" data-room="${m.roomCode}" style="padding: 3px 6px; font-size: 11px; display: flex; align-items: center; gap: 3px; border-radius: 4px; flex-shrink: 0;">
+          <i data-lucide="video" style="width: 10px; height: 10px;"></i> Join
         </button>
       </div>
       ${m.description ? `
-      <div style="font-size: 12px; color: var(--text-secondary); line-height: 1.4; margin-top: 2px; padding: 4px 0;">
+      <div style="font-size: 11px; color: var(--text-muted); line-height: 1.3; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;">
         ${m.description}
       </div>
       ` : ''}
-      <div style="font-size: 11px; color: var(--text-secondary); border-top: 1px dashed var(--border-color); padding-top: 6px;">
-        <strong>Team:</strong> <span title="${participantNames}">${participantNames.length > 40 ? participantNames.substring(0, 37) + "..." : participantNames}</span>
+      <div style="font-size: 10px; color: var(--text-muted); border-top: 1px dashed var(--border-color); padding-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+        <strong>Team:</strong> <span title="${participantNames}">${participantNames}</span>
       </div>
       ${canManage ? `
-        <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 4px;">
-          <button type="button" class="btn-edit-mtg-time" data-id="${m.id}" data-title="${m.title}" data-time="${m.time}" style="background: none; border: none; color: var(--primary-color); font-size: 11px; font-weight: 500; cursor: pointer; padding: 0; display: flex; align-items: center; gap: 2px;">
-            <i data-lucide="edit-2" style="width: 10px; height: 10px;"></i> Change Time
+        <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 2px; border-top: 1px solid rgba(0, 0, 0, 0.02); padding-top: 4px;">
+          <button type="button" class="btn-edit-mtg-time" data-id="${m.id}" data-title="${m.title}" data-time="${m.time}" style="background: none; border: none; color: var(--primary-color); font-size: 10px; font-weight: 600; cursor: pointer; padding: 0; display: flex; align-items: center; gap: 2px;">
+            <i data-lucide="edit-2" style="width: 9px; height: 9px;"></i> Time
           </button>
           ${!m.isFixed ? `
-            <button type="button" class="btn-delete-mtg" data-id="${m.id}" style="background: none; border: none; color: var(--color-danger); font-size: 11px; font-weight: 500; cursor: pointer; padding: 0; display: flex; align-items: center; gap: 2px;">
-              <i data-lucide="trash-2" style="width: 10px; height: 10px;"></i> Delete
+            <button type="button" class="btn-delete-mtg" data-id="${m.id}" style="background: none; border: none; color: var(--color-danger); font-size: 10px; font-weight: 600; cursor: pointer; padding: 0; display: flex; align-items: center; gap: 2px;">
+              <i data-lucide="trash-2" style="width: 9px; height: 9px;"></i> Delete
             </button>
           ` : ''}
         </div>
@@ -10147,7 +11223,6 @@ function renderScheduledMeetings() {
     listContainer.appendChild(item);
   });
 
-  // Re-initialize click handlers for the list items
   listContainer.querySelectorAll(".btn-join-mtg").forEach(btn => {
     btn.onclick = () => {
       const room = btn.getAttribute("data-room");
@@ -12508,7 +13583,146 @@ function initVideoSse() {
   };
 }
 
+let isHandRaised = false;
+let meetingParticipantsList = {};
+let isCurrentUserHost = false;
+
+function renderParticipantsList() {
+  const listContainer = document.getElementById("meeting-participants-list");
+  if (!listContainer) return;
+  listContainer.innerHTML = "";
+
+  // Render ourselves first
+  const meItem = document.createElement("div");
+  meItem.style.display = "flex";
+  meItem.style.alignItems = "center";
+  meItem.style.justifyContent = "space-between";
+  meItem.style.padding = "6px 8px";
+  meItem.style.backgroundColor = "rgba(0, 168, 150, 0.05)";
+  meItem.style.borderRadius = "6px";
+  
+  meItem.innerHTML = `
+    <span style="font-size: 13px; color: var(--text-primary); font-weight: 600;">You</span>
+    <div style="display:flex; gap: 8px; align-items:center;">
+      <i data-lucide="${isMicOn ? 'mic' : 'mic-off'}" style="width: 14px; height: 14px; color:${isMicOn ? 'var(--color-success)' : 'var(--color-danger)'};"></i>
+      <i data-lucide="${isCamOn ? 'video' : 'video-off'}" style="width: 14px; height: 14px; color:${isCamOn ? 'var(--color-success)' : 'var(--color-danger)'};"></i>
+      ${isHandRaised ? '<i data-lucide="hand" style="width: 14px; height: 14px; color:#eab308;"></i>' : ''}
+    </div>
+  `;
+  listContainer.appendChild(meItem);
+
+  // Render other participants
+  Object.values(meetingParticipantsList).forEach(p => {
+    if (p.userId === currentUser.id) return;
+    const pItem = document.createElement("div");
+    pItem.style.display = "flex";
+    pItem.style.alignItems = "center";
+    pItem.style.justifyContent = "space-between";
+    pItem.style.padding = "6px 8px";
+    pItem.style.borderBottom = "1px solid var(--border-color)";
+    
+    // Build host buttons HTML if we are host
+    const hostControlsHtml = isCurrentUserHost ? `
+      <div style="display:flex; gap: 6px; align-items:center; margin-left: 8px;">
+        <button type="button" class="btn-host-mute-user" data-id="${p.userId}" style="background:none; border:none; padding:2px; cursor:pointer; display:inline-flex; align-items:center;" title="Mute Participant">
+          <i data-lucide="mic-off" style="width:12px; height:12px; color:var(--color-danger);"></i>
+        </button>
+        <button type="button" class="btn-host-camera-user" data-id="${p.userId}" style="background:none; border:none; padding:2px; cursor:pointer; display:inline-flex; align-items:center;" title="Stop Participant Video">
+          <i data-lucide="video-off" style="width:12px; height:12px; color:var(--color-danger);"></i>
+        </button>
+        <button type="button" class="btn-host-kick-user" data-id="${p.userId}" style="background:none; border:none; padding:2px; cursor:pointer; display:inline-flex; align-items:center;" title="Remove Participant">
+          <i data-lucide="user-x" style="width:12px; height:12px; color:var(--color-danger);"></i>
+        </button>
+      </div>
+    ` : "";
+
+    pItem.innerHTML = `
+      <span style="font-size: 13px; color: var(--text-primary); flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${p.fullname}</span>
+      <div style="display:flex; gap: 8px; align-items:center;">
+        <i data-lucide="${p.isMicOn ? 'mic' : 'mic-off'}" style="width: 14px; height: 14px; color:${p.isMicOn ? 'var(--color-success)' : 'var(--color-danger)'};"></i>
+        <i data-lucide="${p.isCamOn ? 'video' : 'video-off'}" style="width: 14px; height: 14px; color:${p.isCamOn ? 'var(--color-success)' : 'var(--color-danger)'};"></i>
+        ${p.isHandRaised ? '<i data-lucide="hand" style="width: 14px; height: 14px; color:#eab308;"></i>' : ''}
+        ${hostControlsHtml}
+      </div>
+    `;
+    listContainer.appendChild(pItem);
+  });
+
+  // Attach host control button listeners
+  if (isCurrentUserHost) {
+    listContainer.querySelectorAll(".btn-host-mute-user").forEach(btn => {
+      btn.onclick = () => {
+        const id = btn.getAttribute("data-id");
+        if (socket && currentRoom) {
+          socket.emit("meeting-host-action", {
+            room: currentRoom,
+            targetUserId: id,
+            type: "mute-single"
+          });
+        }
+      };
+    });
+
+    listContainer.querySelectorAll(".btn-host-camera-user").forEach(btn => {
+      btn.onclick = () => {
+        const id = btn.getAttribute("data-id");
+        if (socket && currentRoom) {
+          socket.emit("meeting-host-action", {
+            room: currentRoom,
+            targetUserId: id,
+            type: "camera-off-single"
+          });
+        }
+      };
+    });
+
+    listContainer.querySelectorAll(".btn-host-kick-user").forEach(btn => {
+      btn.onclick = () => {
+        const id = btn.getAttribute("data-id");
+        if (confirm("Are you sure you want to remove this participant?")) {
+          if (socket && currentRoom) {
+            socket.emit("meeting-host-action", {
+              room: currentRoom,
+              targetUserId: id,
+              type: "kick-single"
+            });
+          }
+        }
+      };
+    });
+  }
+
+  lucide.createIcons();
+}
+
+function showFloatingReaction(emoji) {
+  const grid = document.getElementById("video-grid");
+  if (!grid) return;
+  const el = document.createElement("div");
+  el.textContent = emoji;
+  el.style.position = "absolute";
+  el.style.bottom = "20px";
+  el.style.left = `${Math.random() * 60 + 20}%`;
+  el.style.fontSize = "2.5rem";
+  el.style.zIndex = "1000";
+  el.style.transition = "all 1.5s ease-out";
+  el.style.pointerEvents = "none";
+  grid.appendChild(el);
+  
+  // Force reflow and animate
+  setTimeout(() => {
+    el.style.transform = "translateY(-240px) scale(1.5)";
+    el.style.opacity = "0";
+  }, 50);
+  
+  // Clean up
+  setTimeout(() => {
+    if (el.parentNode) el.parentNode.removeChild(el);
+  }, 1600);
+}
+
 function renderMeetingsTab() {
+  updateMeetingsWelcomeUser();
   // Render the scheduled meetings card list initially
   renderScheduledMeetings();
 
@@ -12519,6 +13733,11 @@ function renderMeetingsTab() {
   const statusText = document.getElementById("meeting-status-text");
   const activeRoomDisplay = document.getElementById("meeting-active-room-display");
   const roomBadge = document.getElementById("meeting-room-badge");
+
+  // Media controls
+  const btnCam = document.getElementById("btn-toggle-cam");
+  const btnMic = document.getElementById("btn-toggle-mic");
+  const btnShare = document.getElementById("btn-share-screen");
 
   btnJoin.onclick = async () => {
     const room = roomInput.value.trim();
@@ -12535,7 +13754,76 @@ function renderMeetingsTab() {
     activeRoomDisplay.classList.remove("hidden");
     roomBadge.textContent = room;
 
+    // Redesign: Show Active Call UI and hide Dashboard
+    const dashboardView = document.getElementById("meetings-welcome-dashboard");
+    const activeView = document.getElementById("active-meeting-view");
+    if (dashboardView) dashboardView.classList.add("hidden");
+    if (activeView) activeView.classList.remove("hidden");
+    
+    // Find if it's a scheduled meeting to display its title
+    const meetings = db.getMeetings() || [];
+    const mtg = meetings.find(m => m.roomCode === room);
+    const activeMtgTitle = document.getElementById("active-meeting-title");
+    if (activeMtgTitle) activeMtgTitle.textContent = mtg ? mtg.title : "Instant Meeting";
+    
+    const activeMtgRoomBadge = document.getElementById("active-meeting-room-badge");
+    if (activeMtgRoomBadge) activeMtgRoomBadge.textContent = room;
+    
+    const activeMtgStatus = document.getElementById("active-meeting-status");
+    if (activeMtgStatus) {
+      activeMtgStatus.textContent = "Connecting...";
+      activeMtgStatus.className = "badge badge-lead";
+    }
+
+    // Set control buttons defaults
+    const btnActiveCam = document.getElementById("btn-active-toggle-cam");
+    if (btnActiveCam) {
+      btnActiveCam.style.backgroundColor = isCamOn ? "var(--bg-primary)" : "#ef4444";
+      btnActiveCam.style.color = isCamOn ? "var(--text-primary)" : "#fff";
+    }
+    const btnActiveMic = document.getElementById("btn-active-toggle-mic");
+    if (btnActiveMic) {
+      btnActiveMic.style.backgroundColor = isMicOn ? "var(--bg-primary)" : "#ef4444";
+      btnActiveMic.style.color = isMicOn ? "var(--text-primary)" : "#fff";
+    }
+    const btnActiveShare = document.getElementById("btn-active-share-screen");
+    if (btnActiveShare) {
+      btnActiveShare.style.backgroundColor = "var(--bg-primary)";
+      btnActiveShare.style.color = "var(--text-primary)";
+    }
+    
+    const btnActiveRaise = document.getElementById("btn-active-raise-hand");
+    if (btnActiveRaise) {
+      btnActiveRaise.style.backgroundColor = "var(--bg-primary)";
+      btnActiveRaise.style.color = "var(--text-primary)";
+    }
+    isHandRaised = false;
+
+    // Determine host: Admins, Managers, or the meeting creator / instant meeting generator
+    const isHost = currentUser.role === "Admin" || currentUser.role === "Manager" || (mtg && mtg.participants && mtg.participants[0] === currentUser.id) || room.startsWith("meet-");
+    isCurrentUserHost = isHost;
+    
+    const hostToggle = document.getElementById("btn-active-toggle-host-controls");
+    const hostTabBtn = document.getElementById("tab-btn-host");
+    if (isHost) {
+      if (hostToggle) hostToggle.classList.remove("hidden");
+      if (hostTabBtn) hostTabBtn.classList.remove("hidden");
+    } else {
+      if (hostToggle) hostToggle.classList.add("hidden");
+      if (hostTabBtn) hostTabBtn.classList.add("hidden");
+    }
+
+    // Reset Chat panel messages
+    const chatMsgBox = document.getElementById("meeting-chat-messages");
+    if (chatMsgBox) chatMsgBox.innerHTML = "";
+
     await joinMeetingRoom(room);
+    
+    // Update active status once joined
+    if (activeMtgStatus) {
+      activeMtgStatus.textContent = "Connected";
+      activeMtgStatus.className = "badge badge-employee";
+    }
   };
 
   btnLeave.onclick = async () => {
@@ -12547,12 +13835,13 @@ function renderMeetingsTab() {
     statusText.textContent = "Not Connected";
     statusText.className = "badge badge-critical";
     activeRoomDisplay.classList.add("hidden");
-  };
 
-  // Media controls
-  const btnCam = document.getElementById("btn-toggle-cam");
-  const btnMic = document.getElementById("btn-toggle-mic");
-  const btnShare = document.getElementById("btn-share-screen");
+    // Redesign: Show Dashboard and hide Active Call UI
+    const dashboardView = document.getElementById("meetings-welcome-dashboard");
+    const activeView = document.getElementById("active-meeting-view");
+    if (dashboardView) dashboardView.classList.remove("hidden");
+    if (activeView) activeView.classList.add("hidden");
+  };
 
   btnCam.onclick = () => {
     if (localStream) {
@@ -12561,6 +13850,26 @@ function renderMeetingsTab() {
       btnCam.style.backgroundColor = isCamOn ? "var(--bg-secondary)" : "#ef4444";
       btnCam.style.color = isCamOn ? "var(--text-primary)" : "#fff";
       showToast(isCamOn ? "Webcam enabled" : "Webcam disabled", "info");
+      
+      // Toggle local avatar overlay container
+      const localAvatar = document.getElementById("video-avatar-local");
+      if (localAvatar) {
+        if (isCamOn) localAvatar.classList.add("hidden");
+        else localAvatar.classList.remove("hidden");
+      }
+
+      // Emit status update to other users
+      if (socket && currentRoom) {
+        socket.emit("meeting-status-update", {
+          room: currentRoom,
+          userId: currentUser.id,
+          fullname: currentUser.fullname.replace(/\s*\(.*\)\s*/g, ""),
+          isMicOn: isMicOn,
+          isCamOn: isCamOn,
+          isHandRaised: isHandRaised
+        });
+      }
+      renderParticipantsList();
     }
   };
 
@@ -12571,6 +13880,19 @@ function renderMeetingsTab() {
       btnMic.style.backgroundColor = isMicOn ? "var(--bg-secondary)" : "#ef4444";
       btnMic.style.color = isMicOn ? "var(--text-primary)" : "#fff";
       showToast(isMicOn ? "Microphone unmuted" : "Microphone muted", "info");
+      
+      // Emit status update to other users
+      if (socket && currentRoom) {
+        socket.emit("meeting-status-update", {
+          room: currentRoom,
+          userId: currentUser.id,
+          fullname: currentUser.fullname.replace(/\s*\(.*\)\s*/g, ""),
+          isMicOn: isMicOn,
+          isCamOn: isCamOn,
+          isHandRaised: isHandRaised
+        });
+      }
+      renderParticipantsList();
     }
   };
 
@@ -12612,14 +13934,565 @@ function renderMeetingsTab() {
       showToast("Could not share screen: " + err.message, "error");
     }
   };
+
+  // Active call screen controls bindings
+  const btnActiveCam = document.getElementById("btn-active-toggle-cam");
+  if (btnActiveCam) {
+    btnActiveCam.onclick = () => {
+      btnCam.click();
+      // Update camera icon styles
+      btnActiveCam.style.backgroundColor = isCamOn ? "var(--bg-primary)" : "#ef4444";
+      btnActiveCam.style.color = isCamOn ? "var(--text-primary)" : "#fff";
+    };
+  }
+
+  const btnActiveMic = document.getElementById("btn-active-toggle-mic");
+  if (btnActiveMic) {
+    btnActiveMic.onclick = () => {
+      btnMic.click();
+      // Update mic icon styles
+      btnActiveMic.style.backgroundColor = isMicOn ? "var(--bg-primary)" : "#ef4444";
+      btnActiveMic.style.color = isMicOn ? "var(--text-primary)" : "#fff";
+    };
+  }
+
+  const btnActiveShare = document.getElementById("btn-active-share-screen");
+  if (btnActiveShare) {
+    btnActiveShare.onclick = () => {
+      btnShare.click();
+      // Update screen share icon styles
+      btnActiveShare.style.backgroundColor = isScreenSharing ? "#10b981" : "var(--bg-primary)";
+      btnActiveShare.style.color = isScreenSharing ? "#fff" : "var(--text-primary)";
+    };
+  }
+
+  const btnActiveLeave = document.getElementById("btn-active-leave-meeting");
+  if (btnActiveLeave) {
+    btnActiveLeave.onclick = () => {
+      btnLeave.click();
+    };
+  }
+
+  // Google Meet features UI bindings
+  const btnActiveRaise = document.getElementById("btn-active-raise-hand");
+  if (btnActiveRaise) {
+    btnActiveRaise.onclick = () => {
+      isHandRaised = !isHandRaised;
+      btnActiveRaise.style.backgroundColor = isHandRaised ? "#eab308" : "var(--bg-primary)";
+      btnActiveRaise.style.color = isHandRaised ? "#fff" : "var(--text-primary)";
+      
+      // Update local hand raised display on video container
+      const localHand = document.getElementById("video-hand-local");
+      if (localHand) {
+        if (isHandRaised) {
+          localHand.classList.remove("hidden");
+          showToast("You raised hand", "info");
+        } else {
+          localHand.classList.add("hidden");
+        }
+      }
+
+      if (socket && currentRoom) {
+        socket.emit("meeting-hand-raise", {
+          room: currentRoom,
+          userId: currentUser.id,
+          fullname: currentUser.fullname.replace(/\s*\(.*\)\s*/g, ""),
+          isRaised: isHandRaised
+        });
+      }
+      renderParticipantsList();
+    };
+  }
+
+  // Emoji Reactions Toggle
+  const btnActiveReact = document.getElementById("btn-active-react");
+  const activeReactionBar = document.getElementById("active-reaction-bar");
+  if (btnActiveReact && activeReactionBar) {
+    btnActiveReact.onclick = (e) => {
+      e.stopPropagation();
+      activeReactionBar.classList.toggle("hidden");
+    };
+    
+    document.addEventListener("click", () => {
+      if (activeReactionBar) activeReactionBar.classList.add("hidden");
+    });
+  }
+
+  // React emoji click
+  document.querySelectorAll(".reaction-emoji-btn").forEach(btn => {
+    btn.onclick = () => {
+      const emoji = btn.getAttribute("data-emoji");
+      if (emoji && currentRoom && socket) {
+        socket.emit("meeting-reaction", {
+          room: currentRoom,
+          emoji: emoji,
+          userId: currentUser.id
+        });
+        showFloatingReaction(emoji);
+      }
+    };
+  });
+
+  // Sidebar Toggles
+  const callSidebar = document.getElementById("active-meeting-sidebar");
+  const togglePanel = (panelId, activeTabBtnId) => {
+    if (!callSidebar) return;
+    
+    const panels = ["panel-people", "panel-chat", "panel-host"];
+    const tabBtns = ["tab-btn-people", "tab-btn-chat", "tab-btn-host"];
+    
+    panels.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.classList.toggle("hidden", id !== panelId);
+    });
+    
+    tabBtns.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.classList.toggle("active", id === activeTabBtnId);
+        el.style.borderBottom = id === activeTabBtnId ? "3px solid var(--accent-color)" : "3px solid transparent";
+        el.style.color = id === activeTabBtnId ? "var(--accent-color)" : "var(--text-secondary)";
+      }
+    });
+
+    callSidebar.classList.remove("hidden");
+  };
+
+  const toggleSidebarVisibility = (panelId, activeTabBtnId) => {
+    if (!callSidebar) return;
+    
+    const isCurrentlyOpen = !callSidebar.classList.contains("hidden");
+    const activeTabEl = document.getElementById(activeTabBtnId);
+    const isTargetTabOpen = activeTabEl && activeTabEl.classList.contains("active");
+
+    if (isCurrentlyOpen && isTargetTabOpen) {
+      callSidebar.classList.add("hidden");
+    } else {
+      togglePanel(panelId, activeTabBtnId);
+    }
+  };
+
+  const btnTogglePeople = document.getElementById("btn-active-toggle-people");
+  if (btnTogglePeople) {
+    btnTogglePeople.onclick = () => toggleSidebarVisibility("panel-people", "tab-btn-people");
+  }
+
+  const btnToggleChat = document.getElementById("btn-active-toggle-chat");
+  if (btnToggleChat) {
+    btnToggleChat.onclick = () => toggleSidebarVisibility("panel-chat", "tab-btn-chat");
+  }
+
+  const btnToggleHost = document.getElementById("btn-active-toggle-host-controls");
+  if (btnToggleHost) {
+    btnToggleHost.onclick = () => toggleSidebarVisibility("panel-host", "tab-btn-host");
+  }
+
+  // Tab buttons click bindings inside sidebar
+  const tabBtnPeople = document.getElementById("tab-btn-people");
+  if (tabBtnPeople) tabBtnPeople.onclick = () => togglePanel("panel-people", "tab-btn-people");
+
+  const tabBtnChat = document.getElementById("tab-btn-chat");
+  if (tabBtnChat) tabBtnChat.onclick = () => togglePanel("panel-chat", "tab-btn-chat");
+
+  const tabBtnHost = document.getElementById("tab-btn-host");
+  if (tabBtnHost) tabBtnHost.onclick = () => togglePanel("panel-host", "tab-btn-host");
+
+  // In-meeting Chat Submit
+  const inMeetingChatForm = document.getElementById("meeting-chat-form");
+  if (inMeetingChatForm) {
+    inMeetingChatForm.onsubmit = (e) => {
+      e.preventDefault();
+      const chatInput = document.getElementById("meeting-chat-input");
+      const text = chatInput.value.trim();
+      if (text && currentRoom && socket) {
+        socket.emit("meeting-chat-send", {
+          room: currentRoom,
+          text: text,
+          senderId: currentUser.id,
+          senderName: currentUser.fullname.replace(/\s*\(.*\)\s*/g, ""),
+          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        });
+        chatInput.value = "";
+      }
+    };
+  }
+
+  // Host Action Buttons Click
+  const btnHostMuteAll = document.getElementById("btn-host-mute-all");
+  if (btnHostMuteAll) {
+    btnHostMuteAll.onclick = () => {
+      if (socket && currentRoom) {
+        socket.emit("meeting-host-action", {
+          room: currentRoom,
+          type: "mute-all"
+        });
+        showToast("You have muted all participants", "success");
+      }
+    };
+  }
+
+  const btnHostCamerasOff = document.getElementById("btn-host-cameras-off");
+  if (btnHostCamerasOff) {
+    btnHostCamerasOff.onclick = () => {
+      if (socket && currentRoom) {
+        socket.emit("meeting-host-action", {
+          room: currentRoom,
+          type: "cameras-off"
+        });
+        showToast("You have disabled cameras for all participants", "success");
+      }
+    };
+  }
+
+  // More options dropdown bindings
+  const btnActiveMore = document.getElementById("btn-active-more");
+  const activeMoreMenu = document.getElementById("active-more-menu");
+  if (btnActiveMore && activeMoreMenu) {
+    btnActiveMore.onclick = (e) => {
+      e.stopPropagation();
+      activeMoreMenu.classList.toggle("hidden");
+    };
+    document.addEventListener("click", () => {
+      if (activeMoreMenu) activeMoreMenu.classList.add("hidden");
+    });
+  }
+
+  const menuOptPip = document.getElementById("menu-opt-pip");
+  if (menuOptPip) {
+    menuOptPip.onclick = () => {
+      switchTab("overview");
+      showToast("Meeting minimized to floating pop-up.", "success");
+    };
+  }
+
+  // Toggle Fullscreen Binding
+  const menuOptFullscreen = document.getElementById("menu-opt-fullscreen");
+  if (menuOptFullscreen) {
+    menuOptFullscreen.onclick = () => {
+      const elem = document.getElementById("active-meeting-view");
+      if (!elem) return;
+
+      if (!document.fullscreenElement) {
+        elem.requestFullscreen().catch(err => {
+          showToast(`Error enabling fullscreen: ${err.message}`, "error");
+        });
+      } else {
+        document.exitFullscreen();
+      }
+    };
+  }
+
+  // Layouts and Pause Bindings
+  const btnLayoutGrid = document.getElementById("btn-layout-grid");
+  if (btnLayoutGrid) {
+    btnLayoutGrid.onclick = () => {
+      document.querySelectorAll("#video-grid > div").forEach(div => {
+        div.style.gridColumn = "";
+        div.style.gridRow = "";
+        div.style.height = "";
+      });
+      showToast("Switched to grid layout", "info");
+    };
+  }
+
+  const btnLayoutFocus = document.getElementById("btn-layout-focus");
+  if (btnLayoutFocus) {
+    btnLayoutFocus.onclick = () => {
+      const localBox = document.getElementById("video-container-local");
+      if (localBox) {
+        document.querySelectorAll("#video-grid > div").forEach(div => {
+          div.style.gridColumn = "";
+          div.style.gridRow = "";
+          div.style.height = "";
+        });
+        localBox.style.gridColumn = "span 2";
+        localBox.style.gridRow = "span 2";
+        localBox.style.height = "450px";
+        showToast("Spotlighted local video", "info");
+      }
+    };
+  }
+
+  let isStreamPaused = false;
+  const btnActivePause = document.getElementById("btn-active-pause");
+  if (btnActivePause) {
+    btnActivePause.onclick = () => {
+      isStreamPaused = !isStreamPaused;
+      if (localStream) {
+        localStream.getVideoTracks().forEach(track => {
+          track.enabled = !isStreamPaused;
+        });
+      }
+      btnActivePause.style.backgroundColor = isStreamPaused ? "#ef4444" : "var(--bg-primary)";
+      btnActivePause.style.color = isStreamPaused ? "#fff" : "var(--text-primary)";
+      btnActivePause.innerHTML = `<i data-lucide="${isStreamPaused ? 'play' : 'pause'}" style="width: 18px; height: 18px;"></i>`;
+      lucide.createIcons();
+      showToast(isStreamPaused ? "Video stream paused" : "Video stream resumed", "info");
+    };
+  }
+
+  const menuOptInfo = document.getElementById("menu-opt-info");
+  if (menuOptInfo) {
+    menuOptInfo.onclick = () => {
+      if (currentRoom) {
+        navigator.clipboard.writeText(currentRoom);
+        showToast("Room Code copied to clipboard: " + currentRoom, "success");
+      }
+    };
+  }
+
+  // Device Settings Modal Toggles
+  const menuOptSettings = document.getElementById("menu-opt-settings");
+  const deviceModal = document.getElementById("meeting-device-settings-modal");
+  const closeDeviceModalBtn1 = document.getElementById("close-device-settings-modal");
+  const closeDeviceModalBtn2 = document.getElementById("btn-close-device-settings");
+  const deviceForm = document.getElementById("device-settings-form");
+
+  if (menuOptSettings && deviceModal) {
+    menuOptSettings.onclick = async () => {
+      await loadMediaDevices();
+      deviceModal.classList.remove("hidden");
+    };
+  }
+
+  if (closeDeviceModalBtn1) closeDeviceModalBtn1.onclick = () => deviceModal.classList.add("hidden");
+  if (closeDeviceModalBtn2) closeDeviceModalBtn2.onclick = () => deviceModal.classList.add("hidden");
+
+  async function loadMediaDevices() {
+    const videoSelect = document.getElementById("select-video-input");
+    const audioSelect = document.getElementById("select-audio-input");
+    if (!videoSelect || !audioSelect) return;
+    
+    videoSelect.innerHTML = "";
+    audioSelect.innerHTML = "";
+    
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      devices.forEach(device => {
+        const option = document.createElement("option");
+        option.value = device.deviceId;
+        if (device.kind === "videoinput") {
+          option.textContent = device.label || `Camera ${videoSelect.length + 1}`;
+          videoSelect.appendChild(option);
+        } else if (device.kind === "audioinput") {
+          option.textContent = device.label || `Microphone ${audioSelect.length + 1}`;
+          audioSelect.appendChild(option);
+        }
+      });
+    } catch (err) {
+      console.error("Error listing devices:", err);
+    }
+  }
+
+  if (deviceForm) {
+    deviceForm.onsubmit = async (e) => {
+      e.preventDefault();
+      const videoId = document.getElementById("select-video-input").value;
+      const audioId = document.getElementById("select-audio-input").value;
+      
+      try {
+        if (localStream) {
+          localStream.getTracks().forEach(track => track.stop());
+        }
+        
+        localStream = await navigator.mediaDevices.getUserMedia({
+          video: videoId ? { deviceId: { exact: videoId } } : true,
+          audio: audioId ? { deviceId: { exact: audioId } } : true
+        });
+        
+        // Update local video element src
+        const localVideo = document.getElementById("local-video-element");
+        if (localVideo) localVideo.srcObject = localStream;
+        
+        // Replace track in peer connections
+        const newVideoTrack = localStream.getVideoTracks()[0];
+        const newAudioTrack = localStream.getAudioTracks()[0];
+
+        for (const pc of Object.values(peerConnections)) {
+          const senders = pc.getSenders();
+          const videoSender = senders.find(s => s.track.kind === "video");
+          const audioSender = senders.find(s => s.track.kind === "audio");
+          
+          if (videoSender && newVideoTrack) videoSender.replaceTrack(newVideoTrack);
+          if (audioSender && newAudioTrack) audioSender.replaceTrack(newAudioTrack);
+        }
+        
+        deviceModal.classList.add("hidden");
+        showToast("Audio/Video settings saved successfully!", "success");
+      } catch (err) {
+        console.error("Error setting device track:", err);
+        showToast("Could not access selected devices: " + err.message, "error");
+      }
+    };
+  }
+
+  // Double click to Pin Video layouts
+  const videoGrid = document.getElementById("video-grid");
+  if (videoGrid) {
+    videoGrid.ondblclick = (e) => {
+      const container = e.target.closest("#video-container-local") || e.target.closest("[id^='video-container-']");
+      if (container) {
+        const isPinned = container.style.gridColumn === "1 / -1";
+        // Reset all containers
+        videoGrid.querySelectorAll("#video-container-local, [id^='video-container-']").forEach(c => {
+          c.style.gridColumn = "";
+          c.style.gridRow = "";
+          c.style.height = "240px";
+        });
+        
+        if (!isPinned) {
+          container.style.gridColumn = "1 / -1";
+          container.style.gridRow = "span 2";
+          container.style.height = "480px";
+          showToast("Video pinned to spotlight layout", "info");
+        }
+      }
+    };
+  }
+
+  // Register Call socket events
+  if (socket) {
+    // Clean up any old listeners to prevent duplicates
+    socket.off("meeting-chat-receive");
+    socket.off("meeting-host-action");
+    socket.off("meeting-hand-raise");
+    socket.off("meeting-status-update");
+    socket.off("meeting-reaction");
+
+    socket.on("meeting-chat-receive", (data) => {
+      const messagesContainer = document.getElementById("meeting-chat-messages");
+      if (messagesContainer && data.room === currentRoom) {
+        const div = document.createElement("div");
+        div.style.marginBottom = "8px";
+        div.style.fontSize = "12px";
+        div.innerHTML = `
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:2px;">
+            <strong style="color:var(--text-primary); font-size:11px;">${data.senderName}</strong>
+            <span style="color:var(--text-muted); font-size:9px;">${data.time}</span>
+          </div>
+          <div style="color:var(--text-secondary); background:rgba(0,0,0,0.03); padding:6px 8px; border-radius:6px; word-break:break-all;">
+            ${data.text}
+          </div>
+        `;
+        messagesContainer.appendChild(div);
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+      }
+    });
+
+    socket.on("meeting-reaction", (data) => {
+      if (data.room === currentRoom) {
+        showFloatingReaction(data.emoji);
+      }
+    });
+
+    socket.on("meeting-host-action", (data) => {
+      if (data.room === currentRoom) {
+        const hostTabBtn = document.getElementById("tab-btn-host");
+        const isUserHost = hostTabBtn && !hostTabBtn.classList.contains("hidden");
+        
+        // Single target checks
+        const isTargeted = data.targetUserId === currentUser.id;
+        
+        if (!isUserHost) {
+          if ((data.type === "mute-all" || (data.type === "mute-single" && isTargeted)) && isMicOn) {
+            btnMic.click();
+            const activeMic = document.getElementById("btn-active-toggle-mic");
+            if (activeMic) {
+              activeMic.style.backgroundColor = "#ef4444";
+              activeMic.style.color = "#fff";
+            }
+            showToast("The host has muted your microphone.", "warning");
+          } else if ((data.type === "cameras-off" || (data.type === "camera-off-single" && isTargeted)) && isCamOn) {
+            btnCam.click();
+            const activeCam = document.getElementById("btn-active-toggle-cam");
+            if (activeCam) {
+              activeCam.style.backgroundColor = "#ef4444";
+              activeCam.style.color = "#fff";
+            }
+            // Update local camera off avatar Overlay
+            const localAvatar = document.getElementById("video-avatar-local");
+            if (localAvatar) localAvatar.classList.remove("hidden");
+
+            showToast("The host has disabled your camera.", "warning");
+          } else if (data.type === "kick-single" && isTargeted) {
+            btnLeave.click();
+            alert("You have been removed from the meeting by the host.");
+          }
+        }
+      }
+    });
+
+    socket.on("meeting-hand-raise", (data) => {
+      if (data.room === currentRoom) {
+        if (data.userId === currentUser.id) return;
+        if (meetingParticipantsList[data.userId]) {
+          meetingParticipantsList[data.userId].isHandRaised = data.isRaised;
+          
+          // Update remote hand icon on video container
+          const remoteHand = document.getElementById(`video-hand-${data.userId}`);
+          if (remoteHand) {
+            if (data.isRaised) {
+              remoteHand.classList.remove("hidden");
+            } else {
+              remoteHand.classList.add("hidden");
+            }
+          }
+
+          renderParticipantsList();
+          if (data.isRaised) {
+            showToast(`${data.fullname} raised hand.`, "info");
+          }
+        }
+      }
+    });
+
+    socket.on("meeting-status-update", (data) => {
+      if (data.room === currentRoom) {
+        if (data.userId === currentUser.id) return;
+        
+        if (data.isLeft) {
+          delete meetingParticipantsList[data.userId];
+        } else {
+          meetingParticipantsList[data.userId] = {
+            ...meetingParticipantsList[data.userId],
+            ...data
+          };
+          
+          // Update remote avatar overlay based on camera state
+          const remoteAvatar = document.getElementById(`video-avatar-${data.userId}`);
+          if (remoteAvatar) {
+            if (data.isCamOn === false) {
+              remoteAvatar.classList.remove("hidden");
+            } else {
+              remoteAvatar.classList.add("hidden");
+            }
+          }
+
+          if (data.isJoined) {
+            socket.emit("meeting-status-update", {
+              room: currentRoom,
+              userId: currentUser.id,
+              fullname: currentUser.fullname.replace(/\s*\(.*\)\s*/g, ""),
+              isMicOn: isMicOn,
+              isCamOn: isCamOn,
+              isHandRaised: isHandRaised
+            });
+          }
+        }
+        renderParticipantsList();
+      }
+    });
+  }
 }
 
 function stopScreenSharing() {
   if (!isScreenSharing) return;
   isScreenSharing = false;
   const btnShare = document.getElementById("btn-share-screen");
-  btnShare.style.backgroundColor = "var(--bg-secondary)";
-  btnShare.style.color = "var(--text-primary)";
+  if (btnShare) {
+    btnShare.style.backgroundColor = "var(--bg-secondary)";
+    btnShare.style.color = "var(--text-primary)";
+  }
 
   // Switch back to camera video track
   if (localStream) {
@@ -12640,16 +14513,44 @@ function stopScreenSharing() {
 }
 
 async function joinMeetingRoom(room) {
+  activeCallStartTime = Date.now();
   currentRoom = room;
+  localStorage.setItem("activeMeetingRoom", room);
+  meetingParticipantsList = {};
+
+  const mtg = (db.getMeetings() || []).find(m => m.roomCode === room);
+  if (mtg) {
+    currentMeetingTitle = mtg.title;
+  } else {
+    currentMeetingTitle = `Meeting - ${getFormattedDateStr(new Date())}`;
+  }
+  
+  if (typeof socket !== 'undefined' && socket) {
+    socket.emit("join-meeting-socket", {
+      room: room,
+      userId: currentUser.id,
+      fullname: currentUser.fullname.replace(/\s*\(.*\)\s*/g, "")
+    });
+  }
   
   // Remove placeholder
   const placeholder = document.getElementById("video-grid-placeholder");
   if (placeholder) placeholder.classList.add("hidden");
 
   try {
-    // Get local media
-    localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+    // Get local media only if not already initialized (e.g. from pre-join lobby)
+    if (!localStream) {
+      localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+    }
     addLocalVideo();
+
+    // Automatically trigger fullscreen mode on joining the call!
+    const activeView = document.getElementById("active-meeting-view");
+    if (activeView && !document.fullscreenElement) {
+      activeView.requestFullscreen().catch(err => {
+        console.warn("Automatic fullscreen request blocked by browser:", err.message);
+      });
+    }
 
     // Join room on signaling server
     const res = await fetch("/api/video/join", {
@@ -12677,6 +14578,34 @@ async function joinMeetingRoom(room) {
 }
 
 async function leaveMeetingRoom() {
+  if (activeCallStartTime || currentRoom) {
+    const durationSec = activeCallStartTime ? Math.max(5, Math.round((Date.now() - activeCallStartTime) / 1000)) : 60;
+    const now = new Date();
+    const hrs = now.getHours();
+    const mins = now.getMinutes();
+    const ampm = hrs >= 12 ? 'PM' : 'AM';
+    const dispHrs = hrs % 12 || 12;
+    const dispMins = mins < 10 ? '0' + mins : mins;
+    const timeStr = `${dispHrs}:${dispMins} ${ampm}`;
+    const dateStr = getFormattedDateStr(now);
+
+    const historyRecord = {
+      id: "mtghist-" + Date.now(),
+      userId: currentUser ? currentUser.id : "usr-user",
+      title: currentMeetingTitle || (`Meeting - ${dateStr}`),
+      roomCode: currentRoom || "room-call",
+      date: now.toISOString().split("T")[0],
+      time: timeStr,
+      duration: formatDurationSeconds(durationSec),
+      durationSec: durationSec,
+      host: currentUser ? (currentUser.fullname || currentUser.username || "You").replace(/\s*\(.*\)\s*/g, "") : "You",
+      hostId: currentUser ? currentUser.id : "usr-user",
+      timestamp: now.toISOString()
+    };
+    addMeetingHistoryRecord(historyRecord);
+    activeCallStartTime = null;
+  }
+
   if (currentRoom) {
     await fetch("/api/video/leave", {
       method: "POST",
@@ -12684,6 +14613,10 @@ async function leaveMeetingRoom() {
       body: JSON.stringify({ userId: currentUser.id, room: currentRoom })
     });
   }
+
+  localStorage.removeItem("activeMeetingRoom");
+  const pipWidget = document.getElementById("meeting-pip-widget");
+  if (pipWidget) pipWidget.classList.add("hidden");
 
   // Stop screen sharing if active
   stopScreenSharing();
@@ -12717,16 +14650,21 @@ async function leaveMeetingRoom() {
 }
 
 function addLocalVideo() {
-  const grid = document.getElementById("video-grid");
+  const activeTabLink = document.querySelector(".nav-link.active");
+  const activeTabId = activeTabLink ? activeTabLink.getAttribute("data-tab") : "meetings";
+  
+  const grid = (activeTabId !== "meetings") ? document.getElementById("meeting-pip-video-container") : document.getElementById("video-grid");
   if (!grid) return;
 
   // Create container
   const container = document.createElement("div");
   container.id = "video-container-local";
   container.style.position = "relative";
-  container.style.borderRadius = "8px";
+  container.style.borderRadius = activeTabId !== "meetings" ? "4px" : "8px";
   container.style.overflow = "hidden";
   container.style.backgroundColor = "#1e293b";
+  container.style.border = "2px solid #eab308";
+  container.style.boxShadow = "0 4px 12px rgba(234, 179, 8, 0.2)";
 
   const video = document.createElement("video");
   video.id = "local-video-element";
@@ -12739,7 +14677,6 @@ function addLocalVideo() {
   video.style.objectFit = "cover";
 
   const label = document.createElement("div");
-  label.textContent = "You";
   label.style.position = "absolute";
   label.style.bottom = "12px";
   label.style.left = "12px";
@@ -12747,16 +14684,93 @@ function addLocalVideo() {
   label.style.color = "#fff";
   label.style.padding = "4px 8px";
   label.style.borderRadius = "4px";
-  label.style.fontSize = "0.75rem";
+  label.style.fontSize = "0.72rem";
   label.style.fontWeight = "600";
+  label.style.display = "flex";
+  label.style.alignItems = "center";
+  label.style.gap = "6px";
+  label.style.zIndex = "3";
+  label.innerHTML = `
+    <span>You</span>
+    ${isCurrentUserHost ? `<i data-lucide="crown" style="width: 11px; height: 11px; color: #eab308; fill: #eab308;"></i>` : ""}
+    <i data-lucide="${isMicOn ? 'mic' : 'mic-off'}" style="width: 11px; height: 11px; color: ${isMicOn ? '#10b981' : '#ef4444'};"></i>
+    <i data-lucide="${isCamOn ? 'video' : 'video-off'}" style="width: 11px; height: 11px; color: ${isCamOn ? '#10b981' : '#ef4444'};"></i>
+  `;
+
+  // 3-dots top right menu trigger button
+  const menuBtn = document.createElement("button");
+  menuBtn.style.position = "absolute";
+  menuBtn.style.top = "12px";
+  menuBtn.style.right = "12px";
+  menuBtn.style.border = "none";
+  menuBtn.style.background = "rgba(15, 23, 42, 0.75)";
+  menuBtn.style.color = "#fff";
+  menuBtn.style.width = "28px";
+  menuBtn.style.height = "28px";
+  menuBtn.style.borderRadius = "50%";
+  menuBtn.style.display = "flex";
+  menuBtn.style.alignItems = "center";
+  menuBtn.style.justifyContent = "center";
+  menuBtn.style.cursor = "pointer";
+  menuBtn.style.zIndex = "3";
+  menuBtn.title = "Options";
+  menuBtn.innerHTML = `<i data-lucide="more-vertical" style="width: 14px; height: 14px;"></i>`;
+  menuBtn.onclick = (e) => {
+    e.stopPropagation();
+    document.getElementById("btn-active-more").click();
+  };
+
+  // Hand raise overlay indicator
+  const hand = document.createElement("div");
+  hand.id = "video-hand-local";
+  hand.className = "hidden";
+  hand.style.position = "absolute";
+  hand.style.top = "12px";
+  hand.style.right = "48px"; // Shift left because of more-options button!
+  hand.style.backgroundColor = "#eab308";
+  hand.style.color = "#fff";
+  hand.style.padding = "6px";
+  hand.style.borderRadius = "50%";
+  hand.style.display = "flex";
+  hand.style.alignItems = "center";
+  hand.style.justifyContent = "center";
+  hand.style.boxShadow = "0 2px 8px rgba(0,0,0,0.3)";
+  hand.style.zIndex = "3";
+  hand.innerHTML = `<i data-lucide="hand" style="width: 14px; height: 14px;"></i>`;
+
+  // Camera Off Avatar overlay
+  const avatar = document.createElement("div");
+  avatar.id = "video-avatar-local";
+  avatar.className = isCamOn ? "hidden" : "";
+  avatar.style.position = "absolute";
+  avatar.style.top = "0";
+  avatar.style.left = "0";
+  avatar.style.width = "100%";
+  avatar.style.height = "100%";
+  avatar.style.display = "flex";
+  avatar.style.alignItems = "center";
+  avatar.style.justifyContent = "center";
+  avatar.style.backgroundColor = "#1e293b";
+  avatar.style.color = "#fff";
+  avatar.style.zIndex = "1";
+  
+  const char = currentUser.fullname.replace(/\s*\(.*\)\s*/g, "").trim().charAt(0).toUpperCase();
+  avatar.innerHTML = `<div style="width: 80px; height: 80px; border-radius: 50%; background: linear-gradient(135deg, var(--accent-secondary), var(--accent-color)); display: flex; align-items: center; justify-content: center; font-size: 2rem; font-weight: 700; box-shadow: 0 4px 12px rgba(0,0,0,0.2);">${char}</div>`;
 
   container.appendChild(video);
   container.appendChild(label);
+  container.appendChild(menuBtn);
+  container.appendChild(hand);
+  container.appendChild(avatar);
   grid.appendChild(container);
+  lucide.createIcons();
 }
 
 function addRemoteVideo(peerId, stream) {
-  const grid = document.getElementById("video-grid");
+  const activeTabLink = document.querySelector(".nav-link.active");
+  const activeTabId = activeTabLink ? activeTabLink.getAttribute("data-tab") : "meetings";
+
+  const grid = (activeTabId !== "meetings") ? document.getElementById("meeting-pip-video-container") : document.getElementById("video-grid");
   if (!grid) return;
 
   // Check if remote video container already exists
@@ -12765,9 +14779,11 @@ function addRemoteVideo(peerId, stream) {
     container = document.createElement("div");
     container.id = `video-container-${peerId}`;
     container.style.position = "relative";
-    container.style.borderRadius = "8px";
+    container.style.borderRadius = activeTabId !== "meetings" ? "4px" : "8px";
     container.style.overflow = "hidden";
     container.style.backgroundColor = "#1e293b";
+    container.style.border = "2px solid #f59e0b";
+    container.style.boxShadow = "0 4px 12px rgba(245, 158, 11, 0.15)";
 
     const video = document.createElement("video");
     video.srcObject = stream;
@@ -12781,9 +14797,12 @@ function addRemoteVideo(peerId, stream) {
     const users = db.getUsers() || [];
     const peerUser = users.find(u => u.id === peerId);
     const name = peerUser ? peerUser.fullname.replace(/\s*\(.*\)\s*/g, "") : "Participant";
+    const pState = meetingParticipantsList[peerId] || {};
+    const peerIsMicOn = pState.isMicOn !== false;
+    const peerIsCamOn = pState.isCamOn !== false;
+    const peerIsHost = peerUser && (peerUser.role === "Admin" || peerUser.role === "Manager");
 
     const label = document.createElement("div");
-    label.textContent = name;
     label.style.position = "absolute";
     label.style.bottom = "12px";
     label.style.left = "12px";
@@ -12791,12 +14810,71 @@ function addRemoteVideo(peerId, stream) {
     label.style.color = "#fff";
     label.style.padding = "4px 8px";
     label.style.borderRadius = "4px";
-    label.style.fontSize = "0.75rem";
+    label.style.fontSize = "0.72rem";
     label.style.fontWeight = "600";
+    label.style.display = "flex";
+    label.style.alignItems = "center";
+    label.style.gap = "6px";
+    label.style.zIndex = "3";
+    label.innerHTML = `
+      <span>${name}</span>
+      ${peerIsHost ? `<i data-lucide="crown" style="width: 11px; height: 11px; color: #eab308; fill: #eab308;"></i>` : ""}
+      <i data-lucide="${peerIsMicOn ? 'mic' : 'mic-off'}" style="width: 11px; height: 11px; color: ${peerIsMicOn ? '#10b981' : '#ef4444'};"></i>
+      <i data-lucide="${peerIsCamOn ? 'video' : 'video-off'}" style="width: 11px; height: 11px; color: ${peerIsCamOn ? '#10b981' : '#ef4444'};"></i>
+    `;
+
+    // 3-dots top right menu trigger button
+    const menuBtn = document.createElement("button");
+    menuBtn.style.position = "absolute";
+    menuBtn.style.top = "12px";
+    menuBtn.style.right = "12px";
+    menuBtn.style.border = "none";
+    menuBtn.style.background = "rgba(15, 23, 42, 0.75)";
+    menuBtn.style.color = "#fff";
+    menuBtn.style.width = "28px";
+    menuBtn.style.height = "28px";
+    menuBtn.style.borderRadius = "50%";
+    menuBtn.style.display = "flex";
+    menuBtn.style.alignItems = "center";
+    menuBtn.style.justifyContent = "center";
+    menuBtn.style.cursor = "pointer";
+    menuBtn.style.zIndex = "3";
+    menuBtn.title = "Options";
+    menuBtn.innerHTML = `<i data-lucide="more-vertical" style="width: 14px; height: 14px;"></i>`;
+    menuBtn.onclick = (e) => {
+      e.stopPropagation();
+      container.dispatchEvent(new MouseEvent('dblclick'));
+    };
+
+    // Hand raise overlay indicator
+    const hand = document.createElement("div");
+    hand.id = `video-hand-${peerId}`;
+    hand.className = "hidden";
+    hand.style.position = "absolute";
+    hand.style.top = "12px";
+    hand.style.right = "48px"; // Shift left because of more-options button!
+    hand.style.backgroundColor = "#eab308";
+    hand.style.color = "#fff";
+    hand.style.padding = "6px";
+    hand.style.borderRadius = "50%";
+    hand.style.display = "flex";
+    hand.style.alignItems = "center";
+    hand.style.justifyContent = "center";
+    hand.style.boxShadow = "0 2px 8px rgba(0,0,0,0.3)";
+    hand.style.zIndex = "3";
+    hand.innerHTML = `<i data-lucide="hand" style="width: 14px; height: 14px;"></i>`;
+
+    // Check if participant is already hand raised in state list
+    if (meetingParticipantsList[peerId] && meetingParticipantsList[peerId].isHandRaised) {
+      hand.classList.remove("hidden");
+    }
 
     container.appendChild(video);
     container.appendChild(label);
+    container.appendChild(menuBtn);
+    container.appendChild(hand);
     grid.appendChild(container);
+    lucide.createIcons();
   } else {
     const video = container.querySelector("video");
     if (video) video.srcObject = stream;
@@ -12968,6 +15046,27 @@ async function refreshWaChatData() {
   }
 }
 
+async function toggleWaChatPin(chatId, isPinned) {
+  const currentUserId = currentUser ? currentUser.id : '';
+  if (!chatId || !currentUserId) return;
+  try {
+    await fetch('/api/chat/pin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: currentUserId, chatId, isPinned })
+    });
+    if (!waUserPreferences[chatId]) waUserPreferences[chatId] = {};
+    waUserPreferences[chatId].isPinned = isPinned;
+    if (waActiveChat && waActiveChat.id === chatId) {
+      waActiveChat.isPinned = isPinned;
+    }
+    showToast(isPinned ? "Chat pinned to top" : "Chat unpinned", "info");
+    await refreshWaChatData();
+  } catch (err) {
+    console.error("Error toggling chat pin:", err);
+  }
+}
+
 function renderWaChatList() {
   const listContainer = document.getElementById('wa-chat-list');
   if (!listContainer) return;
@@ -12984,6 +15083,7 @@ function renderWaChatList() {
 
     const pref = waUserPreferences[emp.id] || {};
     const isArchived = !!pref.isArchived;
+    const isPinned = !!pref.isPinned;
 
     // Get last message between currentUser and emp
     const chatMsgs = waAllMessages.filter(m => 
@@ -13020,6 +15120,7 @@ function renderWaChatList() {
       lastTimestamp: lastMsg ? new Date(lastMsg.createdAt).getTime() : 0,
       unreadCount: unreadMsgs.length,
       isArchived: isArchived,
+      isPinned: isPinned,
       empObj: emp
     });
   });
@@ -13031,6 +15132,7 @@ function renderWaChatList() {
 
     const pref = waUserPreferences[grp.id] || {};
     const isArchived = !!pref.isArchived;
+    const isPinned = !!pref.isPinned;
 
     const groupMsgs = waAllMessages.filter(m => m.receiverId === grp.id || m.receiver === grp.name);
     const lastMsg = groupMsgs.length > 0 ? groupMsgs[groupMsgs.length - 1] : null;
@@ -13057,12 +15159,17 @@ function renderWaChatList() {
       lastTimestamp: lastMsg ? new Date(lastMsg.createdAt).getTime() : new Date(grp.createdAt || 0).getTime(),
       unreadCount: unreadMsgs.length,
       isArchived: isArchived,
+      isPinned: isPinned,
       grpObj: grp
     });
   });
 
-  // Sort chat items by last message timestamp descending
-  chatItems.sort((a, b) => b.lastTimestamp - a.lastTimestamp);
+  // Sort chat items: Pinned first (sorted by timestamp desc), then non-pinned (sorted by timestamp desc)
+  chatItems.sort((a, b) => {
+    if (a.isPinned && !b.isPinned) return -1;
+    if (!a.isPinned && b.isPinned) return 1;
+    return b.lastTimestamp - a.lastTimestamp;
+  });
 
   // Calculate stats for badges
   const totalUnread = chatItems.reduce((acc, item) => acc + item.unreadCount, 0);
@@ -13156,11 +15263,17 @@ function renderWaChatList() {
       <div class="wa-chat-item-content">
         <div class="wa-chat-item-top">
           <span class="wa-chat-item-title">${item.name}</span>
-          <span class="wa-chat-item-time">${item.lastTime}</span>
+          <div style="display: flex; align-items: center; gap: 4px;">
+            ${item.isPinned ? `<i data-lucide="pin" class="wa-pin-indicator" title="Pinned Chat"></i>` : ''}
+            <span class="wa-chat-item-time">${item.lastTime}</span>
+          </div>
         </div>
         <div class="wa-chat-item-bottom">
           <span class="wa-chat-item-snippet">${item.lastMsg}</span>
           <div style="display: flex; align-items: center; gap: 4px;">
+            <button class="wa-item-pin-btn" title="${item.isPinned ? 'Unpin Chat' : 'Pin Chat'}" onclick="event.stopPropagation(); toggleWaChatPin('${item.id}', ${!item.isPinned});">
+              <i data-lucide="pin"></i>
+            </button>
             ${item.type === 'direct' ? `<span class="wa-status-badge-inline ${statusDotClass}">${statusText}</span>` : ''}
             ${item.unreadCount > 0 ? `<span class="wa-unread-badge">${item.unreadCount}</span>` : ''}
           </div>
@@ -13190,10 +15303,21 @@ function selectWaChat(chatItem) {
   const titleEl = document.getElementById('wa-active-title');
   const statusBadgeEl = document.getElementById('wa-active-status-badge');
   const roleDomainEl = document.getElementById('wa-active-role-domain');
+  const togglePinBtn = document.getElementById('wa-btn-toggle-pin');
 
   if (initialsEl) initialsEl.textContent = getInitials(chatItem.name);
   if (titleEl) titleEl.textContent = chatItem.name;
   if (roleDomainEl) roleDomainEl.textContent = `${chatItem.role} • ${chatItem.domain}`;
+
+  if (togglePinBtn) {
+    if (chatItem.isPinned) {
+      togglePinBtn.classList.add('active');
+      togglePinBtn.title = "Unpin Chat";
+    } else {
+      togglePinBtn.classList.remove('active');
+      togglePinBtn.title = "Pin Chat";
+    }
+  }
 
   if (statusDotEl && statusBadgeEl) {
     statusDotEl.className = 'wa-status-dot';
@@ -13448,6 +15572,15 @@ function initWaChatEvents() {
     };
   }
 
+  // Pin / Unpin Active Chat Toggle
+  const togglePinBtn = document.getElementById('wa-btn-toggle-pin');
+  if (togglePinBtn) {
+    togglePinBtn.onclick = () => {
+      if (!waActiveChat) return;
+      toggleWaChatPin(waActiveChat.id, !waActiveChat.isPinned);
+    };
+  }
+
   // Archive / Unarchive Active Chat Toggle
   const toggleArchiveBtn = document.getElementById('wa-btn-toggle-archive');
   if (toggleArchiveBtn) {
@@ -13563,6 +15696,46 @@ function initWaChatEvents() {
       if (!isMsgDuplicate(msg, waAllMessages)) {
         waAllMessages.push(msg);
       }
+
+      if (typeof currentUser !== 'undefined' && currentUser) {
+        const isSentByMe = msg.senderId === currentUser.id ||
+                           msg.sender === currentUser.fullname ||
+                           msg.sender === currentUser.name;
+
+        // For direct messages: only the recipient should be notified
+        const isDirectToMe = !isSentByMe && (
+          msg.receiverId === currentUser.id ||
+          msg.receiver === currentUser.fullname ||
+          msg.receiver === currentUser.name ||
+          msg.receiver === currentUser.username
+        );
+
+        // For group messages: only members of that group should be notified
+        const isGroupMsg = msg.receiverId && msg.receiverId.startsWith && msg.receiverId.startsWith('grp-');
+        const isGroupMember = isGroupMsg && (() => {
+          const group = (waAllEmployees || []).find(g => g.id === msg.receiverId);
+          if (!group) {
+            // Check in group list if available
+            const grp = (waGroups || []).find(g => g.id === msg.receiverId);
+            return grp && grp.members && grp.members.includes(currentUser.id);
+          }
+          return false;
+        })();
+
+        const shouldNotify = isDirectToMe || (!isSentByMe && isGroupMember);
+
+        if (shouldNotify && typeof addAppNotification === 'function') {
+          addAppNotification({
+            type: "chat",
+            title: `New Chat Message from ${msg.sender || 'Colleague'}`,
+            message: msg.text || 'Sent an attachment / image',
+            sender: msg.sender || 'Colleague',
+            actionTab: "chat",
+            actionData: { chatId: msg.senderId }
+          });
+        }
+      }
+
       if (waActiveChat && (
         (waActiveChat.type === 'direct' && (msg.senderId === waActiveChat.id || msg.receiverId === waActiveChat.id || msg.sender === waActiveChat.name || msg.receiver === waActiveChat.name)) ||
         (waActiveChat.type === 'group' && (msg.receiverId === waActiveChat.id || msg.receiver === waActiveChat.name))
@@ -13571,6 +15744,7 @@ function initWaChatEvents() {
       }
       renderWaChatList();
     });
+
 
     socket.on("employeeStatusChanged", () => {
       fetch('/api/employees/status').then(res => res.json()).then(data => {
@@ -13605,8 +15779,41 @@ function initWaChatEvents() {
       });
       renderWaChatList();
     });
+
+    socket.on("meeting-scheduled", (data) => {
+      const newMtg = data.meeting;
+      if (!newMtg || !currentUser) return;
+      
+      // Check if current user is a participant of this meeting
+      const participants = newMtg.participants || [];
+      if (participants.includes(currentUser.id) && newMtg.id.startsWith("mtg-")) {
+        // Format time
+        const [hrs, mins] = newMtg.time.split(':').map(Number);
+        const ampm = hrs >= 12 ? 'PM' : 'AM';
+        const dispHrs = hrs % 12 || 12;
+        const dispMins = mins < 10 ? '0' + mins : mins;
+        const timeStr = `${dispHrs}:${dispMins} ${ampm}`;
+
+        // Add app notification
+        if (typeof addAppNotification === 'function') {
+          addAppNotification({
+            type: "meeting",
+            title: `New Meeting Invitation`,
+            message: `"${newMtg.title}" scheduled at ${timeStr} today by ${data.creatorName || 'Colleague'}.`,
+            sender: data.creatorName || 'Colleague',
+            actionTab: "meetings"
+          });
+        }
+        
+        // Refresh scheduled list
+        renderScheduledMeetings();
+      }
+    });
+
+    // (Incoming call invite listener moved to global scope above)
   }
 }
+
 
 function populateGroupMembersList(query) {
   const container = document.getElementById('group-members-list');
@@ -13654,3 +15861,421 @@ function formatChatTime(dateStr) {
 function escapeHtml(str) {
   return String(str || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
+
+// ==================== NOTIFICATIONS HUB & SYSTEM POPUPS ENGINE ====================
+
+let notificationsList = JSON.parse(localStorage.getItem('app_notifications_list') || 'null');
+if (!notificationsList) {
+  notificationsList = [
+    {
+      id: "notif_1",
+      type: "chat",
+      title: "New Chat Message from Amit Rai",
+      message: "Hey Aryan, can you check the latest Android app build updates?",
+      sender: "Amit Rai",
+      timestamp: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
+      read: false,
+      actionTab: "chat",
+      actionData: { chatId: "2" }
+    },
+    {
+      id: "notif_2",
+      type: "task_assigned",
+      title: "New Task Assigned",
+      message: "Task 'Fix API Authentication Timeout' was assigned to you by Rashika Poonia.",
+      sender: "Rashika Poonia",
+      timestamp: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
+      read: false,
+      actionTab: "tasks"
+    },
+    {
+      id: "notif_3",
+      type: "task_completed",
+      title: "Task Completed",
+      message: "Task 'Update User Profile UI Components' has been marked as Completed.",
+      sender: "System",
+      timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+      read: true,
+      actionTab: "tasks"
+    },
+    {
+      id: "notif_4",
+      type: "meeting",
+      title: "Upcoming Team Sync Meeting",
+      message: "Daily Tech Standup is scheduled for today at 4:00 PM.",
+      sender: "Rashika Poonia",
+      timestamp: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
+      read: true,
+      actionTab: "meetings"
+    }
+  ];
+  localStorage.setItem('app_notifications_list', JSON.stringify(notificationsList));
+}
+
+let desktopNotificationsEnabled = localStorage.getItem('app_desktop_notifications') !== 'false';
+let soundNotificationsEnabled = localStorage.getItem('app_sound_notifications') !== 'false';
+let activeNotifFilter = 'all';
+
+function saveNotificationsToStorage() {
+  localStorage.setItem('app_notifications_list', JSON.stringify(notificationsList));
+}
+
+function updatePermissionBadges() {
+  const desktopPermission = ("Notification" in window) ? Notification.permission : "unsupported";
+  const statusBadges = [
+    document.getElementById("notif-permission-badge"),
+    document.getElementById("settings-permission-badge")
+  ];
+
+  statusBadges.forEach(badge => {
+    if (!badge) return;
+    if (!desktopNotificationsEnabled) {
+      badge.textContent = "Disabled";
+      badge.className = "badge badge-neutral";
+      badge.style.background = "var(--border-color, #cbd5e1)";
+      badge.style.color = "var(--text-secondary, #64748b)";
+    } else if (desktopPermission === "granted") {
+      badge.textContent = "Granted";
+      badge.className = "badge badge-success";
+      badge.style.background = "rgba(16, 185, 129, 0.15)";
+      badge.style.color = "#10b981";
+    } else if (desktopPermission === "denied") {
+      badge.textContent = "Blocked";
+      badge.className = "badge badge-danger";
+      badge.style.background = "rgba(239, 68, 68, 0.15)";
+      badge.style.color = "#ef4444";
+    } else {
+      badge.textContent = "Permission Needed";
+      badge.className = "badge badge-warning";
+      badge.style.background = "rgba(245, 158, 11, 0.15)";
+      badge.style.color = "#f59e0b";
+    }
+  });
+
+  const desktopToggles = [
+    document.getElementById("notif-desktop-toggle"),
+    document.getElementById("settings-desktop-notif-toggle")
+  ];
+  desktopToggles.forEach(chk => {
+    if (chk) chk.checked = desktopNotificationsEnabled && (desktopPermission === "granted" || desktopPermission === "default");
+  });
+
+  const soundToggles = [
+    document.getElementById("notif-sound-toggle"),
+    document.getElementById("settings-sound-notif-toggle")
+  ];
+  soundToggles.forEach(chk => {
+    if (chk) chk.checked = soundNotificationsEnabled;
+  });
+}
+
+function requestDesktopPermission(callback) {
+  if (!("Notification" in window)) {
+    showToast("Browser does not support desktop notifications", "error");
+    if (callback) callback(false);
+    return;
+  }
+  if (Notification.permission === "granted") {
+    if (callback) callback(true);
+  } else if (Notification.permission !== "denied") {
+    Notification.requestPermission().then(permission => {
+      updatePermissionBadges();
+      if (permission === "granted") {
+        showToast("Desktop Popups Enabled!", "success");
+        try {
+          new Notification("MedAstraX Desktop Popups Active", {
+            body: "You will receive real-time desktop popups even when the app is in the background.",
+            icon: "/medastrax_logo.png"
+          });
+        } catch(e) {}
+        if (callback) callback(true);
+      } else {
+        showToast("Desktop popup permission denied by browser", "error");
+        if (callback) callback(false);
+      }
+    });
+  } else {
+    showToast("Notifications are blocked in browser settings. Please enable notifications for this site.", "error");
+    if (callback) callback(false);
+  }
+}
+
+function toggleDesktopNotifications(enabled) {
+  desktopNotificationsEnabled = enabled;
+  localStorage.setItem('app_desktop_notifications', enabled ? 'true' : 'false');
+  if (enabled) {
+    requestDesktopPermission(() => updatePermissionBadges());
+  } else {
+    updatePermissionBadges();
+    showToast("Desktop system popups turned OFF", "info");
+  }
+}
+
+function toggleSoundNotifications(enabled) {
+  soundNotificationsEnabled = enabled;
+  localStorage.setItem('app_sound_notifications', enabled ? 'true' : 'false');
+  updatePermissionBadges();
+  showToast(`Notification sounds turned ${enabled ? 'ON' : 'OFF'}`, "info");
+}
+
+function playNotificationSound() {
+  if (!soundNotificationsEnabled) return;
+  try {
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContext) return;
+    const ctx = new AudioContext();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(587.33, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.1);
+    gain.gain.setValueAtTime(0.15, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.3);
+  } catch(e) {}
+}
+
+function sendDesktopNotification(title, message, category, targetTab) {
+  if (!desktopNotificationsEnabled) return;
+  if (!("Notification" in window)) return;
+  if (Notification.permission !== "granted") return;
+
+  try {
+    const notification = new Notification(title, {
+      body: message,
+      icon: "/medastrax_logo.png",
+      tag: "medastrax_" + Date.now(),
+      renotify: true
+    });
+    notification.onclick = function(e) {
+      e.preventDefault();
+      window.focus();
+      if (targetTab) {
+        switchTab(targetTab);
+      }
+      notification.close();
+    };
+  } catch (e) {
+    console.warn("[Desktop Notif] Error firing desktop notification:", e);
+  }
+}
+
+function addAppNotification(notifData) {
+  const newNotif = {
+    id: 'notif_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4),
+    type: notifData.type || 'system',
+    title: notifData.title || 'Notification',
+    message: notifData.message || '',
+    sender: notifData.sender || 'System',
+    timestamp: new Date().toISOString(),
+    read: false,
+    actionTab: notifData.actionTab || '',
+    actionData: notifData.actionData || null
+  };
+
+  notificationsList.unshift(newNotif);
+  saveNotificationsToStorage();
+  updateNotificationBadges();
+  playNotificationSound();
+  sendDesktopNotification(newNotif.title, newNotif.message, newNotif.type, newNotif.actionTab);
+
+  const activeLink = document.querySelector(".nav-link.active");
+  if (activeLink && activeLink.getAttribute("data-tab") === "notifications") {
+    renderNotificationsTab();
+  }
+  return newNotif;
+}
+
+function updateNotificationBadges() {
+  const unreadCount = notificationsList.filter(n => !n.read).length;
+  const sidebarBadge = document.getElementById("sidebar-notification-badge");
+  if (sidebarBadge) {
+    sidebarBadge.textContent = unreadCount;
+    if (unreadCount > 0) {
+      sidebarBadge.style.display = "inline-block";
+      sidebarBadge.classList.add("pulse");
+      setTimeout(() => sidebarBadge.classList.remove("pulse"), 1200);
+    } else {
+      sidebarBadge.style.display = "none";
+    }
+  }
+
+  const countAll = notificationsList.length;
+  const countUnread = unreadCount;
+  const countChats = notificationsList.filter(n => n.type === 'chat').length;
+  const countTasks = notificationsList.filter(n => n.type === 'task_assigned' || n.type === 'task_completed').length;
+  const countSystem = notificationsList.filter(n => n.type === 'system' || n.type === 'meeting').length;
+
+  if (document.getElementById("notif-count-all")) document.getElementById("notif-count-all").textContent = countAll;
+  if (document.getElementById("notif-count-unread")) document.getElementById("notif-count-unread").textContent = countUnread;
+  if (document.getElementById("notif-count-chats")) document.getElementById("notif-count-chats").textContent = countChats;
+  if (document.getElementById("notif-count-tasks")) document.getElementById("notif-count-tasks").textContent = countTasks;
+  if (document.getElementById("notif-count-system")) document.getElementById("notif-count-system").textContent = countSystem;
+}
+
+function formatNotifTime(isoString) {
+  if (!isoString) return '';
+  const date = new Date(isoString);
+  const diffSecs = Math.floor((Date.now() - date.getTime()) / 1000);
+  if (diffSecs < 60) return 'Just now';
+  if (diffSecs < 3600) return Math.floor(diffSecs / 60) + 'm ago';
+  if (diffSecs < 86400) return Math.floor(diffSecs / 3600) + 'h ago';
+  return date.toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+
+function renderNotificationsTab() {
+  updatePermissionBadges();
+  updateNotificationBadges();
+
+  const container = document.getElementById("notifications-list-container");
+  const emptyState = document.getElementById("notifications-empty-state");
+  if (!container) return;
+
+  let filtered = [...notificationsList];
+  if (activeNotifFilter === 'unread') {
+    filtered = filtered.filter(n => !n.read);
+  } else if (activeNotifFilter === 'chats') {
+    filtered = filtered.filter(n => n.type === 'chat');
+  } else if (activeNotifFilter === 'tasks') {
+    filtered = filtered.filter(n => n.type === 'task_assigned' || n.type === 'task_completed');
+  } else if (activeNotifFilter === 'system') {
+    filtered = filtered.filter(n => n.type === 'system' || n.type === 'meeting');
+  }
+
+  if (filtered.length === 0) {
+    container.innerHTML = "";
+    if (emptyState) emptyState.classList.remove("hidden");
+    return;
+  }
+
+  if (emptyState) emptyState.classList.add("hidden");
+
+  container.innerHTML = filtered.map(notif => {
+    let iconName = 'bell';
+    let typeLabel = 'System';
+    if (notif.type === 'chat') { iconName = 'message-square'; typeLabel = 'Chat'; }
+    else if (notif.type === 'task_assigned') { iconName = 'check-square'; typeLabel = 'Task Assigned'; }
+    else if (notif.type === 'task_completed') { iconName = 'check-circle'; typeLabel = 'Task Completed'; }
+    else if (notif.type === 'meeting') { iconName = 'video'; typeLabel = 'Meeting'; }
+
+    let actionButtonHtml = '';
+    if (notif.actionTab === 'chat') {
+      actionButtonHtml = `<button class="notif-action-btn" onclick="openNotifAction('chat', '${notif.id}')"><i data-lucide="message-circle" style="width:14px;height:14px;"></i> Open Chat</button>`;
+    } else if (notif.actionTab === 'tasks') {
+      actionButtonHtml = `<button class="notif-action-btn" onclick="openNotifAction('tasks', '${notif.id}')"><i data-lucide="layout-grid" style="width:14px;height:14px;"></i> Tasks Board</button>`;
+    } else if (notif.actionTab === 'meetings') {
+      actionButtonHtml = `<button class="notif-action-btn" onclick="openNotifAction('meetings', '${notif.id}')"><i data-lucide="video" style="width:14px;height:14px;"></i> View Meetings</button>`;
+    }
+
+    return `
+      <div class="notif-card ${notif.read ? '' : 'unread'}" id="notif-card-${notif.id}">
+        <div class="notif-icon-box ${notif.type}">
+          <i data-lucide="${iconName}"></i>
+        </div>
+        <div class="notif-body">
+          <div class="notif-header-row">
+            <span class="notif-type-tag ${notif.type}">${typeLabel}</span>
+            <span class="notif-time">${formatNotifTime(notif.timestamp)}</span>
+          </div>
+          <div class="notif-title">${escapeHtml(notif.title)}</div>
+          <div class="notif-desc">${escapeHtml(notif.message)}</div>
+          <div class="notif-actions">
+            ${actionButtonHtml}
+            ${!notif.read ? `<button class="notif-action-btn" onclick="toggleNotifReadState('${notif.id}', true)"><i data-lucide="check" style="width:14px;height:14px;"></i> Mark as Read</button>` : `<button class="notif-action-btn" onclick="toggleNotifReadState('${notif.id}', false)"><i data-lucide="rotate-ccw" style="width:14px;height:14px;"></i> Mark Unread</button>`}
+            <button class="notif-delete-btn" onclick="deleteSingleNotif('${notif.id}')" title="Delete notification"><i data-lucide="trash-2" style="width:16px;height:16px;"></i></button>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  if (typeof lucide !== 'undefined' && lucide.createIcons) {
+    lucide.createIcons();
+  }
+}
+
+function openNotifAction(targetTab, notifId) {
+  toggleNotifReadState(notifId, true);
+  switchTab(targetTab);
+}
+
+function toggleNotifReadState(id, isRead) {
+  const notif = notificationsList.find(n => n.id === id);
+  if (notif) {
+    notif.read = isRead;
+    saveNotificationsToStorage();
+    renderNotificationsTab();
+  }
+}
+
+function deleteSingleNotif(id) {
+  notificationsList = notificationsList.filter(n => n.id !== id);
+  saveNotificationsToStorage();
+  renderNotificationsTab();
+}
+
+function markAllNotificationsRead() {
+  notificationsList.forEach(n => n.read = true);
+  saveNotificationsToStorage();
+  renderNotificationsTab();
+  showToast("All notifications marked as read", "success");
+}
+
+function clearAllNotifications() {
+  if (confirm("Are you sure you want to clear all notifications?")) {
+    notificationsList = [];
+    saveNotificationsToStorage();
+    renderNotificationsTab();
+    showToast("Notifications cleared", "info");
+  }
+}
+
+function initNotificationEventListeners() {
+  updateNotificationBadges();
+  updatePermissionBadges();
+
+  const markAllBtn = document.getElementById("notif-mark-all-read-btn");
+  if (markAllBtn) markAllBtn.addEventListener("click", markAllNotificationsRead);
+
+  const clearAllBtn = document.getElementById("notif-clear-all-btn");
+  if (clearAllBtn) clearAllBtn.addEventListener("click", clearAllNotifications);
+
+  const desktopToggle = document.getElementById("notif-desktop-toggle");
+  if (desktopToggle) {
+    desktopToggle.addEventListener("change", (e) => toggleDesktopNotifications(e.target.checked));
+  }
+  const settingsDesktopToggle = document.getElementById("settings-desktop-notif-toggle");
+  if (settingsDesktopToggle) {
+    settingsDesktopToggle.addEventListener("change", (e) => toggleDesktopNotifications(e.target.checked));
+  }
+
+  const soundToggle = document.getElementById("notif-sound-toggle");
+  if (soundToggle) {
+    soundToggle.addEventListener("change", (e) => toggleSoundNotifications(e.target.checked));
+  }
+  const settingsSoundToggle = document.getElementById("settings-sound-notif-toggle");
+  if (settingsSoundToggle) {
+    settingsSoundToggle.addEventListener("change", (e) => toggleSoundNotifications(e.target.checked));
+  }
+
+  document.querySelectorAll(".notif-filter-btn").forEach(btn => {
+    btn.addEventListener("click", (e) => {
+      document.querySelectorAll(".notif-filter-btn").forEach(b => b.classList.remove("active"));
+      const targetBtn = e.currentTarget;
+      targetBtn.classList.add("active");
+      activeNotifFilter = targetBtn.getAttribute("data-filter") || "all";
+      renderNotificationsTab();
+    });
+  });
+}
+
+// Call init notification event listeners on script load
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", initNotificationEventListeners);
+} else {
+  initNotificationEventListeners();
+}
+

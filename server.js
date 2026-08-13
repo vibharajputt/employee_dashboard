@@ -43,6 +43,7 @@ async function ensureDatabaseExists() {
     }
   } catch (err) {
     console.error("[DB] Database creation check failed:", err.message);
+    isUsingMockDb = true;
   } finally {
     try {
       await client.end();
@@ -50,9 +51,471 @@ async function ensureDatabaseExists() {
   }
 }
 
-const pool = new Pool({
+const fs = require('fs');
+let isUsingMockDb = false;
+
+class MockClient {
+  async query(text, values) {
+    const dbData = loadMockDb();
+    const queryLower = text.toLowerCase().trim();
+
+    if (queryLower.includes('select count(*)')) {
+      let tableName = '';
+      if (queryLower.includes('from activities')) tableName = 'activities';
+      else if (queryLower.includes('from meetings')) tableName = 'meetings';
+      else if (queryLower.includes('from users')) tableName = 'users';
+      
+      const count = dbData[tableName] ? dbData[tableName].length : 0;
+      return { rows: [{ count: count.toString() }] };
+    }
+
+    if (queryLower.startsWith('select')) {
+      let tableName = '';
+      if (queryLower.includes('from users')) tableName = 'users';
+      else if (queryLower.includes('from tasks')) tableName = 'tasks';
+      else if (queryLower.includes('from leaves')) tableName = 'leaves';
+      else if (queryLower.includes('from activities')) tableName = 'activities';
+      else if (queryLower.includes('from meeting_history')) tableName = 'meeting_history';
+      else if (queryLower.includes('from meetings')) tableName = 'meetings';
+      else if (queryLower.includes('from attendance')) tableName = 'attendance';
+      else if (queryLower.includes('from groups')) tableName = 'groups';
+      else if (queryLower.includes('from user_chat_preferences')) tableName = 'user_chat_preferences';
+      else if (queryLower.includes('from messages')) tableName = 'messages';
+
+      if (!tableName || !dbData[tableName]) {
+        return { rows: [] };
+      }
+
+      let rows = [...dbData[tableName]];
+
+      if (tableName === 'leaves' && queryLower.includes("status = 'approved'")) {
+        rows = rows.filter(r => r.status === 'Approved');
+      }
+
+      if (tableName === 'user_chat_preferences' && queryLower.includes('"userid" = $1')) {
+        const userId = values[0];
+        rows = rows.filter(r => r.userId === userId);
+      }
+
+      if (tableName === 'activities') {
+        rows.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+      } else if (tableName === 'meetings') {
+        rows.sort((a, b) => {
+          if (b.isFixed !== a.isFixed) {
+            return (b.isFixed ? 1 : 0) - (a.isFixed ? 1 : 0);
+          }
+          return (a.title || '').localeCompare(b.title || '');
+        });
+      } else if (tableName === 'meeting_history') {
+        rows.sort((a, b) => new Date(b.timestamp || 0) - new Date(a.timestamp || 0));
+      } else if (tableName === 'groups') {
+        rows.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+      } else if (tableName === 'messages') {
+        rows.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+      }
+
+      return { rows };
+    }
+
+    if (queryLower.startsWith('insert into users')) {
+      const u = {
+        id: values[0],
+        username: values[1],
+        password: values[2],
+        fullname: values[3],
+        role: values[4],
+        reportingManagerId: values[5],
+        status: values[6],
+        availabilityStatus: values[7],
+        gmail: values[8],
+        phone: values[9],
+        domain: values[10],
+        aadhar: values[11]
+      };
+      
+      const idx = dbData.users.findIndex(x => x.username.toLowerCase() === u.username.toLowerCase());
+      if (idx !== -1) {
+        dbData.users[idx] = { ...dbData.users[idx], ...u };
+      } else {
+        dbData.users.push(u);
+      }
+      saveMockDb(dbData);
+      return { rows: [u] };
+    }
+
+    if (queryLower.startsWith('insert into tasks')) {
+      const t = {
+        id: values[0],
+        title: values[1],
+        description: values[2],
+        assigneeId: values[3],
+        priority: values[4],
+        dueDate: values[5],
+        status: values[6],
+        assignedById: values[7],
+        referenceLink: values[8],
+        deliverableLink: values[9],
+        feedback: values[10],
+        comments: typeof values[11] === 'string' ? JSON.parse(values[11]) : (values[11] || [])
+      };
+      dbData.tasks.push(t);
+      saveMockDb(dbData);
+      return { rows: [t] };
+    }
+
+    if (queryLower.startsWith('insert into leaves')) {
+      const l = {
+        id: values[0],
+        userId: values[1],
+        employeeName: values[2],
+        designation: values[3],
+        contactNo: values[4],
+        fromDate: values[5],
+        toDate: values[6],
+        totalDays: values[7],
+        reason: values[8],
+        status: values[9],
+        currentApproverId: values[10],
+        approvalChain: typeof values[11] === 'string' ? JSON.parse(values[11]) : (values[11] || []),
+        createdAt: new Date().toISOString()
+      };
+      dbData.leaves.push(l);
+      saveMockDb(dbData);
+      return { rows: [l] };
+    }
+
+    if (queryLower.startsWith('insert into activities')) {
+      const a = {
+        id: values[0],
+        message: values[1],
+        type: values[2],
+        timestamp: values[3] || new Date().toISOString()
+      };
+      dbData.activities.push(a);
+      saveMockDb(dbData);
+      return { rows: [a] };
+    }
+
+    if (queryLower.startsWith('insert into meetings')) {
+      const m = {
+        id: values[0],
+        title: values[1],
+        time: values[2],
+        participants: typeof values[3] === 'string' ? JSON.parse(values[3]) : (values[3] || []),
+        isFixed: values[4] || false,
+        roomCode: values[5],
+        description: values[6] || '',
+        isRecurring: values[7] || false,
+        recurrence: typeof values[8] === 'string' ? JSON.parse(values[8]) : (values[8] || {})
+      };
+      dbData.meetings.push(m);
+      saveMockDb(dbData);
+      return { rows: [m] };
+    }
+
+    if (queryLower.startsWith('insert into meeting_history')) {
+      const h = {
+        id: values[0],
+        userId: values[1],
+        title: values[2],
+        roomCode: values[3],
+        date: values[4],
+        time: values[5],
+        duration: values[6],
+        durationSec: values[7] || 0,
+        host: values[8] || 'You',
+        hostId: values[9],
+        participants: typeof values[10] === 'string' ? JSON.parse(values[10]) : (values[10] || []),
+        timestamp: values[11] || new Date().toISOString()
+      };
+      if (!dbData.meeting_history) dbData.meeting_history = [];
+      dbData.meeting_history.unshift(h);
+      saveMockDb(dbData);
+      return { rows: [h] };
+    }
+
+    if (queryLower.startsWith('insert into attendance')) {
+      const att = {
+        id: values[0],
+        userId: values[1],
+        date: values[2],
+        meetingType: values[3],
+        status: values[4],
+        markedById: values[5],
+        markedByName: values[6],
+        createdAt: new Date().toISOString()
+      };
+      
+      const idx = dbData.attendance.findIndex(x => x.userId === att.userId && x.date === att.date && x.meetingType === att.meetingType);
+      if (idx !== -1) {
+        dbData.attendance[idx] = { ...dbData.attendance[idx], ...att };
+      } else {
+        dbData.attendance.push(att);
+      }
+      saveMockDb(dbData);
+      return { rows: [att] };
+    }
+
+    if (queryLower.startsWith('insert into groups')) {
+      const g = {
+        id: values[0],
+        name: values[1],
+        createdById: values[2],
+        members: typeof values[3] === 'string' ? JSON.parse(values[3]) : (values[3] || []),
+        createdAt: new Date().toISOString()
+      };
+      dbData.groups.push(g);
+      saveMockDb(dbData);
+      return { rows: [g] };
+    }
+
+    if (queryLower.startsWith('insert into user_chat_preferences')) {
+      if (queryLower.includes('select $1, id, current_timestamp from users')) {
+        const userId = values[0];
+        for (const u of dbData.users) {
+          const prefIdx = dbData.user_chat_preferences.findIndex(x => x.userId === userId && x.chatId === u.id);
+          if (prefIdx !== -1) {
+            dbData.user_chat_preferences[prefIdx].lastReadTimestamp = new Date().toISOString();
+          } else {
+            dbData.user_chat_preferences.push({
+              userId,
+              chatId: u.id,
+              isArchived: false,
+              isPinned: false,
+              lastReadTimestamp: new Date().toISOString()
+            });
+          }
+        }
+        saveMockDb(dbData);
+        return { rows: [] };
+      }
+
+      const userId = values[0];
+      const chatId = values[1];
+      const val = values[2];
+      
+      const prefIdx = dbData.user_chat_preferences.findIndex(x => x.userId === userId && x.chatId === chatId);
+      let updatedPref = {};
+      if (prefIdx !== -1) {
+        updatedPref = dbData.user_chat_preferences[prefIdx];
+      } else {
+        updatedPref = { userId, chatId, isArchived: false, isPinned: false, lastReadTimestamp: new Date().toISOString() };
+        dbData.user_chat_preferences.push(updatedPref);
+      }
+
+      if (queryLower.includes('"isarchived"')) {
+        updatedPref.isArchived = val;
+      } else if (queryLower.includes('"ispinned"')) {
+        updatedPref.isPinned = val;
+      } else if (queryLower.includes('"lastreadtimestamp"')) {
+        updatedPref.lastReadTimestamp = new Date().toISOString();
+      }
+
+      saveMockDb(dbData);
+      return { rows: [updatedPref] };
+    }
+
+    if (queryLower.startsWith('insert into messages')) {
+      const msg = {
+        id: dbData.messages.length + 1,
+        sender: values[0],
+        receiver: values[1],
+        senderId: values[2],
+        receiverId: values[3],
+        message: values[4],
+        isGroup: values[5] || false,
+        readBy: typeof values[6] === 'string' ? JSON.parse(values[6]) : (values[6] || []),
+        createdAt: new Date().toISOString()
+      };
+      dbData.messages.push(msg);
+      saveMockDb(dbData);
+      return { rows: [msg] };
+    }
+
+    if (queryLower.startsWith('update users')) {
+      const id = values[9];
+      const idx = dbData.users.findIndex(x => x.id === id);
+      if (idx !== -1) {
+        dbData.users[idx] = {
+          ...dbData.users[idx],
+          fullname: values[0],
+          role: values[1],
+          reportingManagerId: values[2],
+          status: values[3],
+          availabilityStatus: values[4],
+          gmail: values[5],
+          phone: values[6],
+          domain: values[7],
+          aadhar: values[8]
+        };
+        saveMockDb(dbData);
+      }
+      return { rows: [] };
+    }
+
+    if (queryLower.startsWith('update tasks')) {
+      const id = values[11];
+      const idx = dbData.tasks.findIndex(x => x.id === id);
+      if (idx !== -1) {
+        dbData.tasks[idx] = {
+          ...dbData.tasks[idx],
+          title: values[0],
+          description: values[1],
+          assigneeId: values[2],
+          priority: values[3],
+          dueDate: values[4],
+          status: values[5],
+          assignedById: values[6],
+          referenceLink: values[7],
+          deliverableLink: values[8],
+          feedback: values[9],
+          comments: typeof values[10] === 'string' ? JSON.parse(values[10]) : (values[10] || [])
+        };
+        saveMockDb(dbData);
+      }
+      return { rows: [] };
+    }
+
+    if (queryLower.startsWith('update leaves')) {
+      const id = values[3];
+      const idx = dbData.leaves.findIndex(x => x.id === id);
+      if (idx !== -1) {
+        dbData.leaves[idx] = {
+          ...dbData.leaves[idx],
+          status: values[0],
+          currentApproverId: values[1],
+          approvalChain: typeof values[2] === 'string' ? JSON.parse(values[2]) : (values[2] || [])
+        };
+        saveMockDb(dbData);
+      }
+      return { rows: [] };
+    }
+
+    if (queryLower.startsWith('update meetings')) {
+      const id = values[5];
+      const idx = dbData.meetings.findIndex(x => x.id === id);
+      if (idx !== -1) {
+        dbData.meetings[idx] = {
+          ...dbData.meetings[idx],
+          title: values[0],
+          time: values[1],
+          participants: typeof values[2] === 'string' ? JSON.parse(values[2]) : (values[2] || []),
+          roomCode: values[3],
+          description: values[4]
+        };
+        saveMockDb(dbData);
+      }
+      return { rows: [] };
+    }
+
+    if (queryLower.startsWith('update messages')) {
+      const id = values[1];
+      const idx = dbData.messages.findIndex(x => x.id == id);
+      if (idx !== -1) {
+        dbData.messages[idx].readBy = typeof values[0] === 'string' ? JSON.parse(values[0]) : (values[0] || []);
+        saveMockDb(dbData);
+      }
+      return { rows: [] };
+    }
+
+    if (queryLower.startsWith('delete from users')) {
+      const id = values[0];
+      dbData.users = dbData.users.filter(x => x.id !== id);
+      saveMockDb(dbData);
+      return { rows: [] };
+    }
+
+    if (queryLower.startsWith('delete from tasks')) {
+      const id = values[0];
+      dbData.tasks = dbData.tasks.filter(x => x.id !== id);
+      saveMockDb(dbData);
+      return { rows: [] };
+    }
+
+    if (queryLower.startsWith('delete from meetings')) {
+      const id = values[0];
+      dbData.meetings = dbData.meetings.filter(x => x.id !== id);
+      saveMockDb(dbData);
+      return { rows: [] };
+    }
+
+    return { rows: [] };
+  }
+
+  release() {}
+}
+
+class MockPool {
+  async connect() {
+    return new MockClient();
+  }
+  async query(text, values) {
+    const client = new MockClient();
+    return client.query(text, values);
+  }
+}
+
+const MOCK_DB_FILE = path.join(__dirname, 'mock_db.json');
+
+function loadMockDb() {
+  if (fs.existsSync(MOCK_DB_FILE)) {
+    try {
+      return JSON.parse(fs.readFileSync(MOCK_DB_FILE, 'utf8'));
+    } catch (e) {
+      console.error("Error reading mock_db.json, using empty DB", e);
+    }
+  }
+  return {
+    users: [],
+    tasks: [],
+    leaves: [],
+    activities: [],
+    messages: [],
+    groups: [],
+    user_chat_preferences: [],
+    attendance: [],
+    meetings: []
+  };
+}
+
+function saveMockDb(data) {
+  try {
+    fs.writeFileSync(MOCK_DB_FILE, JSON.stringify(data, null, 2), 'utf8');
+  } catch (e) {
+    console.error("Error writing to mock_db.json", e);
+  }
+}
+
+const pgPool = new Pool({
   connectionString: process.env.DATABASE_URL
 });
+
+const pool = {
+  async connect() {
+    if (isUsingMockDb) {
+      return new MockClient();
+    }
+    try {
+      return await pgPool.connect();
+    } catch (err) {
+      console.warn("[DB] PostgreSQL connection failed. Switching to local Mock DB fallback.", err.message);
+      isUsingMockDb = true;
+      return new MockClient();
+    }
+  },
+  async query(text, values) {
+    if (isUsingMockDb) {
+      return new MockClient().query(text, values);
+    }
+    try {
+      return await pgPool.query(text, values);
+    } catch (err) {
+      console.warn("[DB] PostgreSQL query failed. Switching to local Mock DB fallback.", err.message);
+      isUsingMockDb = true;
+      return new MockClient().query(text, values);
+    }
+  }
+};
 
 // Auto migrations and seeding
 async function initDb() {
@@ -164,10 +627,12 @@ async function initDb() {
         "userId" VARCHAR(50) NOT NULL,
         "chatId" VARCHAR(50) NOT NULL,
         "isArchived" BOOLEAN DEFAULT false,
+        "isPinned" BOOLEAN DEFAULT false,
         "lastReadTimestamp" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         UNIQUE("userId", "chatId")
       )
     `);
+    await client.query(`ALTER TABLE user_chat_preferences ADD COLUMN IF NOT EXISTS "isPinned" BOOLEAN DEFAULT false;`);
 
     // Create attendance table
     await client.query(`DROP TABLE IF EXISTS attendance CASCADE`);
@@ -288,9 +753,11 @@ async function initDb() {
       )
     `);
 
-    // Ensure description column exists for existing tables
+    // Ensure description, isRecurring and recurrence columns exist for existing tables
     await client.query(`
       ALTER TABLE meetings ADD COLUMN IF NOT EXISTS description TEXT DEFAULT '';
+      ALTER TABLE meetings ADD COLUMN IF NOT EXISTS "isRecurring" BOOLEAN DEFAULT false;
+      ALTER TABLE meetings ADD COLUMN IF NOT EXISTS recurrence JSONB DEFAULT '{}';
     `);
 
     // Seed default meetings if empty
@@ -521,9 +988,19 @@ app.post('/api/meetings', async (req, res) => {
   try {
     const m = req.body;
     await pool.query(
-      `INSERT INTO meetings (id, title, "time", participants, "isFixed", "roomCode", description) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-      [m.id, m.title, m.time, JSON.stringify(m.participants || []), m.isFixed || false, m.roomCode, m.description || '']
+      `INSERT INTO meetings (id, title, "time", participants, "isFixed", "roomCode", description, "isRecurring", recurrence) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+      [
+        m.id,
+        m.title,
+        m.time,
+        JSON.stringify(m.participants || []),
+        m.isFixed || false,
+        m.roomCode,
+        m.description || '',
+        m.isRecurring || false,
+        JSON.stringify(m.recurrence || {})
+      ]
     );
     res.status(201).json(m);
   } catch (err) {
@@ -536,8 +1013,17 @@ app.put('/api/meetings/:id', async (req, res) => {
     const { id } = req.params;
     const m = req.body;
     await pool.query(
-      `UPDATE meetings SET title = $1, "time" = $2, participants = $3, "roomCode" = $4, description = $5 WHERE id = $6`,
-      [m.title, m.time, JSON.stringify(m.participants || []), m.roomCode, m.description || '', id]
+      `UPDATE meetings SET title = $1, "time" = $2, participants = $3, "roomCode" = $4, description = $5, "isRecurring" = $6, recurrence = $7 WHERE id = $8`,
+      [
+        m.title,
+        m.time,
+        JSON.stringify(m.participants || []),
+        m.roomCode,
+        m.description || '',
+        m.isRecurring || false,
+        JSON.stringify(m.recurrence || {}),
+        id
+      ]
     );
     res.json({ message: 'Meeting updated successfully' });
   } catch (err) {
@@ -550,6 +1036,30 @@ app.delete('/api/meetings/:id', async (req, res) => {
     const { id } = req.params;
     await pool.query('DELETE FROM meetings WHERE id = $1', [id]);
     res.json({ message: 'Meeting deleted successfully' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// MEETING HISTORY
+app.get('/api/meeting-history', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM meeting_history ORDER BY timestamp DESC');
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/meeting-history', async (req, res) => {
+  try {
+    const h = req.body;
+    await pool.query(
+      `INSERT INTO meeting_history (id, "userId", title, "roomCode", "date", "time", duration, "durationSec", host, "hostId", participants, timestamp) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+      [h.id, h.userId, h.title, h.roomCode, h.date, h.time, h.duration, h.durationSec || 0, h.host || 'You', h.hostId, JSON.stringify(h.participants || []), h.timestamp || new Date().toISOString()]
+    );
+    res.status(201).json(h);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -776,9 +1286,28 @@ app.post("/api/chat/archive", async (req, res) => {
     );
     io.emit("chatPreferenceUpdated", { userId, chatId, isArchived });
     res.json(result.rows[0]);
-  } catch (error) {
-    console.error("Error updating archive preference:", error);
-    res.status(500).json({ error: error.message });
+  } catch (err) {
+    console.error("Error updating archive preference:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post("/api/chat/pin", async (req, res) => {
+  try {
+    const { userId, chatId, isPinned } = req.body;
+    if (!userId || !chatId) return res.status(400).json({ error: "userId and chatId are required" });
+    const result = await pool.query(
+      `INSERT INTO user_chat_preferences ("userId", "chatId", "isPinned") 
+       VALUES ($1, $2, $3)
+       ON CONFLICT ("userId", "chatId") 
+       DO UPDATE SET "isPinned" = EXCLUDED."isPinned" RETURNING *`,
+      [userId, chatId, isPinned]
+    );
+    io.emit("chatPreferenceUpdated", { userId, chatId, isPinned });
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error("Error updating pin preference:", err);
+    res.status(500).json({ error: err.message });
   }
 });
 
@@ -881,8 +1410,83 @@ app.post("/api/messages", async (req, res) => {
 // Socket.IO Connection
 io.on("connection", (socket) => {
   console.log("User connected:", socket.id);
+
+  socket.on("join-meeting-socket", (data) => {
+    socket.join(data.room);
+    socket.room = data.room;
+    socket.userId = data.userId;
+    socket.fullname = data.fullname;
+    
+    // Broadcast status to let others know a new user joined
+    io.to(data.room).emit("meeting-status-update", {
+      room: data.room,
+      userId: data.userId,
+      fullname: data.fullname,
+      isMicOn: true,
+      isCamOn: true,
+      isJoined: true
+    });
+  });
+
+  socket.on("meeting-chat-send", (data) => {
+    if (data.room) {
+      io.to(data.room).emit("meeting-chat-receive", data);
+    }
+  });
+
+  socket.on("meeting-host-action", (data) => {
+    if (data.room) {
+      io.to(data.room).emit("meeting-host-action", data);
+    }
+  });
+
+  socket.on("meeting-hand-raise", (data) => {
+    if (data.room) {
+      io.to(data.room).emit("meeting-hand-raise", data);
+    }
+  });
+
+  socket.on("meeting-status-update", (data) => {
+    if (data.room) {
+      io.to(data.room).emit("meeting-status-update", data);
+    }
+  });
+
+  socket.on("meeting-scheduled", (data) => {
+    socket.broadcast.emit("meeting-scheduled", data);
+  });
+
+  // Instant call invite — broadcast to all connected clients so target user sees incoming call
+  socket.on("instant-call-invite", (data) => {
+    socket.broadcast.emit("instant-call-invite", data);
+  });
+
+  socket.on("incoming-call", (data) => {
+    socket.broadcast.emit("instant-call-invite", data);
+    socket.broadcast.emit("incoming-call", data);
+  });
+
+  socket.on("call-declined", (data) => {
+    socket.broadcast.emit("call-declined", data);
+  });
+
+
+  socket.on("meeting-reaction", (data) => {
+    if (data.room) {
+      io.to(data.room).emit("meeting-reaction", data);
+    }
+  });
+
   socket.on("disconnect", () => {
     console.log("User disconnected:", socket.id);
+    if (socket.room && socket.userId) {
+      io.to(socket.room).emit("meeting-status-update", {
+        room: socket.room,
+        userId: socket.userId,
+        fullname: socket.fullname,
+        isLeft: true
+      });
+    }
   });
 });
 

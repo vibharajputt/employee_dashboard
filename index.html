@@ -85,41 +85,23 @@
       <div class="portal-cards-grid">
 
         <!-- Admin Portal Card -->
-
         <div class="portal-card" onclick="selectPortal('admin')">
-
           <div class="portal-card-icon admin-icon">
-
             <i data-lucide="shield-check"></i>
-
           </div>
-
           <h3>Admin Portal</h3>
-
           <p>Access credentials administration, manage employee roster, configure hierarchies, and audit task logs.</p>
-
-          <button class="btn btn-primary btn-block">Login Now</button>
-
+          <button type="button" class="btn btn-primary btn-block" onclick="event.stopPropagation(); selectPortal('admin');">Login Now</button>
         </div>
 
-        
-
         <!-- Staff Portal Card -->
-
         <div class="portal-card" onclick="selectPortal('staff')">
-
           <div class="portal-card-icon staff-icon">
-
             <i data-lucide="users"></i>
-
           </div>
-
           <h3>Staff Portal</h3>
-
           <p>Access Manager and Employee workspaces. Manage team tasks, update deliverables, and check hierarchy.</p>
-
-          <button class="btn btn-primary btn-block">Login Now</button>
-
+          <button type="button" class="btn btn-primary btn-block" onclick="event.stopPropagation(); selectPortal('staff');">Login Now</button>
         </div>
 
       </div>
@@ -288,6 +270,18 @@
 
           <ul>
 
+            <li id="nav-item-notifications">
+
+              <a href="#" class="nav-link" data-tab="notifications">
+
+                <i data-lucide="bell"></i> <span>Notifications</span>
+
+                <span class="nav-badge" id="sidebar-notification-badge" style="display: none;">0</span>
+
+              </a>
+
+            </li>
+
             <li>
 
               <a href="#" class="nav-link active" data-tab="overview">
@@ -450,7 +444,76 @@
 
       <div class="content-wrapper">
 
-        
+        <!-- ==================== TAB: NOTIFICATIONS ==================== -->
+        <section id="tab-notifications" class="tab-pane hidden">
+          <div class="section-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 24px;">
+            <div>
+              <h2><i data-lucide="bell" class="text-accent" style="vertical-align: middle; margin-right: 8px;"></i> Notifications Hub</h2>
+              <p class="section-desc" style="margin-top: 4px;">Track real-time alerts for chats, assigned tasks, completed tasks, and system events.</p>
+            </div>
+            <div class="notifications-top-actions" style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+              <button id="notif-mark-all-read-btn" class="btn btn-secondary btn-sm" style="display: flex; align-items: center; gap: 6px;">
+                <i data-lucide="check-check"></i> Mark All as Read
+              </button>
+              <button id="notif-clear-all-btn" class="btn btn-secondary btn-sm text-danger" style="display: flex; align-items: center; gap: 6px;">
+                <i data-lucide="trash-2"></i> Clear All
+              </button>
+            </div>
+          </div>
+
+          <!-- Notification Settings Bar -->
+          <div class="dashboard-card" style="margin-bottom: 20px; padding: 16px 20px;">
+            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px;">
+              <div style="display: flex; align-items: center; gap: 24px; flex-wrap: wrap;">
+                <div class="toggle-setting-item" style="display: flex; align-items: center; gap: 12px;">
+                  <label class="switch-toggle">
+                    <input type="checkbox" id="notif-desktop-toggle">
+                    <span class="switch-slider"></span>
+                  </label>
+                  <div>
+                    <strong style="font-size: 0.95rem; display: block; color: var(--text-primary);">Desktop System Popups</strong>
+                    <span style="font-size: 0.8rem; color: var(--text-secondary);">Push Windows bottom-right popups even when dashboard is in background</span>
+                  </div>
+                  <span id="notif-permission-badge" class="badge" style="margin-left: 6px; font-size: 0.75rem;">Status</span>
+                </div>
+
+                <div style="height: 30px; width: 1px; background: var(--border-color);" class="hide-mobile"></div>
+
+                <div class="toggle-setting-item" style="display: flex; align-items: center; gap: 12px;">
+                  <label class="switch-toggle">
+                    <input type="checkbox" id="notif-sound-toggle">
+                    <span class="switch-slider"></span>
+                  </label>
+                  <div>
+                    <strong style="font-size: 0.95rem; display: block; color: var(--text-primary);">Notification Sounds</strong>
+                    <span style="font-size: 0.8rem; color: var(--text-secondary);">Play audio alert sound when new notification arrives</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Notification Category Filters -->
+          <div class="notification-filters" style="display: flex; gap: 10px; margin-bottom: 20px; overflow-x: auto; padding-bottom: 4px;">
+            <button class="notif-filter-btn active" data-filter="all">All <span class="filter-count" id="notif-count-all">0</span></button>
+            <button class="notif-filter-btn" data-filter="unread">Unread <span class="filter-count" id="notif-count-unread">0</span></button>
+            <button class="notif-filter-btn" data-filter="chats">Chats <span class="filter-count" id="notif-count-chats">0</span></button>
+            <button class="notif-filter-btn" data-filter="tasks">Tasks <span class="filter-count" id="notif-count-tasks">0</span></button>
+            <button class="notif-filter-btn" data-filter="system">System & Meetings <span class="filter-count" id="notif-count-system">0</span></button>
+          </div>
+
+          <!-- Notification Cards List Container -->
+          <div id="notifications-list-container" class="notifications-list-grid" style="display: flex; flex-direction: column; gap: 12px;">
+            <!-- Rendered dynamically -->
+          </div>
+
+          <!-- Empty State -->
+          <div id="notifications-empty-state" class="dashboard-card hidden" style="text-align: center; padding: 50px 20px;">
+            <i data-lucide="bell-off" style="width: 48px; height: 48px; color: var(--text-secondary); opacity: 0.5; margin-bottom: 12px;"></i>
+            <h3 style="margin-bottom: 6px; color: var(--text-primary);">No Notifications Found</h3>
+            <p style="color: var(--text-secondary); font-size: 0.9rem;">You are all caught up with your notifications!</p>
+          </div>
+        </section>
 
         <!-- ==================== TAB: OVERVIEW ==================== -->
         <section id="tab-overview" class="tab-pane active">
@@ -696,9 +759,6 @@
                   </div>
                 </div>
                 <div class="wa-header-actions">
-                  <button class="wa-action-btn" id="wa-btn-new-group" title="Create New Group">
-                    <i data-lucide="plus"></i>
-                  </button>
                   <div class="wa-menu-dropdown-container">
                     <button class="wa-action-btn" id="wa-btn-more-options" title="Menu">
                       <i data-lucide="more-vertical"></i>
@@ -782,6 +842,9 @@
                     </div>
                   </div>
                   <div class="wa-chat-header-actions">
+                    <button class="wa-action-btn" id="wa-btn-toggle-pin" title="Pin / Unpin Chat">
+                      <i data-lucide="pin"></i>
+                    </button>
                     <button class="wa-action-btn" id="wa-btn-chat-meeting" title="Join Video Meeting">
                       <i data-lucide="video"></i>
                     </button>
@@ -1411,79 +1474,300 @@
 
         <!-- ==================== TAB: MEETINGS ==================== -->
         <section id="tab-meetings" class="tab-pane hidden">
-          <div class="section-header">
-            <div>
-              <h2>Video Meetings Portal</h2>
-              <p class="section-desc">Host or join real-time audio and video meetings with your team.</p>
+          <div class="meetings-portal-container">
+            
+            <!-- Left Sidebar -->
+            <div class="meetings-sidebar">
+              <div class="meetings-sidebar-header">
+                <h3>Meetings</h3>
+                <button type="button" class="meetings-menu-trigger" id="meetings-quick-action-btn" title="Quick Actions">
+                  <i data-lucide="plus"></i>
+                </button>
+                <!-- Quick Actions Dropdown Menu -->
+                <div class="quick-actions-menu hidden" id="meetings-quick-menu">
+                  <button type="button" class="quick-actions-item" id="menu-meet-now">
+                    <i data-lucide="video" style="width: 16px; height: 16px;"></i> Meet now
+                  </button>
+                  <button type="button" class="quick-actions-item" id="menu-join-meeting">
+                    <i data-lucide="log-in" style="width: 16px; height: 16px;"></i> Join meeting
+                  </button>
+                  <button type="button" class="quick-actions-item" id="menu-schedule-meeting">
+                    <i data-lucide="calendar" style="width: 16px; height: 16px;"></i> Schedule meeting
+                  </button>
+                </div>
+              </div>
+
+              <!-- Filter tabs -->
+              <div class="meetings-filter-tabs">
+                <button type="button" class="meetings-filter-btn active" id="filter-upcoming-meetings">Upcoming</button>
+                <button type="button" class="meetings-filter-btn" id="filter-previous-meetings">Previous</button>
+                <button type="button" class="meetings-filter-btn" id="filter-recordings-meetings">Recordings</button>
+              </div>
+
+              <!-- Search Box -->
+              <div class="meetings-search-box">
+                <div class="meetings-search-input-wrapper">
+                  <i data-lucide="search" class="search-icon-left"></i>
+                  <input type="text" id="meetings-search-input" placeholder="Search meetings">
+                  <i data-lucide="calendar" class="calendar-icon-right" id="meetings-search-calendar-icon"></i>
+                </div>
+              </div>
+
+              <!-- Scrollable Meetings List -->
+              <div class="meetings-list-container" id="meetings-sidebar-list">
+                <!-- Populated dynamically -->
+              </div>
             </div>
+
+            <!-- Right Main Content Panel -->
+            <div class="meetings-main-content">
+              
+              <!-- Dashboard View (Shown when not in call) -->
+              <div class="meetings-dashboard-view" id="meetings-welcome-dashboard">
+                <div class="meetings-welcome-avatar" id="meetings-user-avatar">
+                  U
+                </div>
+                <h2 id="meetings-welcome-text">Hello, User</h2>
+                <p>Organize, join, and schedule your video meetings with your team all in one place.</p>
+
+                <!-- Cards Grid -->
+                <div class="meetings-cards-grid">
+                  <!-- Meet Now Card -->
+                  <div class="meeting-action-card" id="card-meet-now">
+                    <div class="meeting-card-icon">
+                      <i data-lucide="video"></i>
+                    </div>
+                    <h4 class="meeting-card-title">Meet now</h4>
+                    <p class="meeting-card-desc">Start an instant video meeting and invite your colleagues</p>
+                  </div>
+
+                  <!-- Schedule Card -->
+                  <div class="meeting-action-card" id="card-schedule-meeting">
+                    <div class="meeting-card-icon">
+                      <i data-lucide="calendar"></i>
+                    </div>
+                    <h4 class="meeting-card-title">Schedule meeting</h4>
+                    <p class="meeting-card-desc">Plan a custom team meeting for later with date and time</p>
+                  </div>
+
+                  <!-- Join Card -->
+                  <div class="meeting-action-card" id="card-join-meeting">
+                    <div class="meeting-card-icon">
+                      <i data-lucide="log-in"></i>
+                    </div>
+                    <h4 class="meeting-card-title">Join meeting</h4>
+                    <p class="meeting-card-desc">Enter a Room Code or ID to join an active video call</p>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Active Meeting Call UI (Hidden by default, shown during call) -->
+              <div class="active-meeting-view hidden" id="active-meeting-view" style="display: flex; flex-direction: column; height: 100%; position: relative;">
+                <div class="active-meeting-header">
+                  <div>
+                    <h3 id="active-meeting-title" style="margin: 0; font-size: 1.1rem; font-weight: 600; color: var(--text-primary);">Active Meeting</h3>
+                    <div style="margin-top: 4px; display: flex; align-items: center; gap: 8px;">
+                      <span class="badge badge-employee" id="active-meeting-status">Connected</span>
+                      <span class="badge badge-manager" id="active-meeting-room-badge">-</span>
+                    </div>
+                  </div>
+                  <button type="button" class="btn-leave" id="btn-active-leave-meeting-top" style="display: none;">
+                    <i data-lucide="phone-off" style="width: 16px; height: 16px;"></i> Leave Meeting
+                  </button>
+                </div>
+                
+                <div class="active-meeting-body" style="display: flex; flex: 1; min-height: 0; padding: 16px; gap: 16px; background-color: #0f172a; position: relative;">
+                  
+                  <!-- ==================== INVITE PARTICIPANTS OVERLAY MODAL ==================== -->
+                  <div id="meeting-invite-overlay-modal" class="hidden" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 440px; max-width: 90%; background-color: #1e293b; border-radius: 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.5); border: 1px solid #334155; padding: 28px; z-index: 1001; display: flex; flex-direction: column; gap: 16px; color: #fff;">
+                    <!-- Close button -->
+                    <div style="display: flex; justify-content: flex-end; position: absolute; top: 16px; right: 16px;">
+                      <div style="display: flex; flex-direction: column; align-items: center; gap: 4px;">
+                        <button type="button" id="close-invite-overlay-btn" style="width: 32px; height: 32px; border-radius: 50%; background: #0f172a; border: none; color: #94a3b8; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow-sm);">&times;</button>
+                        <span style="font-size: 10px; color: #64748b; font-weight: 500;">Close</span>
+                      </div>
+                    </div>
+                    
+                    <h3 style="margin: 0; font-size: 1.1rem; font-weight: 600; color: #fff;">Invite participants</h3>
+                    <p style="margin: 0; font-size: 13px; color: #94a3b8; line-height: 1.4;">Share the joining information with people you want in the meeting.</p>
+                    
+                    <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 8px;">
+                      <button type="button" id="btn-invite-copy-invitation" class="btn" style="width: 100%; padding: 12px; background-color: #0f172a; border: 1px solid #334155; color: #cbd5e1; border-radius: 8px; font-weight: 500; font-size: 13px; display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; transition: all 0.2s;">
+                        <i data-lucide="copy" style="width: 16px; height: 16px; color: #82b834;"></i> Copy invitation
+                      </button>
+                      <button type="button" id="btn-invite-copy-link" class="btn" style="width: 100%; padding: 12px; background-color: #0f172a; border: 1px solid #334155; color: #cbd5e1; border-radius: 8px; font-weight: 500; font-size: 13px; display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; transition: all 0.2s;">
+                        <i data-lucide="link" style="width: 16px; height: 16px; color: #82b834;"></i> Copy link
+                      </button>
+                      <button type="button" id="btn-invite-add-users" class="btn" style="width: 100%; padding: 12px; background-color: #0f172a; border: 1px solid #334155; color: #cbd5e1; border-radius: 8px; font-weight: 500; font-size: 13px; display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; transition: all 0.2s;">
+                        <i data-lucide="user-plus" style="width: 16px; height: 16px; color: #82b834;"></i> Add participants
+                      </button>
+                    </div>
+                    
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 8px; border-top: 1px solid #334155; padding-top: 16px;">
+                      <span style="font-size: 13px; color: #cbd5e1; font-weight: 500;">Enable waiting room</span>
+                      <label class="switch-toggle">
+                        <input type="checkbox" id="invite-waiting-room-checkbox">
+                        <span class="slider-round"></span>
+                      </label>
+                    </div>
+                  </div>
+
+                  <!-- Video area -->
+                  <div id="video-grid" style="flex: 1; display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; border-radius: 12px; background-color: #111827; padding: 16px; overflow: hidden; position: relative;">
+                    <!-- Populated dynamically via WebRTC -->
+                  </div>
+
+                  <!-- Google Meet Sidebar (Chat, Participants, Host Controls) -->
+                  <div id="active-meeting-sidebar" class="hidden" style="width: 320px; background-color: var(--bg-secondary); border-radius: 12px; border: 1px solid var(--border-color); display: flex; flex-direction: column; overflow: hidden; box-shadow: var(--shadow-lg);">
+                    <!-- Sidebar Navigation Tabs -->
+                    <div style="display: flex; border-bottom: 1px solid var(--border-color); background-color: var(--bg-secondary);">
+                      <button type="button" id="tab-btn-people" class="subtab-btn active" style="flex: 1; padding: 12px; font-size: 0.85rem; font-weight: 600; border: none; background: none; border-bottom: 3px solid var(--accent-color); color: var(--accent-color); cursor: pointer;">People</button>
+                      <button type="button" id="tab-btn-chat" class="subtab-btn" style="flex: 1; padding: 12px; font-size: 0.85rem; font-weight: 600; border: none; background: none; border-bottom: 3px solid transparent; color: var(--text-secondary); cursor: pointer;">Chat</button>
+                      <button type="button" id="tab-btn-host" class="subtab-btn hidden" style="flex: 1; padding: 12px; font-size: 0.85rem; font-weight: 600; border: none; background: none; border-bottom: 3px solid transparent; color: var(--text-secondary); cursor: pointer;">Host</button>
+                    </div>
+
+                    <!-- Sidebar Panels Content -->
+                    <div style="flex: 1; display: flex; flex-direction: column; overflow-y: auto; padding: 16px; min-height: 0; background-color: var(--bg-primary);">
+                      
+                      <!-- Panel: People -->
+                      <div id="panel-people" style="display: flex; flex-direction: column; gap: 12px; height: 100%;">
+                        <h4 style="margin: 0; font-size: 0.95rem; font-weight: 700; color: var(--text-primary);">Participants</h4>
+                        <div id="meeting-participants-list" style="display: flex; flex-direction: column; gap: 10px;">
+                          <!-- Dynamic participant items -->
+                        </div>
+                      </div>
+
+                      <!-- Panel: Chat -->
+                      <div id="panel-chat" class="hidden" style="display: flex; flex-direction: column; height: 100%; min-height: 0;">
+                        <div id="meeting-chat-messages" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; min-height: 100px; padding: 4px;">
+                          <!-- Chat messages will print here -->
+                        </div>
+                        <form id="meeting-chat-form" style="display: flex; gap: 8px; border-top: 1px solid var(--border-color); padding-top: 8px;">
+                          <input type="text" id="meeting-chat-input" placeholder="Send a message" style="flex: 1; padding: 8px 12px; font-size: 0.85rem; border-radius: 6px; border: 1px solid var(--border-color); background-color: var(--bg-secondary); color: var(--text-primary); outline: none;">
+                          <button type="submit" class="btn btn-primary" style="padding: 8px 12px; font-size: 0.85rem; border-radius: 6px;"><i data-lucide="send" style="width: 14px; height: 14px;"></i></button>
+                        </form>
+                      </div>
+
+                      <!-- Panel: Host -->
+                      <div id="panel-host" class="hidden" style="display: flex; flex-direction: column; gap: 16px; height: 100%;">
+                        <h4 style="margin: 0; font-size: 0.95rem; font-weight: 700; color: var(--text-primary);">Host Control Panel</h4>
+                        <p style="font-size: 0.78rem; color: var(--text-muted); line-height: 1.4; margin: 0;">Use these host settings to manage participants in this meeting.</p>
+                        <div style="display: flex; flex-direction: column; gap: 12px; border-top: 1px solid var(--border-color); padding-top: 16px;">
+                          <button type="button" id="btn-host-mute-all" class="btn btn-secondary" style="width: 100%; justify-content: flex-start; gap: 10px; font-size: 0.85rem; padding: 10px 14px;">
+                            <i data-lucide="mic-off" style="width: 16px; height: 16px; color: var(--color-danger);"></i> Mute Everyone
+                          </button>
+                          <button type="button" id="btn-host-cameras-off" class="btn btn-secondary" style="width: 100%; justify-content: flex-start; gap: 10px; font-size: 0.85rem; padding: 10px 14px;">
+                            <i data-lucide="video-off" style="width: 16px; height: 16px; color: var(--color-danger);"></i> Turn Off All Cameras
+                          </button>
+                        </div>
+                      </div>
+
+                    </div>
+                  </div>
+                </div>
+
+                <div class="active-meeting-controls" style="background-color: var(--bg-secondary); border-top: 1px solid var(--border-color); padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; gap: 16px; width: 100%;">
+                  
+                  <!-- Left side: Layouts and Pause -->
+                  <div style="display: flex; gap: 12px; align-items: center;">
+                    <button type="button" id="btn-layout-grid" class="btn-icon" title="Grid Layout" style="background-color: var(--bg-primary); border-radius: 4px; border: 1px solid var(--border-color); color: var(--text-primary); width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+                      <i data-lucide="layout-grid" style="width: 18px; height: 18px;"></i>
+                    </button>
+                    <button type="button" id="btn-layout-focus" class="btn-icon" title="Spotlight Layout" style="background-color: var(--bg-primary); border-radius: 4px; border: 1px solid var(--border-color); color: var(--text-primary); width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+                      <i data-lucide="square" style="width: 18px; height: 18px;"></i>
+                    </button>
+                    <button type="button" id="btn-active-pause" class="btn-icon" title="Pause stream" style="background-color: var(--bg-primary); border-radius: 4px; border: 1px solid var(--border-color); color: var(--text-primary); width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+                      <i data-lucide="pause" style="width: 18px; height: 18px;"></i>
+                    </button>
+                  </div>
+
+                  <!-- Center: Mic, Cam, Leave (Red), 3-Dot -->
+                  <div style="display: flex; gap: 16px; align-items: center;">
+                    <button type="button" id="btn-active-toggle-mic" class="btn-icon" title="Toggle Microphone" style="border-radius: 50%; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; cursor: pointer; border: 1px solid var(--border-color);">
+                      <i data-lucide="mic"></i>
+                    </button>
+                    <button type="button" id="btn-active-toggle-cam" class="btn-icon" title="Toggle Camera" style="border-radius: 50%; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; cursor: pointer; border: 1px solid var(--border-color);">
+                      <i data-lucide="video"></i>
+                    </button>
+                    <button type="button" id="btn-active-leave-meeting" class="btn-icon" title="Leave Meeting" style="background-color: #ef4444; color: #fff; border-radius: 50%; width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; border: none; cursor: pointer;">
+                      <i data-lucide="phone-off" style="width: 20px; height: 20px;"></i>
+                    </button>
+                    <div style="position: relative; display: inline-block;">
+                      <button type="button" id="btn-active-more" class="btn-icon" title="More options" style="background-color: var(--bg-primary); border-radius: 50%; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; border: 1px solid var(--border-color); color: var(--text-primary); cursor: pointer;">
+                        <i data-lucide="more-horizontal"></i>
+                      </button>
+                      <!-- More options dropdown menu -->
+                      <div id="active-more-menu" class="hidden" style="position: absolute; bottom: 55px; left: 50%; transform: translateX(-50%); width: 220px; background-color: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 8px; box-shadow: var(--shadow-lg); z-index: 1000; padding: 6px 0;">
+                        <button type="button" id="menu-opt-pip" style="width: 100%; text-align: left; padding: 10px 16px; border: none; background: none; color: var(--text-primary); font-size: 13px; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 8px; font-family: inherit;">
+                          <i data-lucide="picture-in-picture" style="width: 14px; height: 14px; color: var(--accent-color);"></i> Minimize to Pop-up
+                        </button>
+                        <button type="button" id="menu-opt-fullscreen" style="width: 100%; text-align: left; padding: 10px 16px; border: none; background: none; color: var(--text-primary); font-size: 13px; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 8px; font-family: inherit;">
+                          <i data-lucide="maximize" style="width: 14px; height: 14px; color: var(--accent-color);"></i> Toggle Fullscreen
+                        </button>
+                        <button type="button" id="menu-opt-info" style="width: 100%; text-align: left; padding: 10px 16px; border: none; background: none; color: var(--text-primary); font-size: 13px; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 8px; font-family: inherit;">
+                          <i data-lucide="copy" style="width: 14px; height: 14px; color: var(--accent-color);"></i> Copy Meeting Info
+                        </button>
+                        <button type="button" id="menu-opt-settings" style="width: 100%; text-align: left; padding: 10px 16px; border: none; background: none; color: var(--text-primary); font-size: 13px; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 8px; font-family: inherit;">
+                          <i data-lucide="settings" style="width: 14px; height: 14px; color: var(--accent-color);"></i> Device Settings
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Right side: PiP, Sidebar toggles, Fullscreen -->
+                  <div style="display: flex; gap: 12px; align-items: center;">
+                    <!-- Emoji React -->
+                    <div style="position: relative; display: inline-block;">
+                      <button type="button" id="btn-active-react" class="btn-icon" title="Send Reaction" style="background-color: var(--bg-primary); border-radius: 4px; border: 1px solid var(--border-color); color: var(--text-primary); width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+                        <i data-lucide="smile" style="width: 18px; height: 18px;"></i>
+                      </button>
+                      <!-- Reaction emojis floating list -->
+                      <div id="active-reaction-bar" class="hidden" style="position: absolute; bottom: 45px; left: 50%; transform: translateX(-50%); background-color: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 20px; box-shadow: var(--shadow-lg); z-index: 1000; padding: 6px 12px; display: flex; gap: 8px;">
+                        <button type="button" class="reaction-emoji-btn" data-emoji="👍" style="border:none; background:none; font-size:18px; cursor:pointer; padding:2px;">👍</button>
+                        <button type="button" class="reaction-emoji-btn" data-emoji="❤️" style="border:none; background:none; font-size:18px; cursor:pointer; padding:2px;">❤️</button>
+                        <button type="button" class="reaction-emoji-btn" data-emoji="👏" style="border:none; background:none; font-size:18px; cursor:pointer; padding:2px;">👏</button>
+                        <button type="button" class="reaction-emoji-btn" data-emoji="😂" style="border:none; background:none; font-size:18px; cursor:pointer; padding:2px;">😂</button>
+                        <button type="button" class="reaction-emoji-btn" data-emoji="🎉" style="border:none; background:none; font-size:18px; cursor:pointer; padding:2px;">🎉</button>
+                      </div>
+                    </div>
+                    <!-- Raise Hand -->
+                    <button type="button" id="btn-active-raise-hand" class="btn-icon" title="Raise Hand" style="background-color: var(--bg-primary); border-radius: 4px; border: 1px solid var(--border-color); color: var(--text-primary); width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+                      <i data-lucide="hand" style="width: 18px; height: 18px;"></i>
+                    </button>
+                    <!-- Participants list -->
+                    <button type="button" id="btn-active-toggle-people" class="btn-icon" title="Show Participants" style="background-color: var(--bg-primary); border-radius: 4px; border: 1px solid var(--border-color); color: var(--text-primary); width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+                      <i data-lucide="users" style="width: 18px; height: 18px;"></i>
+                    </button>
+                    <!-- Chat list -->
+                    <button type="button" id="btn-active-toggle-chat" class="btn-icon" title="Show Chat" style="background-color: var(--bg-primary); border-radius: 4px; border: 1px solid var(--border-color); color: var(--text-primary); width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+                      <i data-lucide="message-square" style="width: 18px; height: 18px;"></i>
+                    </button>
+                    <!-- Host controls -->
+                    <button type="button" id="btn-active-toggle-host-controls" class="btn-icon hidden" title="Host controls" style="background-color: var(--bg-primary); border-radius: 4px; border: 1px solid var(--border-color); color: var(--text-primary); width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+                      <i data-lucide="shield-alert" style="width: 18px; height: 18px;"></i>
+                    </button>
+                  </div>
+
+                </div>
+              </div>
+              </div>
+
+            </div>
+
           </div>
 
-          <div style="display: grid; grid-template-columns: 1fr 3fr; gap: 24px; align-items: start; margin-bottom: 24px;">
-            <!-- Left Side controls -->
-            <div style="display: flex; flex-direction: column; gap: 24px; width: 100%;">
-              <div class="card" style="padding: 20px;">
-                <h3 style="margin-top: 0; margin-bottom: 16px;">Meeting Setup</h3>
-                <div class="form-group" style="margin-bottom: 16px;">
-                  <label for="meeting-room-input" style="font-weight: 500; margin-bottom: 6px; display: block; color: var(--text-secondary);">Room Code / ID</label>
-                  <input type="text" id="meeting-room-input" placeholder="e.g. daily-meeting" style="width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); background-color: var(--bg-primary); color: var(--text-primary); font-family: inherit;">
-                </div>
-                <div style="display: flex; flex-direction: column; gap: 12px;">
-                  <button type="button" id="btn-join-meeting" class="btn btn-primary glow-btn" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;">
-                    <i data-lucide="video"></i> Join Meeting
-                  </button>
-                  <button type="button" id="btn-leave-meeting" class="btn btn-danger hidden" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;">
-                    <i data-lucide="phone-off"></i> Leave Meeting
-                  </button>
-                </div>
-
-                <div id="meeting-media-controls" class="hidden" style="margin-top: 20px; border-top: 1px solid var(--border-color); padding-top: 16px; display: flex; justify-content: space-around;">
-                  <button type="button" id="btn-toggle-cam" class="btn btn-icon" style="background-color: var(--bg-secondary); border-radius: 50%; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; border: 1px solid var(--border-color); color: var(--text-primary);" title="Toggle Camera">
-                    <i data-lucide="video"></i>
-                  </button>
-                  <button type="button" id="btn-toggle-mic" class="btn btn-icon" style="background-color: var(--bg-secondary); border-radius: 50%; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; border: 1px solid var(--border-color); color: var(--text-primary);" title="Toggle Mic">
-                    <i data-lucide="mic"></i>
-                  </button>
-                  <button type="button" id="btn-share-screen" class="btn btn-icon" style="background-color: var(--bg-secondary); border-radius: 50%; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; border: 1px solid var(--border-color); color: var(--text-primary);" title="Share Screen">
-                    <i data-lucide="monitor"></i>
-                  </button>
-                </div>
-              </div>
-
-              <!-- Tech Team Scheduled Meetings Card -->
-              <div class="card" style="padding: 20px;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; gap: 8px;">
-                  <h3 style="margin: 0; font-size: 16px;">Scheduled Meetings</h3>
-                  <button type="button" id="btn-open-sched-modal" class="btn btn-sm hidden" style="background-color: var(--primary-color); color: white; display: flex; align-items: center; gap: 4px; padding: 6px 10px; font-size: 12px; border-radius: var(--radius-sm);">
-                    <i data-lucide="plus" style="width: 14px; height: 14px;"></i> Schedule
-                  </button>
-                </div>
-                <div id="scheduled-meetings-list" style="display: flex; flex-direction: column; gap: 12px;">
-                  <!-- Loaded dynamically in app.js -->
-                </div>
-              </div>
-            </div>
-
-            <!-- Right Side active participants & video grid -->
-            <div style="display: flex; flex-direction: column; gap: 20px;">
-              <div class="card" style="padding: 16px; display: flex; align-items: center; justify-content: space-between;">
-                <div>
-                  <strong>Status:</strong> <span id="meeting-status-text" class="badge badge-critical">Not Connected</span>
-                </div>
-                <div id="meeting-active-room-display" class="hidden">
-                  <strong>Room:</strong> <span id="meeting-room-badge" class="badge badge-manager">-</span>
-                </div>
-              </div>
-
-              <div id="video-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; min-height: 400px; background-color: #0f172a; border-radius: 12px; padding: 16px; overflow: hidden; position: relative;">
-                <!-- Fallback info when no active call -->
-                <div id="video-grid-placeholder" style="grid-column: 1 / -1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #94a3b8; height: 100%;">
-                  <i data-lucide="video" style="width: 48px; height: 48px; margin-bottom: 12px; color: #475569;"></i>
-                  <p style="margin: 0; font-weight: 500;">No active video stream.</p>
-                  <p style="margin: 4px 0 0; font-size: 0.85rem; color: #64748b;">Enter a room code and click Join to start.</p>
-                </div>
-              </div>
-            </div>
-          </div>
+          <!-- Hidden components required for backend bindings -->
+          <input type="text" id="meeting-room-input" class="hidden">
+          <button id="btn-open-sched-modal" class="hidden"></button>
+          <button id="btn-join-meeting" class="hidden"></button>
+          <button id="btn-leave-meeting" class="hidden"></button>
+          <button id="btn-toggle-cam" class="hidden"></button>
+          <button id="btn-toggle-mic" class="hidden"></button>
+          <button id="btn-share-screen" class="hidden"></button>
+          <span id="meeting-status-text" class="hidden"></span>
+          <span id="meeting-room-badge" class="hidden"></span>
+          <div id="meeting-active-room-display" class="hidden"></div>
+          <div id="meeting-media-controls" class="hidden"></div>
         </section>
 
         <!-- ==================== TAB: SETTINGS ==================== -->
@@ -1586,6 +1870,43 @@
 
               </div>
 
+            </div>
+
+            <!-- Desktop Notifications Settings Card -->
+            <div class="dashboard-card" id="desktop-notifications-settings-card">
+              <h3><i data-lucide="bell-ring" class="text-accent"></i> Desktop & System Notifications</h3>
+              <p class="text-muted" style="font-size: 0.9rem; margin-bottom: 20px;">
+                Configure Windows bottom-right popup alerts and notification sound chimes for instant real-time updates.
+              </p>
+
+              <div class="form-group" style="margin-bottom: 20px;">
+                <div style="display: flex; align-items: center; justify-content: space-between; gap: 15px;">
+                  <div>
+                    <strong style="display: block; font-size: 0.95rem; color: var(--text-primary);">Desktop System Popups</strong>
+                    <span class="text-muted" style="font-size: 0.82rem;">Push popups to OS even when dashboard is in background</span>
+                  </div>
+                  <label class="switch-toggle">
+                    <input type="checkbox" id="settings-desktop-notif-toggle">
+                    <span class="switch-slider"></span>
+                  </label>
+                </div>
+                <div style="margin-top: 8px;">
+                  <span id="settings-permission-badge" class="badge">Permission Status</span>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <div style="display: flex; align-items: center; justify-content: space-between; gap: 15px;">
+                  <div>
+                    <strong style="display: block; font-size: 0.95rem; color: var(--text-primary);">Notification Sounds</strong>
+                    <span class="text-muted" style="font-size: 0.82rem;">Play audio alert sound when new notification arrives</span>
+                  </div>
+                  <label class="switch-toggle">
+                    <input type="checkbox" id="settings-sound-notif-toggle">
+                    <span class="switch-slider"></span>
+                  </label>
+                </div>
+              </div>
             </div>
 
           </div>
@@ -2370,6 +2691,70 @@
           <label for="sched-desc" style="display: block; margin-bottom: 8px; font-weight: 500;">Meeting Description</label>
           <textarea id="sched-desc" placeholder="e.g. Discuss Q3 deliverables and blockers" style="width: 100%; border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 8px; font-size: 13px; resize: vertical; min-height: 60px; background-color: var(--bg-primary); color: var(--text-primary); font-family: inherit;"></textarea>
         </div>
+
+        <!-- Recurring Meeting Option -->
+        <div class="form-group" style="margin-bottom: 16px; background: var(--bg-secondary); padding: 14px; border-radius: 12px; border: 1px solid var(--border-color);">
+          <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; font-weight: 600; font-size: 0.9rem; color: var(--text-primary); margin: 0;">
+            <input type="checkbox" id="sched-is-recurring" style="width: 18px; height: 18px; accent-color: var(--accent-color); cursor: pointer;">
+            <span>Recurring meeting</span>
+          </label>
+          <div id="sched-recurring-summary" style="margin-top: 4px; margin-left: 28px; font-size: 0.8rem; color: var(--text-secondary);">
+            Repeats every day at scheduled time
+          </div>
+
+          <!-- Recurrence Details Box -->
+          <div id="sched-recurrence-options" class="hidden" style="margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 14px; position: relative;">
+            
+            <!-- Recurrence Type -->
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; position: relative; padding-left: 20px;">
+              <span style="position: absolute; left: 0; width: 10px; height: 10px; border-radius: 50%; background: #22c55e;"></span>
+              <label for="sched-recurrence-type" style="font-size: 0.85rem; font-weight: 600; color: var(--text-primary);">Recurrence</label>
+              <select id="sched-recurrence-type" style="padding: 6px 12px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary); font-size: 0.85rem; outline: none; width: 170px;">
+                <option value="Daily">Daily</option>
+                <option value="Weekly">Weekly</option>
+                <option value="Weekdays">Weekdays (Mon-Fri)</option>
+                <option value="Monthly">Monthly</option>
+              </select>
+            </div>
+
+            <!-- Repeat Every -->
+            <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; position: relative; padding-left: 20px;">
+              <label for="sched-repeat-interval" style="font-size: 0.85rem; font-weight: 600; color: var(--text-primary);">Repeat every</label>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <input type="number" id="sched-repeat-interval" value="1" min="1" max="99" style="width: 65px; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary); font-size: 0.85rem; outline: none; text-align: center;">
+                <span id="sched-repeat-unit" style="font-size: 0.85rem; color: var(--text-secondary);">day</span>
+              </div>
+            </div>
+
+            <!-- Ends Options -->
+            <div style="display: flex; flex-direction: column; gap: 10px; position: relative; padding-left: 20px;">
+              <span style="position: absolute; left: 0; top: 4px; width: 10px; height: 10px; border-radius: 50%; background: #ef4444;"></span>
+              <label style="font-size: 0.85rem; font-weight: 600; color: var(--text-primary); margin-bottom: 2px;">Ends</label>
+              
+              <label style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: var(--text-primary); cursor: pointer;">
+                <input type="radio" name="sched-ends" value="never" checked style="accent-color: var(--accent-color);">
+                <span>never</span>
+              </label>
+
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <label style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: var(--text-primary); cursor: pointer; flex-shrink: 0;">
+                  <input type="radio" name="sched-ends" value="on" style="accent-color: var(--accent-color);">
+                  <span>On</span>
+                </label>
+                <input type="date" id="sched-ends-date" style="padding: 4px 8px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary); font-size: 0.8rem; outline: none; width: 150px;">
+              </div>
+
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <label style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: var(--text-primary); cursor: pointer; flex-shrink: 0;">
+                  <input type="radio" name="sched-ends" value="after" style="accent-color: var(--accent-color);">
+                  <span>after</span>
+                </label>
+                <input type="number" id="sched-ends-after-count" value="10" min="1" max="999" style="width: 65px; padding: 4px 8px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary); font-size: 0.8rem; outline: none; text-align: center;">
+                <span style="font-size: 0.85rem; color: var(--text-secondary);">occurrence(s)</span>
+              </div>
+            </div>
+          </div>
+        </div>
         <div class="form-group" style="margin-bottom: 16px;">
           <label style="display: block; margin-bottom: 8px; font-weight: 500;">Select Participants</label>
           <div id="sched-participants-list" style="max-height: 150px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 10px; background-color: var(--bg-primary); display: flex; flex-direction: column; gap: 8px;">
@@ -2411,6 +2796,156 @@
         </div>
       </form>
     </div>
+  </div>
+
+  <!-- ==================== MODAL: JOIN MEETING PROMPT ==================== -->
+  <div id="join-meeting-prompt-modal" class="modal-overlay hidden">
+    <div class="modal-card" style="max-width: 400px;">
+      <div class="modal-header">
+        <h2>Join Video Meeting</h2>
+        <button class="close-modal-btn" id="close-join-prompt-modal">&times;</button>
+      </div>
+      <form id="join-meeting-prompt-form">
+        <div class="form-group" style="margin-bottom: 20px;">
+          <label for="join-prompt-room-input" style="font-weight: 500; display: block; margin-bottom: 8px;">Room Code / ID</label>
+          <input type="text" id="join-prompt-room-input" placeholder="e.g. tech-daily-meeting" required style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); background-color: var(--bg-primary); color: var(--text-primary); font-family: inherit;">
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" id="cancel-join-prompt-btn">Cancel</button>
+          <button type="submit" class="btn btn-primary">Join Room</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ==================== MODAL: VIDEO DEVICE SETTINGS ==================== -->
+  <div id="meeting-device-settings-modal" class="modal-overlay hidden">
+    <div class="modal-card" style="max-width: 440px;">
+      <div class="modal-header">
+        <h2>Audio & Video Settings</h2>
+        <button class="close-modal-btn" id="close-device-settings-modal">&times;</button>
+      </div>
+      <form id="device-settings-form">
+        <div class="form-group" style="margin-bottom: 16px;">
+          <label for="select-video-input" style="font-weight: 500; display: block; margin-bottom: 6px;">Camera Input</label>
+          <select id="select-video-input" style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); background-color: var(--bg-primary); color: var(--text-primary); font-family: inherit;"></select>
+        </div>
+        <div class="form-group" style="margin-bottom: 16px;">
+          <label for="select-audio-input" style="font-weight: 500; display: block; margin-bottom: 6px;">Microphone Input</label>
+          <select id="select-audio-input" style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); background-color: var(--bg-primary); color: var(--text-primary); font-family: inherit;"></select>
+        </div>
+        <div class="modal-footer" style="margin-top: 20px;">
+          <button type="button" class="btn btn-secondary" id="btn-close-device-settings">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Settings</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ==================== MODAL: MEETING LOBBY / PREVIEW ==================== -->
+  <!-- ==================== MODAL: MEETING LOBBY / PREVIEW ==================== -->
+  <div id="meeting-lobby-modal" class="modal-overlay hidden">
+    <div class="modal-card" style="max-width: 780px; width: 90%; background-color: #1a2332; border: none; border-radius: 12px; box-shadow: 0 20px 50px rgba(0,0,0,0.4); padding: 32px; display: flex; flex-direction: column; gap: 24px;">
+      
+      <!-- Close button top right -->
+      <button class="close-modal-btn" id="close-lobby-modal" style="position: absolute; top: 20px; right: 20px; font-size: 24px; color: #94a3b8; background: none; border: none; cursor: pointer;">&times;</button>
+      
+      <h2 style="font-size: 1.25rem; font-weight: 600; color: #fff; margin: 0 0 8px; font-family: inherit;">Manage audio and video settings</h2>
+      
+      <div class="modal-body" style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 32px; padding: 0; align-items: start;">
+        
+        <!-- Left: Video Preview and mirror checkbox -->
+        <div style="display: flex; flex-direction: column; gap: 16px;">
+          <div id="lobby-preview-wrapper" style="position: relative; border-radius: 8px; overflow: hidden; background-color: #0f172a; aspect-ratio: 16/10; width: 100%; display: flex; align-items: center; justify-content: center; border: 1px solid #334155;">
+            <video id="lobby-camera-preview" autoplay playsinline muted style="width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1);"></video>
+            <!-- Camera Off Avatar overlay -->
+            <div id="lobby-camera-off-avatar" class="hidden" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background-color: #1e293b; color: #fff; font-size: 2.5rem; font-weight: 700; z-index: 2;">
+              <div id="lobby-avatar-char" style="width: 90px; height: 90px; border-radius: 50%; background: linear-gradient(135deg, var(--accent-secondary), var(--accent-color)); display: flex; align-items: center; justify-content: center; font-size: 2.25rem; font-weight: 700; box-shadow: 0 4px 12px rgba(0,0,0,0.25);">U</div>
+            </div>
+            <!-- Unable to access the camera text overlay -->
+            <div id="lobby-no-cam-warning" class="hidden" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; background-color: #1e293b; color: #94a3b8; text-align: center; padding: 20px; z-index: 2;">
+              <i data-lucide="video-off" style="width: 32px; height: 32px; margin-bottom: 12px; color: #ef4444;"></i>
+              <p style="margin: 0; font-weight: 600; color: #fff; font-size: 14px;">Unable to access the camera</p>
+              <p style="margin: 4px 0 0; font-size: 12px; color: #64748b;">Please check your browser/system settings.</p>
+            </div>
+          </div>
+          <!-- Mirror my video checkbox -->
+          <label style="display: flex; align-items: center; gap: 8px; font-size: 12px; color: #94a3b8; cursor: pointer; user-select: none;">
+            <input type="checkbox" id="lobby-mirror-chk" checked style="accent-color: #82b834; cursor: pointer;">
+            Mirror my video
+          </label>
+        </div>
+
+        <!-- Right: iOS Toggles & Dropdowns -->
+        <div style="display: flex; flex-direction: column; gap: 20px;">
+          
+          <!-- Camera row -->
+          <div style="display: flex; flex-direction: column; gap: 8px;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span style="font-size: 13px; font-weight: 500; color: #e2e8f0;">Camera</span>
+              <label class="switch-toggle">
+                <input type="checkbox" id="lobby-toggle-cam-checkbox" checked>
+                <span class="slider-round"></span>
+              </label>
+            </div>
+            <div style="position: relative;">
+              <select id="lobby-video-input" style="width: 100%; padding: 10px; padding-left: 36px; border: 1px solid #334155; border-radius: 6px; background-color: #0f172a; color: #fff; font-family: inherit; font-size: 13px; cursor: pointer; outline: none; -webkit-appearance: none; -moz-appearance: none; appearance: none;"></select>
+              <i data-lucide="video" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #94a3b8;"></i>
+              <i data-lucide="chevron-down" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); width: 14px; height: 14px; color: #94a3b8; pointer-events: none;"></i>
+            </div>
+          </div>
+
+          <!-- Microphone row -->
+          <div style="display: flex; flex-direction: column; gap: 8px;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span style="font-size: 13px; font-weight: 500; color: #e2e8f0;">Microphone</span>
+              <label class="switch-toggle">
+                <input type="checkbox" id="lobby-toggle-mic-checkbox" checked>
+                <span class="slider-round"></span>
+              </label>
+            </div>
+            <div style="position: relative;">
+              <select id="lobby-audio-input" style="width: 100%; padding: 10px; padding-left: 36px; border: 1px solid #334155; border-radius: 6px; background-color: #0f172a; color: #fff; font-family: inherit; font-size: 13px; cursor: pointer; outline: none; -webkit-appearance: none; -moz-appearance: none; appearance: none;"></select>
+              <i data-lucide="mic" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #94a3b8;"></i>
+              <i data-lucide="chevron-down" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); width: 14px; height: 14px; color: #94a3b8; pointer-events: none;"></i>
+            </div>
+          </div>
+
+          <!-- Speaker row -->
+          <div style="display: flex; flex-direction: column; gap: 8px;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="font-size: 13px; font-weight: 500; color: #e2e8f0;">Speaker</span>
+                <button type="button" id="lobby-btn-test-sound" style="border: none; border-radius: 12px; background-color: #82b834; color: #fff; padding: 2px 10px; font-size: 11px; cursor: pointer; font-weight: 600; transition: background 0.2s; outline: none;">Play</button>
+              </div>
+            </div>
+            <div style="position: relative;">
+              <select id="lobby-speaker-input" style="width: 100%; padding: 10px; padding-left: 36px; border: 1px solid #334155; border-radius: 6px; background-color: #0f172a; color: #fff; font-family: inherit; font-size: 13px; cursor: pointer; outline: none; -webkit-appearance: none; -moz-appearance: none; appearance: none;">
+                <option value="default">Default - Headphones/Speaker</option>
+              </select>
+              <i data-lucide="volume-2" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #94a3b8;"></i>
+              <i data-lucide="chevron-down" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); width: 14px; height: 14px; color: #94a3b8; pointer-events: none;"></i>
+            </div>
+          </div>
+          
+          <!-- Hidden inputs for display names and invites -->
+          <input type="hidden" id="lobby-display-name">
+          <div id="lobby-invite-list" class="hidden"></div>
+          <div id="lobby-room-code" class="hidden"></div>
+
+        </div>
+
+      </div>
+      
+      <!-- Footer Buttons -->
+      <div style="display: flex; justify-content: center; gap: 16px; margin-top: 12px; border-top: 1px solid #334155; padding-top: 24px;">
+        <button type="button" id="btn-cancel-lobby" style="border: 1px solid #475569; border-radius: 24px; color: #cbd5e1; background: none; padding: 10px 40px; font-weight: 500; font-size: 13px; cursor: pointer; transition: all 0.2s;">Cancel</button>
+        <button type="button" id="btn-lobby-join-meeting" style="border: none; border-radius: 24px; color: #fff; background-color: #82b834; padding: 10px 40px; font-weight: 600; font-size: 13px; cursor: pointer; transition: all 0.2s;">Start meeting</button>
+      </div>
+
+    </div>
+  </div>
+
   <!-- ==================== MODAL: CREATE NEW GROUP ==================== -->
   <div id="create-group-modal" class="modal-overlay hidden">
     <div class="modal-card" style="max-width: 480px;">
@@ -2438,9 +2973,166 @@
     </div>
   </div>
 
+  <!-- ==================== FLOATING PIP WIDGET ==================== -->
+  <div id="meeting-pip-widget" class="hidden" style="position: fixed; bottom: 24px; right: 24px; width: 280px; height: 180px; z-index: 9999; border-radius: 12px; background: #0f172a; border: 2px solid var(--accent-color); box-shadow: 0 12px 36px rgba(0, 0, 0, 0.4); display: flex; flex-direction: column; overflow: hidden; transition: all 0.3s ease;">
+    <!-- PIP Header -->
+    <div style="padding: 8px 12px; background: var(--bg-secondary); border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+      <span style="font-size: 11px; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 4px;">
+        <span style="width: 8px; height: 8px; border-radius: 50%; background: #10b981; display: inline-block;"></span> Active Call
+      </span>
+      <div style="display: flex; gap: 6px;">
+        <!-- Minimize / Background button -->
+        <button type="button" id="btn-pip-minimize" style="background: none; border: none; color: var(--text-secondary); cursor: pointer; padding: 2px; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center;" title="Send to Background">
+          <i data-lucide="minus" style="width: 14px; height: 14px;"></i>
+        </button>
+        <!-- Restore to Meetings Tab button -->
+        <button type="button" id="btn-pip-expand" style="background: none; border: none; color: var(--text-secondary); cursor: pointer; padding: 2px; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center;" title="Expand to Tab">
+          <i data-lucide="maximize-2" style="width: 14px; height: 14px;"></i>
+        </button>
+      </div>
+    </div>
+    <!-- PIP Video Area -->
+    <div id="meeting-pip-video-container" style="flex: 1; display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 4px; padding: 6px; background: #0f172a; overflow: hidden; min-height: 0;">
+      <!-- Video containers will be moved here dynamically -->
+    </div>
+  </div>
+
   <!-- ==================== SCRIPTS ==================== -->
   
   <script src="/socket.io/socket.io.js"></script>
-  <script src="app.js?v=2.2"></script>
+  <script src="app.js?v=2.3"></script>
+
+  <!-- ==================== ADD PARTICIPANTS PICKER MODAL ==================== -->
+  <div id="add-participants-modal" style="
+    display: none;
+    position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+    background: rgba(0,0,0,0.65); backdrop-filter: blur(6px);
+    z-index: 10002; align-items: center; justify-content: center;
+  ">
+    <div onclick="event.stopPropagation()" style="
+      width: 90%; max-width: 480px;
+      background: #1a2332; border: 1px solid #334155; border-radius: 16px;
+      overflow: hidden; box-shadow: 0 28px 70px rgba(0,0,0,0.7);
+      display: flex; flex-direction: column; max-height: 90vh;
+    ">
+      <!-- Header -->
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:22px 24px 18px;border-bottom:1px solid #263348;flex-shrink:0;">
+        <div>
+          <h3 style="margin:0;font-size:1.05rem;font-weight:700;color:#fff;">Add Participants</h3>
+          <p style="margin:4px 0 0;font-size:12px;color:#64748b;">Select colleagues to invite to this meeting</p>
+        </div>
+        <button id="close-add-participants-modal" style="width:30px;height:30px;border-radius:50%;background:#0f172a;border:none;color:#94a3b8;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;">&times;</button>
+      </div>
+
+      <!-- Search -->
+      <div style="padding:14px 24px 10px;border-bottom:1px solid #1e2d42;flex-shrink:0;">
+        <div style="position:relative;">
+          <i data-lucide="search" style="position:absolute;left:11px;top:50%;transform:translateY(-50%);width:15px;height:15px;color:#64748b;pointer-events:none;"></i>
+          <input type="text" id="add-participants-search" placeholder="Search employees..." autocomplete="off"
+            style="width:100%;padding:9px 12px 9px 34px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;font-size:13px;outline:none;font-family:inherit;box-sizing:border-box;">
+        </div>
+      </div>
+
+      <!-- Employee List — flex-grow + overflow-y: auto for scrolling -->
+      <div id="add-participants-list" style="
+        flex:1; overflow-y:auto; padding:10px 16px;
+        display:flex; flex-direction:column; gap:4px;
+        min-height:100px;
+      ">
+        <!-- Populated dynamically -->
+      </div>
+
+      <!-- Footer -->
+      <div style="padding:16px 24px;border-top:1px solid #263348;display:flex;align-items:center;justify-content:space-between;gap:12px;background:#141e2d;flex-shrink:0;">
+        <span id="add-participants-count" style="font-size:13px;color:#64748b;">0 selected</span>
+        <div style="display:flex;gap:10px;">
+          <button id="btn-cancel-add-participants" style="padding:9px 22px;border:1px solid #475569;border-radius:20px;background:none;color:#94a3b8;font-size:13px;cursor:pointer;font-family:inherit;">Cancel</button>
+          <button id="btn-send-call-invites" style="padding:9px 24px;border:none;border-radius:20px;background:#82b834;color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:background 0.2s;opacity:0.5;pointer-events:none;">
+            <span id="send-invite-btn-text">Send Invite</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ==================== INCOMING CALL BANNER ==================== -->
+  <div id="incoming-call-banner" class="hidden" style="
+    position: fixed;
+    bottom: 28px;
+    right: 24px;
+    z-index: 99999;
+    background: linear-gradient(145deg, #0f172a 0%, #1a2332 100%);
+    border: 1px solid rgba(130, 184, 52, 0.45);
+    border-radius: 18px;
+    padding: 16px 20px;
+    width: 320px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.8), 0 0 0 1px rgba(130,184,52,0.1), 0 0 30px rgba(130,184,52,0.08);
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    animation: callBannerSlideIn 0.4s cubic-bezier(0.34,1.56,0.64,1) forwards;
+  ">
+    <!-- Animated Ring Icon -->
+    <div style="position: relative; flex-shrink: 0;">
+      <div style="
+        position: absolute; top: -10px; left: -10px;
+        width: 64px; height: 64px; border-radius: 50%;
+        background: rgba(130,184,52,0.12);
+        animation: ringPulse 1.1s ease-out infinite;
+      "></div>
+      <div style="
+        position: absolute; top: -5px; left: -5px;
+        width: 54px; height: 54px; border-radius: 50%;
+        background: rgba(130,184,52,0.08);
+        animation: ringPulse 1.1s ease-out 0.3s infinite;
+      "></div>
+      <div id="incoming-call-avatar" style="
+        width: 44px; height: 44px; border-radius: 50%;
+        background: linear-gradient(135deg, #82b834, #4a7c10);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.1rem; font-weight: 700; color: #fff;
+        border: 2px solid rgba(130,184,52,0.7);
+        position: relative; z-index: 1;
+        box-shadow: 0 0 16px rgba(130,184,52,0.4);
+      ">?</div>
+    </div>
+
+    <!-- Info -->
+    <div style="flex: 1; min-width: 0;">
+      <div style="font-size: 10px; color: #82b834; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 3px; display:flex; align-items:center; gap:5px;">
+        <span style="width:6px;height:6px;border-radius:50%;background:#82b834;animation:ringPulse 1s infinite;display:inline-block;"></span>
+        Incoming Call
+      </div>
+      <div id="incoming-call-name" style="font-size: 14px; font-weight: 700; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom:2px;">Someone</div>
+      <div style="font-size: 11px; color: #64748b;">is calling you to join a meeting</div>
+    </div>
+
+    <!-- Buttons -->
+    <div style="display: flex; flex-direction: column; gap: 7px; flex-shrink: 0;">
+      <button id="btn-accept-call" style="
+        padding: 7px 16px; border: none; border-radius: 12px;
+        background: linear-gradient(135deg, #10b981, #059669);
+        color: #fff; font-size: 12px; font-weight: 700; cursor: pointer;
+        display: flex; align-items: center; gap: 5px;
+        box-shadow: 0 4px 14px rgba(16,185,129,0.4);
+        transition: all 0.15s; white-space: nowrap;
+      ">
+        <i data-lucide="phone" style="width: 12px; height: 12px;"></i> Accept
+      </button>
+      <button id="btn-decline-call" style="
+        padding: 7px 16px; border: none; border-radius: 12px;
+        background: linear-gradient(135deg, #ef4444, #dc2626);
+        color: #fff; font-size: 12px; font-weight: 700; cursor: pointer;
+        display: flex; align-items: center; gap: 5px;
+        box-shadow: 0 4px 14px rgba(239,68,68,0.35);
+        transition: all 0.15s; white-space: nowrap;
+      ">
+        <i data-lucide="phone-off" style="width: 12px; height: 12px;"></i> Decline
+      </button>
+    </div>
+  </div>
+
 </body>
 </html>
+
