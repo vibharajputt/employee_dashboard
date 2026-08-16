@@ -90,10 +90,7 @@ Neeche scroll karein aur **"Environment Variables"** section open karein:
 
 #### Variable 1:
 - **Key:** `DATABASE_URL`
-- **Value:** 
-  ```text
-  postgresql://neondb_owner:npg_Hkx9mVfcDuA1@ep-winter-glade-azdafwpj-pooler.c-3.ap-southeast-1.aws.neon.tech/neondb?sslmode=require
-  ```
+- **Value:** `postgresql://neondb_owner:YOUR_NEON_PASSWORD@ep-winter-glade-azdafwpj-pooler.c-3.ap-southeast-1.aws.neon.tech/neondb?sslmode=require` *(Apna actual Neon connection string paste karein)*
 
 #### Variable 2:
 - **Key:** `NODE_ENV`
