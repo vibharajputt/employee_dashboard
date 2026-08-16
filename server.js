@@ -27,11 +27,19 @@ app.use('/api', (req, res, next) => {
   next();
 });
 
-// Auto-check and create database if missing
+const fs = require('fs');
+let isUsingMockDb = false;
+
+const isCloudDb = process.env.DATABASE_URL && !process.env.DATABASE_URL.includes('localhost') && !process.env.DATABASE_URL.includes('127.0.0.1');
+
+// Auto-check and create database if missing (Local only)
 async function ensureDatabaseExists() {
-  const defaultConnectionString = process.env.DATABASE_URL.replace(/\/medastrax(?:\?.*)?$/, '/postgres');
-  const client = new Client({ connectionString: defaultConnectionString });
+  if (!process.env.DATABASE_URL || isCloudDb) {
+    return;
+  }
   try {
+    const defaultConnectionString = process.env.DATABASE_URL.replace(/\/medastrax(?:\?.*)?$/, '/postgres');
+    const client = new Client({ connectionString: defaultConnectionString });
     await client.connect();
     const res = await client.query("SELECT 1 FROM pg_database WHERE datname = 'medastrax'");
     if (res.rowCount === 0) {
@@ -41,18 +49,12 @@ async function ensureDatabaseExists() {
     } else {
       console.log("[DB] Database 'medastrax' verified.");
     }
+    await client.end();
   } catch (err) {
-    console.error("[DB] Database creation check failed:", err.message);
-    isUsingMockDb = true;
-  } finally {
-    try {
-      await client.end();
-    } catch (e) {}
+    console.log("[DB] Database verification notice:", err.message);
   }
 }
 
-const fs = require('fs');
-let isUsingMockDb = false;
 
 class MockClient {
   async query(text, values) {
@@ -487,7 +489,8 @@ function saveMockDb(data) {
 }
 
 const pgPool = new Pool({
-  connectionString: process.env.DATABASE_URL
+  connectionString: process.env.DATABASE_URL,
+  ssl: isCloudDb ? { rejectUnauthorized: false } : false
 });
 
 const pool = {
@@ -650,76 +653,57 @@ async function initDb() {
       )
     `);
 
-    // Seed default users if empty or update existing on startup
-    console.log('[DB] Seeding default workspace users...');
+    // Seed default users if empty or update existing on startup from secure seed_data.json
+    console.log('[DB] Checking workspace user seeds...');
 
-    // Remove legacy placeholder/fake users that are no longer part of the real team
-    const legacyUserIds = ['usr-admin', 'usr-mgr-1', 'usr-mgr-2', 'usr-emp-1', 'usr-emp-2', 'usr-emp-3'];
-    for (const legacyId of legacyUserIds) {
-      await client.query(`DELETE FROM users WHERE id = $1`, [legacyId]);
+    const SEED_DATA_FILE = path.join(__dirname, 'seed_data.json');
+    let seedUsers = [];
+
+    if (fs.existsSync(SEED_DATA_FILE)) {
+      try {
+        const seedContent = JSON.parse(fs.readFileSync(SEED_DATA_FILE, 'utf8'));
+        if (seedContent && Array.isArray(seedContent.users)) {
+          seedUsers = seedContent.users;
+        }
+      } catch (e) {
+        console.warn('[DB] Could not parse seed_data.json:', e.message);
+      }
     }
-    // Remove legacy placeholder tasks linked to fake users
-    const legacyTaskIds = ['tsk-101', 'tsk-102', 'tsk-103', 'tsk-104'];
-    for (const legacyId of legacyTaskIds) {
-      await client.query(`DELETE FROM tasks WHERE id = $1`, [legacyId]);
+
+    if (seedUsers.length > 0) {
+      console.log(`[DB] Seeding ${seedUsers.length} users from seed_data.json...`);
+      for (const u of seedUsers) {
+        await client.query(
+          `INSERT INTO users (id, username, password, fullname, role, "reportingManagerId", status, "availabilityStatus", gmail, phone, domain, aadhar) 
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+           ON CONFLICT (username) DO UPDATE SET
+             id = EXCLUDED.id,
+             password = EXCLUDED.password,
+             fullname = EXCLUDED.fullname,
+             role = EXCLUDED.role,
+             "reportingManagerId" = EXCLUDED."reportingManagerId",
+             status = EXCLUDED.status,
+             "availabilityStatus" = EXCLUDED."availabilityStatus",
+             gmail = EXCLUDED.gmail,
+             phone = EXCLUDED.phone,
+             domain = EXCLUDED.domain,
+             aadhar = EXCLUDED.aadhar`,
+          [u.id, u.username, u.password, u.fullname, u.role, u.reportingManagerId || 'none', u.status || 'Active', u.availabilityStatus || 'Active', u.gmail || '', u.phone || '', u.domain || 'General', u.aadhar || '']
+        );
+      }
+    } else {
+      const userCountRes = await client.query('SELECT COUNT(*) FROM users');
+      if (parseInt(userCountRes.rows[0].count) === 0) {
+        console.log('[DB] No users found. Creating initial workspace Admin...');
+        await client.query(
+          `INSERT INTO users (id, username, password, fullname, role, "reportingManagerId", status, "availabilityStatus", gmail, phone, domain, aadhar) 
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+           ON CONFLICT (username) DO NOTHING`,
+          ['usr-admin', 'admin', 'admin123', 'Workspace Administrator', 'Admin', 'none', 'Active', 'Active', 'admin@medastrax.com', '9999999999', 'Tech', '']
+        );
+      }
     }
 
-    const defaultUsers = [
-
-      // CO-FOUNDERS & C-Level
-      { id: "usr-sambhav", username: "sambhav", password: "sambhav123", fullname: "Sambhav Kaushik Singh (CO - Founder & Chief Executive Officer)", role: "Admin", reportingManagerId: "none", status: "Active", availabilityStatus: "Active", gmail: "sambhavceo25@gmail.com", phone: "7527910223", domain: "Other", aadhar: "645713250752" },
-      { id: "usr-shivangi", username: "shivangi", password: "shivangi123", fullname: "Shivangi Bathyal (CO- Founder & Chief Operating Officer)", role: "Admin", reportingManagerId: "none", status: "Active", availabilityStatus: "Active", gmail: "shivangicoo25@gmail.com", phone: "7526920225", domain: "Other", aadhar: "396680523862" },
-      { id: "usr-shakcham", username: "shakcham", password: "shakcham123", fullname: "Shakcham Kaushik Singh (Co - Founder & Chief Marketing Officer)", role: "Admin", reportingManagerId: "none", status: "Active", availabilityStatus: "Active", gmail: "shakchamcmo25@gmail.com", phone: "6290191578", domain: "Marketing", aadhar: "697836655001" },
-      
-      // Tech Heads & Tech Team
-      { id: "usr-vibha", username: "vibha", password: "vibha123", fullname: "Vibha Rajput (Chief Technical Officer)", role: "Admin", reportingManagerId: "usr-sambhav", status: "Active", availabilityStatus: "Active", gmail: "vibharajput2004@gmail.com", phone: "7827472924", domain: "Tech", aadhar: "536302716909" },
-      { id: "usr-rashika", username: "rashika", password: "rashika123", fullname: "Rashika Poonia (Head of Technology)", role: "Manager", reportingManagerId: "usr-vibha", status: "Active", availabilityStatus: "Active", gmail: "pooniarashika5@gmail.com", phone: "7988766566", domain: "Tech", aadhar: "919766258868" },
-      { id: "usr-amit", username: "amit", password: "amit123", fullname: "Amit Rai (Android developer)", role: "Software Developer", reportingManagerId: "usr-rashika", status: "Active", availabilityStatus: "Active", gmail: "amitraics06@gmail.com", phone: "8826233540", domain: "Tech", aadhar: "543336197283" },
-      { id: "usr-naina", username: "naina", password: "naina123", fullname: "Naina (Full Stack Engineer)", role: "Software Developer", reportingManagerId: "usr-rashika", status: "Active", availabilityStatus: "Active", gmail: "nainahooda2106@gmail.com", phone: "9817512192", domain: "Tech", aadhar: "398626983045" },
-      { id: "usr-aryan", username: "aryan", password: "aryan123", fullname: "Aryan (System support Engineer)", role: "Software Developer", reportingManagerId: "usr-rashika", status: "Active", availabilityStatus: "Active", gmail: "aryanrao8670@gmail.com", phone: "8307847393", domain: "Tech", aadhar: "407917734100" },
-      { id: "usr-tanveer", username: "tanveer", password: "tanveer123", fullname: "Tanveer Dhindsa (AI & Full stack Engineer)", role: "Software Developer", reportingManagerId: "usr-rashika", status: "Active", availabilityStatus: "Active", gmail: "tanveer0713@gmail.com", phone: "9041990211", domain: "Tech", aadhar: "827367367601" },
-      { id: "usr-saksham", username: "saksham", password: "saksham123", fullname: "Saksham (Data Analytics)", role: "Software Developer", reportingManagerId: "usr-rashika", status: "Active", availabilityStatus: "Active", gmail: "jainsaksham286@gmail.com", phone: "8330954134", domain: "Tech", aadhar: "280887258140" },
-
-      // Research
-      { id: "usr-rikhil", username: "rikhil", password: "rikhil123", fullname: "Rikhil Singh (Chief Research Officer)", role: "Admin", reportingManagerId: "usr-sambhav", status: "Active", availabilityStatus: "Active", gmail: "rikhil.medastrax@gmail.com", phone: "9083008600", domain: "R&D", aadhar: "791236576114" },
-
-      // Finance
-      { id: "usr-vivek", username: "vivek", password: "vivek123", fullname: "Vivek (Chief Financial Officer)", role: "Manager", reportingManagerId: "usr-sambhav", status: "Active", availabilityStatus: "Active", gmail: "vivek.finance@gmail.com", phone: "N/A", domain: "Finance", aadhar: "N/A" },
-
-      // Graphics
-      { id: "usr-spandan", username: "spandan", password: "spandan123", fullname: "Spandan (Head of Graphic Designing)", role: "Manager", reportingManagerId: "usr-sambhav", status: "Active", availabilityStatus: "Active", gmail: "sarkar1980sumitra@gmail.com", phone: "8100080568", domain: "Graphic Designing", aadhar: "950768361022" },
-
-      // Marketing
-      { id: "usr-parneet", username: "parneet", password: "parneet123", fullname: "Parneet Kaur (Director General of Marketing)", role: "Team Lead", reportingManagerId: "usr-sambhav", status: "Active", availabilityStatus: "Active", gmail: "parneetkaur21009353@cumail.in", phone: "8054871267", domain: "Marketing", aadhar: "661128889286" },
-      { id: "usr-mahakpreet", username: "mahakpreet", password: "mahakpreet123", fullname: "Mahakpreet Kaur (Marketing Manager)", role: "Team Lead", reportingManagerId: "usr-parneet", status: "Active", availabilityStatus: "Active", gmail: "mahak170905@gmail.com", phone: "9779937381", domain: "Marketing", aadhar: "386504010824" },
-      { id: "usr-prabhroop", username: "prabhroop", password: "prabhroop123", fullname: "Prabhroop Kaur (Senior Marketing Manager)", role: "Manager", reportingManagerId: "usr-parneet", status: "Active", availabilityStatus: "Active", gmail: "prabhroopkaur21@gmail.com", phone: "9988710469", domain: "Marketing", aadhar: "530227341023" },
-      { id: "usr-rudrakshi", username: "rudrakshi", password: "rudrakshi123", fullname: "Rudrakshi (MSE (Team Lead))", role: "Team Lead", reportingManagerId: "usr-mahakpreet", status: "Active", availabilityStatus: "Active", gmail: "rajputrudrakshi86@gmail.com", phone: "8847067953", domain: "Marketing", aadhar: "675041024864" },
-      { id: "usr-dakshi", username: "dakshi", password: "dakshi123", fullname: "Dakshi (MSE (Team Lead))", role: "Team Lead", reportingManagerId: "usr-mahakpreet", status: "Active", availabilityStatus: "Active", gmail: "dakshianand123@gmail.com", phone: "9779060285", domain: "Marketing", aadhar: "408425021956" },
-      { id: "usr-kiranveer", username: "kiranveer", password: "kiranveer123", fullname: "Kiranveer Kaur (MSE (Team Lead))", role: "Team Lead", reportingManagerId: "usr-mahakpreet", status: "Active", availabilityStatus: "Active", gmail: "veerdhillon0070@gmail.com", phone: "7717580012", domain: "Marketing", aadhar: "345596162781" },
-      { id: "usr-mehakdeep", username: "mehakdeep", password: "mehakdeep123", fullname: "Mehakdeep (MSE (Team Lead))", role: "Team Lead", reportingManagerId: "usr-mahakpreet", status: "Active", availabilityStatus: "Active", gmail: "mehakgrewalmehak@gmail.com", phone: "7696546005", domain: "Marketing", aadhar: "918957796517" },
-      { id: "usr-aditi", username: "aditi", password: "aditi123", fullname: "Aditi (MSE)", role: "Employee", reportingManagerId: "usr-dakshi", status: "Active", availabilityStatus: "Active", gmail: "puniaaditi5@gmail.com", phone: "7898659651", domain: "Marketing", aadhar: "801434040805" },
-      { id: "usr-harmandeep", username: "harmandeep", password: "harmandeep123", fullname: "Harmandeep Kaur (MSE)", role: "Employee", reportingManagerId: "usr-rudrakshi", status: "Active", availabilityStatus: "Active", gmail: "harmandeepdhesa2306@gmail.com", phone: "8146030993", domain: "Marketing", aadhar: "302243524648" }
-    ];
-
-    for (const u of defaultUsers) {
-      await client.query(
-        `INSERT INTO users (id, username, password, fullname, role, "reportingManagerId", status, "availabilityStatus", gmail, phone, domain, aadhar) 
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-         ON CONFLICT (username) DO UPDATE SET
-           id = EXCLUDED.id,
-           password = EXCLUDED.password,
-           fullname = EXCLUDED.fullname,
-           role = EXCLUDED.role,
-           "reportingManagerId" = EXCLUDED."reportingManagerId",
-           status = EXCLUDED.status,
-           "availabilityStatus" = EXCLUDED."availabilityStatus",
-           gmail = EXCLUDED.gmail,
-           phone = EXCLUDED.phone,
-           domain = EXCLUDED.domain,
-           aadhar = EXCLUDED.aadhar`,
-        [u.id, u.username, u.password, u.fullname, u.role, u.reportingManagerId, u.status, u.availabilityStatus, u.gmail, u.phone, u.domain, u.aadhar]
-      );
-    }
 
     // No default task seeding — tasks are created by real users only
 
