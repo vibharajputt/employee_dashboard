@@ -64,7 +64,7 @@ rehta hai.
 2. Dropdown mein "Pooled connection" select karo (better performance)
 3. Connection string copy karo — format aisi hogi:
 
-   postgresql://neondb_owner:YOUR_PASSWORD@YOUR_HOST.neon.tech/neondb?sslmode=require
+   postgresql://neondb_owner:YOUR_PASSWORD@YOUR_HOST.neon.tech/neondb?sslmode=verify-full
 
    IMPORTANT: Yeh string Notepad ya password manager mein save karo.
    Ise GitHub, code, ya kisi bhi file mein paste MAT karna.
@@ -76,26 +76,42 @@ create kar leta hai — users, tasks, leaves, meetings, attendance, messages, et
 
 ---
 
-## PART B — Employee Data Seed Karna
+## PART B — Employee Data Seed Karna (SKIP karo agar DB already seeded hai)
 
-> Yeh step sirf pehli baar karna hai. Iske baad naye employees Admin portal se directly add ho sakte hain.
+> YEH SIRF FRESH / EMPTY Neon DB ke liye hai. Agar DB mein already users hain
+> (Neon SQL Editor mein `SELECT COUNT(*) FROM users;` 0 se zyada return kare), toh
+> is Part ko poora SKIP karo aur seedha PART C pe jaao.
+
+### Pehle Verify Karo — Kya Seeding Zaroori Hai?
+
+1. Neon.tech par jaao -> apna project open karo -> left sidebar mein **SQL Editor** click karo
+2. Ye query chalao:
+
+   SELECT COUNT(*) FROM users;
+
+3. Result:
+   - **Count > 0** (jaise 22) — DB already seeded hai. PART C pe jaao. Kuch mat karo.
+   - **Count = 0** — Empty DB hai. Neeche ke steps follow karo.
 
 ### Step 1: Local .env File Banao
 
 Project folder mein .env file create karo (agar nahi hai):
 
-   DATABASE_URL=postgresql://neondb_owner:YOUR_PASSWORD@YOUR_HOST.neon.tech/neondb?sslmode=require
+   DATABASE_URL=postgresql://neondb_owner:YOUR_PASSWORD@YOUR_HOST.neon.tech/neondb?sslmode=verify-full
 
 .env already .gitignore mein hai — yeh GitHub par kabhi nahi jayegi.
 
-### Step 2: seed_data.json Check Karo
+### Step 2: seed_data.json Kahan Se Aayegi?
 
-seed_data.json local computer par honi chahiye (.gitignore mein hai, GitHub par nahi).
-Agar nahi hai toh mock_db.json copy karke rename kar lo:
+WARNING: seed_data.json gitignored hai — Render ya kisi bhi deploy server pe available
+nahi hogi. Ye by design hai. Seeding sirf local machine se hogi (ya Neon SQL Editor se
+manually). Render se seedingcommand mat chalana — wahan file exist nahi karti.
 
-   Copy-Item mock_db.json seed_data.json
+seed_data.json apne local computer par honi chahiye. Iska source real employee data hai —
+KABHI bhi mock_db.json se copy mat karna (wo ek server-generated fallback file hai,
+asli source nahi).
 
-### Step 3: Seed Script Chalao
+### Step 3: Seed Script Chalao (Local Machine Se)
 
    node seed_database.js
 
@@ -235,22 +251,47 @@ jaake manual deploy trigger karo.
 | First load slow (30-40s) | Normal — Render free tier 15 min inactivity ke baad sleep mode mein jaata hai |
 | Data nahi dikha | Seed step dobara chalao: node seed_database.js |
 | Module not found | npm install locally chalao aur package.json dependencies check karo |
-| Neon connection refused | SSL mode check karo — connection string mein sslmode=require hona chahiye |
+| Neon connection refused | SSL mode check karo — connection string mein sslmode=verify-full hona chahiye |
 
 ---
 
 ## Security Summary
 
-| Sensitive Item | Kahaan Stored Hai | GitHub Par? |
-| :--- | :--- | :--- |
-| Employee passwords | Neon Cloud DB (encrypted) | Never |
-| Employee Aadhaar numbers | Neon Cloud DB (encrypted) | Never |
-| Employee phone numbers | Neon Cloud DB (encrypted) | Never |
-| Database connection string | Render Environment Variables | Never |
-| Resend API Key | Render Environment Variables | Never |
-| seed_data.json (local backup) | Local computer only | .gitignore mein (safe) |
-| mock_db.json (local backup) | Local computer only | .gitignore + full history purge |
-| .env file | Local computer only | .gitignore mein (safe) |
+| Sensitive Item | Kahaan Stored Hai | GitHub Par? | Notes |
+| :--- | :--- | :--- | :--- |
+| Employee passwords | Neon DB (at-rest encrypted by Neon) | Never | Plaintext in DB — bcrypt pending |
+| Employee Aadhaar numbers | Neon DB (at-rest encrypted by Neon) | Never | Plaintext in DB — column encryption pending |
+| Employee phone numbers | Neon DB (at-rest encrypted by Neon) | Never | |
+| Database connection string | Render Environment Variables | Never | |
+| Resend API Key | Render Environment Variables | Never | |
+| seed_data.json (local backup) | Local computer only | .gitignore mein (safe) | |
+| mock_db.json (local backup) | Local computer only | .gitignore + full history purge | |
+| .env file | Local computer only | .gitignore mein (safe) | |
+
+Note: "at-rest encrypted" = Neon ke storage disks encrypted hain. Iska matlab ye NAHI ki
+passwords ya Aadhaar ke values application-level pe encrypted hain. Connection SSL se hoti
+hai, lekin DB ke andar values plaintext hain. Production ke liye bcrypt (passwords) aur
+column masking (Aadhaar) pending hain — neeche Known Security Gaps dekho.
+
+---
+
+## Known Security Gaps (Production Se Pehle Fix Karne Hain)
+
+Ye gaps abhi exist karte hain. Inhe deploy se pehle ya jald se jald fix karna chahiye:
+
+1. **Passwords DB mein plaintext hain** — bcrypt hashing pending hai. Abhi passwords
+   `VARCHAR(50)` column mein as-is store hote hain. Production-ready nahi hai.
+
+2. **Aadhaar numbers plaintext hain** — column-level encryption ya masking pending hai.
+   DB mein 12-digit numbers directly readable hain.
+
+3. **`GET /api/users` se password aur aadhar hata diye hain (FIX DONE)** — pehle ye
+   endpoint bina auth ke plaintext passwords + Aadhaar return karta tha. Ab sirf safe
+   fields return hoti hain. Aadhar ke liye `/api/users/:id/sensitive` endpoint hai.
+
+4. **Session `sessionStorage` mein plain user object hai** — koi signed token (JWT)
+   nahi hai. DevTools se `sessionStorage` mein role value tamper karke privilege
+   escalation possible hai. Fix: server-side sessions ya JWT.
 
 ---
 
@@ -267,3 +308,4 @@ Ek normal employee dashboard ke liye ye limits kaafi hain.
 ---
 
 Last updated: August 2026 | MedAstraX Workspace Portal v2.0
+

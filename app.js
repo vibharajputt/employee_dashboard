@@ -2485,7 +2485,17 @@ function renderOverviewTab() {
 
 
 
-  document.getElementById("profile-aadhar").textContent = currentUser.aadhar || "N/A";
+  // Fetch aadhar from sensitive endpoint (not returned by GET /api/users)
+  (async () => {
+    const aadharEl = document.getElementById("profile-aadhar");
+    if (!aadharEl) return;
+    aadharEl.textContent = "Loading…";
+    try {
+      const sr = await fetch(`/api/users/${currentUser.id}/sensitive`);
+      if (sr.ok) { const sd = await sr.json(); aadharEl.textContent = sd.aadhar || "N/A"; }
+      else aadharEl.textContent = "N/A";
+    } catch (e) { aadharEl.textContent = "N/A"; }
+  })();
 
 
 
@@ -3932,11 +3942,7 @@ function renderEmployeesTab() {
 
 
 
-                          (u.domain && u.domain.toLowerCase().includes(searchVal)) ||
-
-
-
-                          (u.aadhar && u.aadhar.includes(searchVal));
+                          (u.domain && u.domain.toLowerCase().includes(searchVal));
 
 
 
@@ -4048,7 +4054,7 @@ function renderEmployeesTab() {
 
 
       <td>${u.domain || "N/A"}</td>
-      <td><code>${u.aadhar || "N/A"}</code></td>
+      <td><code style="opacity:0.5;font-size:0.8em">Restricted</code></td>
       <td><span class="badge badge-${roleInfo.badgeClass}">${roleInfo.displayRole}</span></td>
 
 
@@ -5837,7 +5843,17 @@ window.openEditEmployeeModal = function(userId) {
 
 
 
-  document.getElementById("edit-aadhar").value = user.aadhar || "";
+  // Fetch aadhar from sensitive endpoint (not in GET /api/users response)
+  (async () => {
+    const editAadharEl = document.getElementById("edit-aadhar");
+    if (!editAadharEl) return;
+    editAadharEl.placeholder = "Loading…";
+    try {
+      const sr = await fetch(`/api/users/${user.id}/sensitive`);
+      if (sr.ok) { const sd = await sr.json(); editAadharEl.value = sd.aadhar || ""; }
+    } catch (e) { /* leave blank */ }
+    finally { editAadharEl.placeholder = ""; }
+  })();
 
 
 

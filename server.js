@@ -778,8 +778,28 @@ async function initDb() {
 // USERS
 app.get('/api/users', async (req, res) => {
   try {
-    const result = await pool.query('SELECT * FROM users');
+    // password and aadhar are excluded — sensitive data must be fetched via /api/users/:id/sensitive
+    const result = await pool.query(
+      `SELECT id, username, fullname, role, "reportingManagerId", status,
+              "availabilityStatus", gmail, "workEmail", phone, domain
+       FROM users`
+    );
     res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// TODO: add auth middleware — currently unprotected, restrict before public launch
+app.get('/api/users/:id/sensitive', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await pool.query(
+      `SELECT aadhar FROM users WHERE id = $1`,
+      [id]
+    );
+    if (result.rows.length === 0) return res.status(404).json({ error: 'User not found' });
+    res.json(result.rows[0]);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
