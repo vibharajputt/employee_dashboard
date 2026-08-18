@@ -1,0 +1,9 @@
+{
+    "ignore": [
+        "mock_db.json",
+        "seed_data.json",
+        "node_modules/**",
+        "*.log"
+    ],
+    "delay": "500"
+}
