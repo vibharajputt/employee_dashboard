@@ -4,6 +4,7 @@ const path = require('path');
 const http = require('http');
 const { Server } = require("socket.io");
 require('dotenv').config();
+const authEmail = require('./auth-email');
 
 const app = express();
 const server = http.createServer(app);
@@ -774,6 +775,10 @@ async function initDb() {
   }
 }
 
+// AUTH routes (OTP login, password reset, change-password)
+// Must be registered before the catch-all * route
+app.use('/api/auth', authEmail(pool));
+
 // REST APIs
 // USERS
 app.get('/api/users', async (req, res) => {
@@ -1507,6 +1512,7 @@ function sendSseEvent(res, eventData) {
 }
 
 // Route everything else to index.html (fallback)
+// NOTE: auth routes must be mounted before this catch-all
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
