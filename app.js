@@ -1,4 +1,4 @@
-/**
+﻿/**
 
 
 
@@ -19,8 +19,8 @@
 
 
  */
-// ðŸš€ [MedAstraX] Version 2.5 - PostgreSQL Mode Active
-console.log("ðŸš€ [MedAstraX] Version 2.5 - PostgreSQL Mode Active");
+// Ã°Å¸Å¡â‚¬ [MedAstraX] Version 2.5 - PostgreSQL Mode Active
+console.log("Ã°Å¸Å¡â‚¬ [MedAstraX] Version 2.5 - PostgreSQL Mode Active");
 
 
 
@@ -49,7 +49,7 @@ socket.on("connect", () => {
   console.log("SOCKET CONNECTED:", socket.id);
 });
 
-// ── GLOBAL: Incoming Call Invite (must be registered at global scope so it fires during meetings) ──
+// â”€â”€ GLOBAL: Incoming Call Invite (must be registered at global scope so it fires during meetings) â”€â”€
 let _ringAudioCtx = null;
 let _ringInterval = null;
 let _callAutoDismiss = null;
@@ -158,7 +158,7 @@ function _handleIncomingCallInvite(data) {
   if (typeof addAppNotification === "function") {
     addAppNotification({
       type: "meeting",
-      title: `📞 Incoming Call from ${caller}`,
+      title: `ðŸ“ž Incoming Call from ${caller}`,
       message: `${caller} is calling you to join meeting room: ${room}`,
       sender: caller,
       actionTab: "meetings"
@@ -276,10 +276,10 @@ const DEFAULT_USERS = [];
 
 
 
-// No default tasks â€” all tasks are created by real team members via the portal
+// No default tasks Ã¢â‚¬â€ all tasks are created by real team members via the portal
 const DEFAULT_TASKS = [];
 
-// Default activity log â€” only the system init message is kept
+// Default activity log Ã¢â‚¬â€ only the system init message is kept
 const DEFAULT_ACTIVITIES = [
   {
     id: "act-1",
@@ -1053,67 +1053,13 @@ window.selectPortal = function(type) {
 
 
 async function handleLogin(username, password) {
-  const portalType = document.getElementById("login-portal-type") ? document.getElementById("login-portal-type").value : 'admin';
-  const rememberMeEl = document.getElementById("remember-me");
-  const rememberMeChecked = rememberMeEl ? rememberMeEl.checked : false;
-
-  let users = db.getUsers() || [];
-  if (!users || users.length === 0) {
-    try {
-      const res = await fetch('/api/users');
-      if (res.ok) {
-        users = await res.json();
-        cachedUsers = users;
-      }
-    } catch (err) {
-      console.error("Error fetching users for login:", err);
-    }
-  }
-
-  const cleanInput = (username || "").trim().toLowerCase();
-  const cleanPass = (password || "").trim();
-
-  const matchedUser = users.find(u => {
-    const uName = (u.username || "").trim().toLowerCase();
-    const uEmail = (u.email || "").trim().toLowerCase();
-    const uPass = (u.password || "").trim();
-    return (uName === cleanInput || uEmail === cleanInput) && uPass === cleanPass;
-  });
-
-  if (matchedUser) {
-    if (matchedUser.status && matchedUser.status !== "Active") {
-      showToast("Your account has been deactivated. Contact Admin.", "error");
-      return;
-    }
-
-    if (portalType === "admin" && matchedUser.role !== "Admin") {
-      showToast("Access Denied: This portal is reserved for Administrators.", "error");
-      return;
-    }
-
-    if (portalType === "staff" && matchedUser.role === "Admin") {
-      showToast("Access Denied: Administrators must use the Admin Portal.", "error");
-      return;
-    }
-
-    currentUser = matchedUser;
-    sessionStorage.setItem("medastrax_current_user", JSON.stringify(currentUser));
-
-    if (rememberMeChecked) {
-      localStorage.setItem("medastrax_remembered_user", JSON.stringify(currentUser));
-      localStorage.setItem(`medastrax_remember_username_${portalType}`, username);
-      localStorage.setItem(`medastrax_remember_checkbox_${portalType}`, "true");
-    } else {
-      localStorage.removeItem("medastrax_remembered_user");
-      localStorage.removeItem(`medastrax_remember_username_${portalType}`);
-      localStorage.removeItem(`medastrax_remember_checkbox_${portalType}`);
-    }
-
-    db.logActivity(`${currentUser.fullname} logged into the ${portalType} portal.`, "success");
-    setupWorkspace();
-    showToast(`Welcome back, ${currentUser.fullname}!`, "success");
-  } else {
-    showToast("Invalid username/email or password.", "error");
+  // This legacy stub is intentionally minimal.
+  // auth-ui.js (loaded after app.js) overrides window.handleLogin with mxHandleLogin,
+  // which uses server-side OTP auth via /api/auth/login.
+  // If this function is ever called it means auth-ui.js failed to load â€” fail loudly.
+  console.error("[Auth] Legacy client-side handleLogin called â€” auth-ui.js did not load or override was lost.");
+  if (typeof showToast === "function") {
+    showToast("Login system not loaded. Please hard-refresh the page (Ctrl+Shift+R).", "error");
   }
 }
 
@@ -2489,7 +2435,7 @@ function renderOverviewTab() {
   (async () => {
     const aadharEl = document.getElementById("profile-aadhar");
     if (!aadharEl) return;
-    aadharEl.textContent = "Loading…";
+    aadharEl.textContent = "Loadingâ€¦";
     try {
       const sr = await fetch(`/api/users/${currentUser.id}/sensitive`);
       if (sr.ok) { const sd = await sr.json(); aadharEl.textContent = sd.aadhar || "N/A"; }
@@ -3599,7 +3545,7 @@ function renderHierarchyTab() {
 
       ul.appendChild(topLi);
     } else {
-      // For Manager / Team Lead â€” construct the complete downwards tree
+      // For Manager / Team Lead Ã¢â‚¬â€ construct the complete downwards tree
       ul.appendChild(buildTreeHTML(rootNode, users));
     }
   }
@@ -5847,7 +5793,7 @@ window.openEditEmployeeModal = function(userId) {
   (async () => {
     const editAadharEl = document.getElementById("edit-aadhar");
     if (!editAadharEl) return;
-    editAadharEl.placeholder = "Loading…";
+    editAadharEl.placeholder = "Loadingâ€¦";
     try {
       const sr = await fetch(`/api/users/${user.id}/sensitive`);
       if (sr.ok) { const sd = await sr.json(); editAadharEl.value = sd.aadhar || ""; }
@@ -7009,7 +6955,7 @@ window.openTaskDetails = function(taskId) {
 
 
 
-                ðŸ“· ${item.name} ${item.size ? `(${item.size})` : ''}
+                Ã°Å¸â€œÂ· ${item.name} ${item.size ? `(${item.size})` : ''}
 
 
 
@@ -7045,7 +6991,7 @@ window.openTaskDetails = function(taskId) {
 
 
 
-                ðŸŽ¥ ${item.name} ${item.size ? `(${item.size})` : ''}
+                Ã°Å¸Å½Â¥ ${item.name} ${item.size ? `(${item.size})` : ''}
 
 
 
@@ -8899,17 +8845,17 @@ function initECG() {
 
 
 }
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 // 10.5. Leave Management Core Functionality
-// â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 function buildApprovalChain(user, usersList) {
   const chain = [];
   if (!user) return chain;
 
   const list = Array.isArray(usersList) ? usersList : [];
 
-  // Co-founder IDs â€” appear in the chain as record-only (leave auto-approves when it reaches them)
-  // Dynamically derive top-level heads: Admin role with no reporting manager — they appear as record-only
+  // Co-founder IDs Ã¢â‚¬â€ appear in the chain as record-only (leave auto-approves when it reaches them)
+  // Dynamically derive top-level heads: Admin role with no reporting manager â€” they appear as record-only
   const coFounderIds = list
     .filter(u => u.role === "Admin" && (!u.reportingManagerId || u.reportingManagerId === "none"))
     .map(u => u.id);
@@ -8954,7 +8900,7 @@ function buildApprovalChain(user, usersList) {
     }
   }
 
-  // No extra admin appended â€” chain naturally ends at co-founder level
+  // No extra admin appended Ã¢â‚¬â€ chain naturally ends at co-founder level
   return chain;
 }
 function getWeekRange(dateString) {
@@ -9098,7 +9044,7 @@ function handleLeaveSubmit(e) {
 
   if (chain.length > 0) {
     if (chain[0].isRecord === true) {
-      // First step is co-founder record-only â€” auto-approve immediately
+      // First step is co-founder record-only Ã¢â‚¬â€ auto-approve immediately
       chain[0].status = "Approved";
       chain[0].actionDate = new Date().toISOString();
       currentApproverId = null;
@@ -9163,7 +9109,7 @@ function approveLeaveRequest(leaveId) {
   const nextStepIndex = leave.approvalChain.findIndex(step => step.status === "Pending");
   if (nextStepIndex !== -1) {
     if (leave.approvalChain[nextStepIndex].isRecord === true) {
-      // Next step is co-founder record-only â€” auto-approve and finalize leave as Approved
+      // Next step is co-founder record-only Ã¢â‚¬â€ auto-approve and finalize leave as Approved
       leave.approvalChain[nextStepIndex].status = "Approved";
       leave.approvalChain[nextStepIndex].actionDate = new Date().toISOString();
       leave.currentApproverId = null;
@@ -9487,7 +9433,7 @@ function renderLeavesTab() {
                   // For record-only steps: show current viewer's name if they are a top-level head
                   if (s.isRecord && viewerIsHead) return viewerDisplayName;
                   return s.approverName;
-                }).join(" → ");
+                }).join(" â†’ ");
                 stageText = `Approved by: ${names}`;
               } else {
                 stageText = "Approved";
@@ -9586,7 +9532,7 @@ function showLeaveChainModal(leaveId) {
   const chain = leave.approvalChain || [];
   const users = db.getUsers() || [];
 
-  // Top-level heads (no reporting manager, Admin role) — dynamically derived
+  // Top-level heads (no reporting manager, Admin role) â€” dynamically derived
   const topLevelHeadIds = users
     .filter(u => u.role === "Admin" && (!u.reportingManagerId || u.reportingManagerId === "none"))
     .map(u => u.id);
@@ -10471,7 +10417,7 @@ function initMeetingsPortal() {
   if (btnMeetNow) btnMeetNow.onclick = startMeetNow;
   if (menuMeetNow) menuMeetNow.onclick = startMeetNow;
 
-  // ── INVITE OVERLAY: Close ─────────────────────────────────────────────────
+  // â”€â”€ INVITE OVERLAY: Close â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const closeInviteOverlay = document.getElementById("close-invite-overlay-btn");
   if (closeInviteOverlay) {
     closeInviteOverlay.onclick = () => {
@@ -10479,7 +10425,7 @@ function initMeetingsPortal() {
     };
   }
 
-  // ── COPY INVITATION ───────────────────────────────────────────────────────
+  // â”€â”€ COPY INVITATION â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const inviteCopy = document.getElementById("btn-invite-copy-invitation");
   if (inviteCopy) {
     inviteCopy.onclick = () => {
@@ -10487,8 +10433,8 @@ function initMeetingsPortal() {
       const host = window.location.origin;
       const text =
         `You're invited to a MedAstraX video meeting!\n\n` +
-        `📋 Room Code : ${room}\n` +
-        `🔗 Join Link : ${host}/?join=${room}\n\n` +
+        `ðŸ“‹ Room Code : ${room}\n` +
+        `ðŸ”— Join Link : ${host}/?join=${room}\n\n` +
         `Click the link above or paste the room code in the Meetings tab to join.`;
       navigator.clipboard.writeText(text).then(() => {
         const orig = inviteCopy.innerHTML;
@@ -10496,11 +10442,11 @@ function initMeetingsPortal() {
         inviteCopy.style.borderColor = "#82b834";
         lucide.createIcons();
         setTimeout(() => { inviteCopy.innerHTML = orig; inviteCopy.style.borderColor = ""; lucide.createIcons(); }, 2000);
-      }).catch(() => showToast("Could not copy — please copy manually.", "error"));
+      }).catch(() => showToast("Could not copy â€” please copy manually.", "error"));
     };
   }
 
-  // ── COPY LINK ─────────────────────────────────────────────────────────────
+  // â”€â”€ COPY LINK â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const inviteCopyLink = document.getElementById("btn-invite-copy-link");
   if (inviteCopyLink) {
     inviteCopyLink.onclick = () => {
@@ -10512,11 +10458,11 @@ function initMeetingsPortal() {
         inviteCopyLink.style.borderColor = "#82b834";
         lucide.createIcons();
         setTimeout(() => { inviteCopyLink.innerHTML = orig; inviteCopyLink.style.borderColor = ""; lucide.createIcons(); }, 2000);
-      }).catch(() => showToast("Could not copy — please copy manually.", "error"));
+      }).catch(() => showToast("Could not copy â€” please copy manually.", "error"));
     };
   }
 
-  // ── ADD PARTICIPANTS: Pre-loaded user cache ─────────────────────────────────
+  // â”€â”€ ADD PARTICIPANTS: Pre-loaded user cache â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   let _apUserCache = [];
 
   // Pre-fetch users so list is instant when modal opens
@@ -10542,7 +10488,7 @@ function initMeetingsPortal() {
     return `linear-gradient(135deg, ${colors[idx][0]}, ${colors[idx][1]})`;
   }
 
-  // Synchronous render from cache — no async, no waiting
+  // Synchronous render from cache â€” no async, no waiting
   function populateAddParticipantsList(query) {
     const container = document.getElementById("add-participants-list");
     if (!container) return;
@@ -10937,7 +10883,7 @@ function getTechTeamParticipants() {
   return users.map(u => u.id);
 }
 
-// ── MEETING HISTORY SYSTEM (Persistent across refreshes & logouts) ────────────
+// â”€â”€ MEETING HISTORY SYSTEM (Persistent across refreshes & logouts) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 let globalMeetingHistory = [];
 let activeCallStartTime = null;
 let currentMeetingTitle = "Instant Meeting";
@@ -11063,7 +11009,7 @@ function renderScheduledMeetings() {
   const searchInput = document.getElementById("meetings-search-input");
   const searchQuery = searchInput ? searchInput.value.toLowerCase().trim() : "";
 
-  // ── TAB: PREVIOUS (Date-wise History Timeline View) ──────────────────────────
+  // â”€â”€ TAB: PREVIOUS (Date-wise History Timeline View) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   if (activeMeetingFilterTab === "previous") {
     let historyItems = globalMeetingHistory;
     if (searchQuery) {
@@ -11133,7 +11079,7 @@ function renderScheduledMeetings() {
     return;
   }
 
-  // ── TAB: RECORDINGS ─────────────────────────────────────────────────────────
+  // â”€â”€ TAB: RECORDINGS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   if (activeMeetingFilterTab === "recordings") {
     listContainer.innerHTML = `
       <div class="meetings-empty-sidebar">
@@ -11146,7 +11092,7 @@ function renderScheduledMeetings() {
     return;
   }
 
-  // ── TAB: UPCOMING ───────────────────────────────────────────────────────────
+  // â”€â”€ TAB: UPCOMING â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const meetings = db.getMeetings() || [];
   const myMeetings = meetings.filter(m => {
     const participants = m.isFixed ? getTechTeamParticipants() : (m.participants || []);
@@ -11394,7 +11340,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     banner.style.fontFamily = "system-ui, sans-serif";
     banner.style.boxShadow = "0 4px 6px -1px rgba(0,0,0,0.2)";
     banner.innerHTML = `
-      âš ï¸ Running directly from files. Database APIs are disabled. 
+      Ã¢Å¡Â Ã¯Â¸Â Running directly from files. Database APIs are disabled. 
       Please open <a href="http://localhost:8000" target="_blank" style="color: #fff; text-decoration: underline; margin-left: 8px; font-weight: 700;">http://localhost:8000</a> in your browser.
     `;
     document.body.prepend(banner);
@@ -12273,173 +12219,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 
   // Settings: Change Password Form
-
-
-
-  document.getElementById("change-password-form").addEventListener("submit", (e) => {
-
-
-
-    e.preventDefault();
-
-
-
-    
-
-
-
-    const currentPass = document.getElementById("settings-current-pass").value;
-
-
-
-    const newPass = document.getElementById("settings-new-pass").value;
-
-
-
-    const confirmPass = document.getElementById("settings-confirm-pass").value;
-
-
-
-    
-
-
-
-    if (currentPass !== currentUser.password) {
-
-
-
-      showToast("Current password is incorrect.", "error");
-
-
-
-      return;
-
-
-
-    }
-
-
-
-    
-
-
-
-    if (newPass !== confirmPass) {
-
-
-
-      showToast("Confirm password does not match new password.", "error");
-
-
-
-      return;
-
-
-
-    }
-
-
-
-    
-
-
-
-    if (newPass === currentPass) {
-
-
-
-      showToast("New password must be different from current password.", "error");
-
-
-
-      return;
-
-
-
-    }
-
-
-
-    
-
-
-
-    const users = db.getUsers();
-
-
-
-    const userIndex = users.findIndex(u => u.id === currentUser.id);
-
-
-
-    if (userIndex !== -1) {
-
-
-
-      users[userIndex].password = newPass;
-
-
-
-      db.saveUsers(users);
-
-
-
-      
-
-
-
-      currentUser.password = newPass;
-
-
-
-      sessionStorage.setItem("medastrax_current_user", JSON.stringify(currentUser));
-
-
-
-      if (localStorage.getItem("medastrax_remembered_user")) {
-
-
-
-        localStorage.setItem("medastrax_remembered_user", JSON.stringify(currentUser));
-
-
-
-      }
-
-
-
-      
-
-
-
-      showToast("Password updated successfully!", "success");
-
-
-
-      db.logActivity(`${currentUser.fullname} changed their workspace password.`, "success");
-
-
-
-      
-
-
-
-      document.getElementById("change-password-form").reset();
-
-
-
-    }
-
-
-
-  });
-
-
-
-
-
-
-
+  // DEAD — auth-ui.js rewireChangePassword() clones the form, stripping this listener.
+  // Server-side handler: /api/auth/change-password (see auth-ui.js rewireChangePassword).
+  // Do NOT restore — it used currentUser.password which is no longer in GET /api/users.
   // Settings: Duty Status Dropdown
 
 
@@ -12833,7 +12615,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 
 
-// â”€â”€ Deliverable Selector Helpers (Photo / Video / Link) â”€â”€â”€â”€â”€â”€
+// Ã¢â€â‚¬Ã¢â€â‚¬ Deliverable Selector Helpers (Photo / Video / Link) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 
 
@@ -12861,15 +12643,15 @@ window.renderDeliverableInputs = function(activeTab = 'photo') {
 
 
 
-      <button type="button" class="del-tab-btn" id="btn-tab-photo" onclick="renderDeliverableInputs('photo')" style="flex: 1; padding: 6px; font-size: 0.72rem; border: none; border-radius: 4px; background: ${activeTab === 'photo' ? '#fff' : 'transparent'}; font-weight: 600; cursor: pointer; color: ${activeTab === 'photo' ? 'var(--color-primary)' : 'var(--text-secondary)'}; box-shadow: ${activeTab === 'photo' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'};">ðŸ“· Image</button>
+      <button type="button" class="del-tab-btn" id="btn-tab-photo" onclick="renderDeliverableInputs('photo')" style="flex: 1; padding: 6px; font-size: 0.72rem; border: none; border-radius: 4px; background: ${activeTab === 'photo' ? '#fff' : 'transparent'}; font-weight: 600; cursor: pointer; color: ${activeTab === 'photo' ? 'var(--color-primary)' : 'var(--text-secondary)'}; box-shadow: ${activeTab === 'photo' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'};">Ã°Å¸â€œÂ· Image</button>
 
 
 
-      <button type="button" class="del-tab-btn" id="btn-tab-video" onclick="renderDeliverableInputs('video')" style="flex: 1; padding: 6px; font-size: 0.72rem; border: none; border-radius: 4px; background: ${activeTab === 'video' ? '#fff' : 'transparent'}; font-weight: 600; cursor: pointer; color: ${activeTab === 'video' ? 'var(--color-primary)' : 'var(--text-secondary)'}; box-shadow: ${activeTab === 'video' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'};">ðŸŽ¥ Video</button>
+      <button type="button" class="del-tab-btn" id="btn-tab-video" onclick="renderDeliverableInputs('video')" style="flex: 1; padding: 6px; font-size: 0.72rem; border: none; border-radius: 4px; background: ${activeTab === 'video' ? '#fff' : 'transparent'}; font-weight: 600; cursor: pointer; color: ${activeTab === 'video' ? 'var(--color-primary)' : 'var(--text-secondary)'}; box-shadow: ${activeTab === 'video' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'};">Ã°Å¸Å½Â¥ Video</button>
 
 
 
-      <button type="button" class="del-tab-btn" id="btn-tab-link" onclick="renderDeliverableInputs('link')" style="flex: 1; padding: 6px; font-size: 0.72rem; border: none; border-radius: 4px; background: ${activeTab === 'link' ? '#fff' : 'transparent'}; font-weight: 600; cursor: pointer; color: ${activeTab === 'link' ? 'var(--color-primary)' : 'var(--text-secondary)'}; box-shadow: ${activeTab === 'link' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'};">ðŸ”— Link</button>
+      <button type="button" class="del-tab-btn" id="btn-tab-link" onclick="renderDeliverableInputs('link')" style="flex: 1; padding: 6px; font-size: 0.72rem; border: none; border-radius: 4px; background: ${activeTab === 'link' ? '#fff' : 'transparent'}; font-weight: 600; cursor: pointer; color: ${activeTab === 'link' ? 'var(--color-primary)' : 'var(--text-secondary)'}; box-shadow: ${activeTab === 'link' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'};">Ã°Å¸â€â€” Link</button>
 
 
 
@@ -15256,17 +15038,17 @@ function renderWaChatList() {
     el.className = `wa-chat-item ${waActiveChat && waActiveChat.id === item.id ? 'active' : ''}`;
     
     let statusDotClass = 'free';
-    let statusText = '🟢 Free';
+    let statusText = 'ðŸŸ¢ Free';
     if (item.type === 'direct') {
       if (item.status === 'in_meeting') {
         statusDotClass = 'in_meeting';
-        statusText = '🔴 (in meeting)';
+        statusText = 'ðŸ”´ (in meeting)';
       } else if (item.status === 'on_leave') {
         statusDotClass = 'on_leave';
-        statusText = '🔴 (on leave)';
+        statusText = 'ðŸ”´ (on leave)';
       }
     } else {
-      statusText = '👥 Group';
+      statusText = 'ðŸ‘¥ Group';
     }
 
     el.innerHTML = `
@@ -15323,7 +15105,7 @@ function selectWaChat(chatItem) {
 
   if (initialsEl) initialsEl.textContent = getInitials(chatItem.name);
   if (titleEl) titleEl.textContent = chatItem.name;
-  if (roleDomainEl) roleDomainEl.textContent = `${chatItem.role} • ${chatItem.domain}`;
+  if (roleDomainEl) roleDomainEl.textContent = `${chatItem.role} â€¢ ${chatItem.domain}`;
 
   if (togglePinBtn) {
     if (chatItem.isPinned) {
@@ -15344,20 +15126,20 @@ function selectWaChat(chatItem) {
       if (chatItem.status === 'in_meeting') {
         statusDotEl.classList.add('in_meeting');
         statusBadgeEl.classList.add('in_meeting');
-        statusBadgeEl.textContent = '🔴 (in meeting)';
+        statusBadgeEl.textContent = 'ðŸ”´ (in meeting)';
       } else if (chatItem.status === 'on_leave') {
         statusDotEl.classList.add('on_leave');
         statusBadgeEl.classList.add('on_leave');
-        statusBadgeEl.textContent = '🔴 (on leave)';
+        statusBadgeEl.textContent = 'ðŸ”´ (on leave)';
       } else {
         statusDotEl.classList.add('free');
         statusBadgeEl.classList.add('free');
-        statusBadgeEl.textContent = '🟢 Free';
+        statusBadgeEl.textContent = 'ðŸŸ¢ Free';
       }
     } else {
       statusDotEl.classList.add('hidden');
       statusBadgeEl.classList.add('free');
-      statusBadgeEl.textContent = '👥 Group Chat';
+      statusBadgeEl.textContent = 'ðŸ‘¥ Group Chat';
     }
   }
 
@@ -15419,7 +15201,7 @@ function loadWaActiveChatMessages() {
   if (msgs.length === 0) {
     container.innerHTML = `
       <div style="margin: auto; text-align: center; color: var(--text-muted); font-size: 0.88rem; background: var(--bg-secondary); padding: 12px 20px; border-radius: 16px; border: 1px solid var(--border-color);">
-         👋 Start of conversation with <strong>${waActiveChat.name}</strong>. Say hi!
+         ðŸ‘‹ Start of conversation with <strong>${waActiveChat.name}</strong>. Say hi!
       </div>
     `;
     return;
@@ -15440,7 +15222,7 @@ function loadWaActiveChatMessages() {
       <div class="wa-msg-text">${escapeHtml(m.message)}</div>
       <div class="wa-msg-meta">
         <span>${formatChatTime(m.createdAt)}</span>
-        ${isOutgoing ? `<span class="wa-msg-ticks">✓✓</span>` : ''}
+        ${isOutgoing ? `<span class="wa-msg-ticks">âœ“âœ“</span>` : ''}
       </div>
     `;
 
