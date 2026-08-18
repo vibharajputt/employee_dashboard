@@ -1,154 +1,269 @@
-# 🚀 MedAstraX Workspace Portal — Complete Deployment Guide (100% Free)
+﻿# MedAstraX Workspace Portal — Complete Deployment Guide
 
-Yeh document aapke application aur **Neon PostgreSQL Database** ko **Render.com** par **100% Free** live deploy karne ki complete, step-by-step guide hai.
+> 100% Free | Zero Personal Data in Code | Secure Cloud Setup
 
 ---
 
-## 🏗️ Architecture & Security Model
+## Architecture and Security Model
 
 ```
- ┌─────────────────────────────────────────────────────────────┐
- │                      GitHub Repository                      │
- │      (Only Clean Source Code • 0% Personal Information)     │
- └──────────────────────────────┬──────────────────────────────┘
-                                │ (Auto-Build & Deploy)
-                                ▼
- ┌─────────────────────────────────────────────────────────────┐
- │              Render.com (Free Web Service)                  │
- │   - Host: Node.js + Express + Socket.IO (WebSockets)        │
- │   - Secret Key: DATABASE_URL (Stored securely in Render)    │
- └──────────────────────────────┬──────────────────────────────┘
-                                │ (Encrypted SSL Connection)
-                                ▼
- ┌─────────────────────────────────────────────────────────────┐
- │         Neon.tech (Cloud PostgreSQL - Singapore)            │
- │   - Holds actual data: 22 Users, Aadhaar, Tasks, Attendance │
- │   - 100% Free Forever • Multi-user Realtime • Safe & Private│
- └─────────────────────────────────────────────────────────────┘
+ GitHub Repository
+ (Only Clean Source Code — 0% Personal Information)
+        |
+        | Auto-Build and Deploy
+        v
+ Render.com (Free Web Service)
+ Node.js + Express + Socket.IO
+ Secrets stored ONLY in Render Environment Variables
+        |
+        | Encrypted SSL Connection
+        v
+ Neon.tech (Cloud PostgreSQL — Free Tier)
+ Employee data lives here — private, encrypted, safe
 ```
 
----
-
-## 📌 Status Check (Ab Tak Kya Ho Chuka Hai)
-
-- ✅ **Neon PostgreSQL Database Created:** `ep-winter-glade-azdafwpj-pooler` (Singapore Region).
-- ✅ **Database Schema & Tables Initialized:** `users`, `tasks`, `leaves`, `meetings`, `attendance`, `messages`, `groups`, `activities`.
-- ✅ **22 Real Employees Seeded into Cloud DB:** All founders, CTO, tech team, marketing team safely stored in cloud database.
-- ✅ **GitHub Leak Protection:** `.gitignore` configured for `.env`, `mock_db.json`, `seed_data.json`.
+Golden Rule: Koi bhi password, Aadhaar number, phone number, ya DB credentials kabhi
+bhi code ya GitHub mein nahi hone chahiye. Sab kuch environment variables ya cloud DB mein
+rehta hai.
 
 ---
 
-## 📋 Step 1: Code ko GitHub par Push Karein
+## Pre-Deploy Checklist (Already Done)
 
-Apne IDE ya VS Code terminal me yeh 3 commands chalayein:
-
-```powershell
-git add .
-git commit -m "Configure secure Neon PostgreSQL cloud database and deployment setup"
-git push origin main
-```
-
----
-
-## 📋 Step 2: Render.com par Free Web Service Setup Karein
-
-### 1. Login & Service Creation:
-1. Browser me **[render.com](https://render.com/)** open karein.
-2. Top-right me **Sign In / Get Started** par click karke **GitHub se login** karein.
-3. Render Dashboard par top-right me **`+ New`** button par click karein aur **`Web Service`** select karein.
-4. **"Build and deploy from a Git repository"** choose karke **Next** karein.
-
----
-
-### 2. Connect Repository:
-1. Repositories list me se apna project select karein: **`vibharajputt/employee_dashboard`**.
-2. Uske samne **`Connect`** button par click karein.
-   *(Agar repo na dikhe, toh neeche "Configure GitHub App" par click karke repository access enable karein).*
-
----
-
-### 3. Service Configuration (Exact Form Values):
-
-Form me yeh exact values fill karein:
-
-| Form Field | Exact Value To Enter |
+| Task | Status |
 | :--- | :--- |
-| **Name** | `medastrax-portal` *(ya koi bhi unique name)* |
-| **Region** | **Singapore (Southeast Asia)** *(Nearest to Neon DB for max speed)* |
-| **Branch** | `main` |
-| **Root Directory** | *(Leave Blank / Khaali chhod dein)* |
-| **Runtime** | **Node** |
-| **Build Command** | `npm install` |
-| **Start Command** | `node server.js` |
-| **Instance Type** | **Free** |
+| .env added to .gitignore | Done |
+| mock_db.json added to .gitignore | Done |
+| seed_data.json added to .gitignore | Done |
+| mock_db.json purged from entire git history | Done |
+| No hardcoded credentials in source code | Done |
+| Code pushed to GitHub (force-push after history clean) | Done |
 
 ---
 
-### 4. Environment Variables Add Karein (Most Important 🔑):
+## PART A — Neon Database Setup
 
-Neeche scroll karein aur **"Environment Variables"** section open karein:
+### Step 1: Neon Account Banana
 
-#### Variable 1:
-- **Key:** `DATABASE_URL`
-- **Value:** `postgresql://neondb_owner:YOUR_NEON_PASSWORD@ep-winter-glade-azdafwpj-pooler.c-3.ap-southeast-1.aws.neon.tech/neondb?sslmode=require` *(Apna actual Neon connection string paste karein)*
+1. Browser mein neon.tech open karein
+2. Sign Up par click karo (GitHub se bhi ho sakta hai)
+3. Email verify karo agar maanga jaaye
 
-#### Variable 2:
-- **Key:** `NODE_ENV`
-- **Value:** `production`
+### Step 2: New Project Create Karo
+
+1. Dashboard par "New Project" click karein
+2. Fill in karo:
+   - Project Name: medastrax (ya kuch bhi)
+   - Postgres Version: 16 (latest)
+   - Region: ap-southeast-1 (Singapore) — Render ke Singapore region se closest
+3. "Create Project" click karein
+
+### Step 3: Connection String Copy Karo
+
+1. Project dashboard mein "Connection Details" section mein jaao
+2. Dropdown mein "Pooled connection" select karo (better performance)
+3. Connection string copy karo — format aisi hogi:
+
+   postgresql://neondb_owner:YOUR_PASSWORD@YOUR_HOST.neon.tech/neondb?sslmode=require
+
+   IMPORTANT: Yeh string Notepad ya password manager mein save karo.
+   Ise GitHub, code, ya kisi bhi file mein paste MAT karna.
+
+### Step 4: Database Tables
+
+Kuch karne ki zaroorat nahi. Jab server pehli baar start hoga, server.js khud saari tables
+create kar leta hai — users, tasks, leaves, meetings, attendance, messages, etc.
 
 ---
 
-### 5. Deploy Karein:
-1. Sabse neeche **`Create Web Service`** (ya *Deploy Web Service*) button par click karein.
-2. Render build process start karega (Logs terminal screen par dikhenge):
-   ```text
+## PART B — Employee Data Seed Karna
+
+> Yeh step sirf pehli baar karna hai. Iske baad naye employees Admin portal se directly add ho sakte hain.
+
+### Step 1: Local .env File Banao
+
+Project folder mein .env file create karo (agar nahi hai):
+
+   DATABASE_URL=postgresql://neondb_owner:YOUR_PASSWORD@YOUR_HOST.neon.tech/neondb?sslmode=require
+
+.env already .gitignore mein hai — yeh GitHub par kabhi nahi jayegi.
+
+### Step 2: seed_data.json Check Karo
+
+seed_data.json local computer par honi chahiye (.gitignore mein hai, GitHub par nahi).
+Agar nahi hai toh mock_db.json copy karke rename kar lo:
+
+   Copy-Item mock_db.json seed_data.json
+
+### Step 3: Seed Script Chalao
+
+   node seed_database.js
+
+Expected output:
+
+   [DB] Connected to PostgreSQL medastrax
+   [DB] Seeding users...
+   [DB] Users seeded successfully.
+   [DB] Done! All data seeded to Neon cloud.
+
+Ab saara employee data securely Neon cloud DB mein hai. seed_data.json local pe hi rahega.
+
+---
+
+## PART C — Render.com Deployment
+
+### Step 1: Render Account Banana
+
+1. render.com open karein
+2. "Get Started for Free" par click karo
+3. "Sign in with GitHub" karo — same account jahan repo hai
+
+### Step 2: New Web Service Banana
+
+1. Dashboard top-right mein "+ New" click karo
+2. "Web Service" select karo
+3. "Build and deploy from a Git repository" choose karo -> Next
+4. Repository list mein apna repo dhundho: vibharajputt/employee_dashboard
+5. "Connect" click karo
+
+   (Agar repo na dikhe: neeche "Configure GitHub App" click karke repository access enable karo)
+
+### Step 3: Service Configuration
+
+Form mein ye exact values bharein:
+
+| Field            | Value                          |
+| :---             | :---                           |
+| Name             | medastrax-portal               |
+| Region           | Singapore (Southeast Asia)     |
+| Branch           | main                           |
+| Root Directory   | (Khaali chhodo)                |
+| Runtime          | Node                           |
+| Build Command    | npm install                    |
+| Start Command    | node server.js                 |
+| Instance Type    | Free                           |
+
+### Step 4: Environment Variables Add Karna (MOST IMPORTANT)
+
+Yahi jagah hai jahan secrets safely store hote hain — GitHub mein nahi.
+
+Neeche scroll karo aur "Environment Variables" section mein ye add karo:
+
+Variable 1 — Database Connection:
+   Key:   DATABASE_URL
+   Value: (Neon connection string paste karo — Part A Step 3 mein copy ki thi)
+
+Variable 2 — Node Environment:
+   Key:   NODE_ENV
+   Value: production
+
+Variable 3 — Email OTP Login (Optional):
+   Key:   RESEND_API_KEY
+   Value: (Resend.com se API key — agar OTP email login feature chahiye)
+
+   Key:   MAIL_FROM
+   Value: MedAstraX <noreply@medastrax.com>
+
+IMPORTANT: Koi bhi actual password, Aadhaar number, ya personal info yahan mat daalna.
+Render ke environment variables encrypted hote hain — sirf aapka Render account inhe dekh sakta hai.
+
+### Step 5: Deploy!
+
+1. "Create Web Service" button click karo
+2. Build logs dikhenge (2-4 minutes):
+
    ==> Running build command 'npm install'...
-   ==> Uploading build...
    ==> Starting service with 'node server.js'...
    [DB] Connected to PostgreSQL medastrax
    [DB] Database migration and seeding checks complete
    MedAstraX Portal running on port 10000
-   ==> Your service is live 🎉
-   ```
-3. Top-left corner me aapko aapka live URL mil jayega (Example: `https://medastrax-portal.onrender.com`).
+   ==> Your service is live
+
+3. Top par aapka live URL dikhega: https://medastrax-portal.onrender.com
 
 ---
 
-## 📋 Step 3: Live Portal Test & Login
+## PART D — Post-Deploy Verification
 
-Browser me Render ka diya hua live URL open karein:
+### 1. Portal Open Karo
 
-1. **Login Credentials:**
-   - **CTO / Admin:** `vibha` / `vibha123`
-   - **CEO / Founder:** `sambhav` / `sambhav123`
-   - **Head of Tech:** `rashika` / `rashika123`
-   - *(Sabhi 22 employees apne existing usernames/passwords se login kar sakte hain).*
-2. **Features Test:**
-   - ✅ Real-time Chat & Group Messages
-   - ✅ Task Board & Assignment
-   - ✅ Attendance & Leave Management
-   - ✅ Meetings & Live Room Call
-   - ✅ Auto-save into Cloud PostgreSQL
+Browser mein Render ka URL paste karo.
 
----
+Note: Pehli baar open hone mein 30-40 seconds lag sakte hain. Render free tier sleep mode
+se wake hota hai — yeh completely normal hai.
 
-## ❓ Frequently Asked Questions (FAQ)
+### 2. Login Karo
 
-### Q1: Kya Neon Database kabhi band ya delete hoga?
-**Nahi.** Neon serverless Postgres hai. Inactivity par yeh standby/sleep mode me jata hai aur kisi bhi user ke aate hi **~500 milliseconds (0.5 second)** me instant wake-up ho jata hai. Data 24/7 permanent aur safe rehta hai.
+Admin account se login karo (credentials seed_data.json ya Neon DB mein hain).
 
-### Q2: Render Free Tier sleep mode me jata hai?
-**Haan.** Agar 15 minute tak koi website open na kare, toh Render ka web server sleep me chala jata hai. Jab koi pehli baar website open karega, toh pehla page load hone me **~30-40 seconds** lag sakte hain, uske baad sabhi pages aur features superfast chalte hain.
+Security Note: Credentials is document mein nahi likhenge — kabhi bhi kisi document
+ya code file mein credentials mat likhna.
 
-### Q3: Naye employees add karne par data kahan save hoga?
-Live dashboard par Admin panel se jo bhi naya user, task ya attendance create hoga, woh directly aapke **Neon Cloud Database** me automatically save hoga. GitHub code par koi change karne ki zaroorat nahi padegi.
+### 3. Features Verify Karo
+
+- Real-time Chat and Group Messages
+- Task Board and Assignment
+- Attendance and Leave Management
+- Meetings and Live Room
+- Employee Profiles and Settings
+- OTP Email Login (agar RESEND_API_KEY set hai)
 
 ---
 
-## 🔒 Security Summary
+## Future Updates — Code Change ke Baad
 
-| Sensitive Item | Storage Location | GitHub Visibility |
+Jab bhi code update karo aur push karo:
+
+   git add .
+   git commit -m "Describe your change here"
+   git push origin main
+
+Render automatically detect karega aur naya version auto-deploy ho jayega — kuch aur nahi karna.
+
+IMPORTANT: Agar kabhi force push karo (git push --force), toh Render dashboard mein
+jaake manual deploy trigger karo.
+
+---
+
+## Troubleshooting
+
+| Problem | Solution |
+| :--- | :--- |
+| Build fails | Render logs mein error dekho — usually missing package ya syntax error |
+| DB connection error | DATABASE_URL environment variable check karo — extra spaces nahi hone chahiye |
+| Port error | server.js mein process.env.PORT use ho raha hai — PORT double-check karo |
+| First load slow (30-40s) | Normal — Render free tier 15 min inactivity ke baad sleep mode mein jaata hai |
+| Data nahi dikha | Seed step dobara chalao: node seed_database.js |
+| Module not found | npm install locally chalao aur package.json dependencies check karo |
+| Neon connection refused | SSL mode check karo — connection string mein sslmode=require hona chahiye |
+
+---
+
+## Security Summary
+
+| Sensitive Item | Kahaan Stored Hai | GitHub Par? |
 | :--- | :--- | :--- |
-| **Aadhaar Numbers & Personal Phones** | Neon Cloud Database (Singapore) | ❌ Hidden / Zero Leaks |
-| **Database Connection Credentials** | Render Environment Variables | ❌ Secret & Encrypted |
-| **Local Mock / Seed Backups** | Local Computer (`.gitignore`) | ❌ Untracked |
+| Employee passwords | Neon Cloud DB (encrypted) | Never |
+| Employee Aadhaar numbers | Neon Cloud DB (encrypted) | Never |
+| Employee phone numbers | Neon Cloud DB (encrypted) | Never |
+| Database connection string | Render Environment Variables | Never |
+| Resend API Key | Render Environment Variables | Never |
+| seed_data.json (local backup) | Local computer only | .gitignore mein (safe) |
+| mock_db.json (local backup) | Local computer only | .gitignore + full history purge |
+| .env file | Local computer only | .gitignore mein (safe) |
+
+---
+
+## Free Tier Limits (Reference)
+
+| Service | Free Limit |
+| :--- | :--- |
+| Neon DB | 512 MB storage, 190 compute hours/month |
+| Render Web Service | 750 hours/month — 1 service always free |
+| Resend Email | 100 emails/day, 3,000/month |
+
+Ek normal employee dashboard ke liye ye limits kaafi hain.
+
+---
+
+Last updated: August 2026 | MedAstraX Workspace Portal v2.0
