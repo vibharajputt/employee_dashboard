@@ -10,7 +10,7 @@
 
   <title>MedAstraX - Employee Workspace Portal</title>
 
-  
+
 
   <!-- Fonts -->
 
@@ -18,21 +18,23 @@
 
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap"
+    rel="stylesheet">
 
-  
+
 
   <!-- Icons -->
 
   <script src="https://unpkg.com/lucide@latest"></script>
 
-  
+
 
   <!-- Custom Stylesheet -->
 
   <link rel="stylesheet" href="styles.css?v=6.0">
 
-  
+
 
   <!-- Chart.js CDN -->
 
@@ -62,7 +64,7 @@
 
     <div class="login-background-glow"></div>
 
-    
+
 
     <!-- Portal Select Grid -->
 
@@ -80,7 +82,7 @@
 
       </div>
 
-      
+
 
       <div class="portal-cards-grid">
 
@@ -91,7 +93,8 @@
           </div>
           <h3>Admin Portal</h3>
           <p>Access credentials administration, manage employee roster, configure hierarchies, and audit task logs.</p>
-          <button type="button" class="btn btn-primary btn-block" onclick="event.stopPropagation(); selectPortal('admin');">Login Now</button>
+          <button type="button" class="btn btn-primary btn-block"
+            onclick="event.stopPropagation(); selectPortal('admin');">Login Now</button>
         </div>
 
         <!-- Staff Portal Card -->
@@ -101,14 +104,15 @@
           </div>
           <h3>Staff Portal</h3>
           <p>Access Manager and Employee workspaces. Manage team tasks, update deliverables, and check hierarchy.</p>
-          <button type="button" class="btn btn-primary btn-block" onclick="event.stopPropagation(); selectPortal('staff');">Login Now</button>
+          <button type="button" class="btn btn-primary btn-block"
+            onclick="event.stopPropagation(); selectPortal('staff');">Login Now</button>
         </div>
 
       </div>
 
     </div>
 
-    
+
 
     <!-- Actual Login Card (Hidden initially, shown after portal selection) -->
 
@@ -130,13 +134,13 @@
 
       </div>
 
-      
+
 
       <form id="login-form">
 
         <input type="hidden" id="login-portal-type" value="admin">
 
-        
+
 
         <div class="form-group">
 
@@ -146,7 +150,7 @@
 
         </div>
 
-        
+
 
         <div class="form-group">
 
@@ -166,7 +170,7 @@
 
         </div>
 
-        
+
 
         <div class="form-group remember-me-group">
 
@@ -182,7 +186,7 @@
 
         </div>
 
-        
+
 
         <button type="submit" class="btn btn-primary btn-block glow-btn">
 
@@ -192,7 +196,7 @@
 
       </form>
 
-      
+
 
       <div class="login-footer">
 
@@ -224,7 +228,7 @@
 
     </button>
 
-    
+
 
     <!-- Sidebar Navigation -->
 
@@ -242,7 +246,7 @@
 
         </div>
 
-        
+
 
         <div class="user-profile-summary">
 
@@ -446,16 +450,22 @@
 
         <!-- ==================== TAB: NOTIFICATIONS ==================== -->
         <section id="tab-notifications" class="tab-pane hidden">
-          <div class="section-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 24px;">
+          <div class="section-header"
+            style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 24px;">
             <div>
-              <h2><i data-lucide="bell" class="text-accent" style="vertical-align: middle; margin-right: 8px;"></i> Notifications Hub</h2>
-              <p class="section-desc" style="margin-top: 4px;">Track real-time alerts for chats, assigned tasks, completed tasks, and system events.</p>
+              <h2><i data-lucide="bell" class="text-accent" style="vertical-align: middle; margin-right: 8px;"></i>
+                Notifications Hub</h2>
+              <p class="section-desc" style="margin-top: 4px;">Track real-time alerts for chats, assigned tasks,
+                completed tasks, and system events.</p>
             </div>
-            <div class="notifications-top-actions" style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
-              <button id="notif-mark-all-read-btn" class="btn btn-secondary btn-sm" style="display: flex; align-items: center; gap: 6px;">
+            <div class="notifications-top-actions"
+              style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+              <button id="notif-mark-all-read-btn" class="btn btn-secondary btn-sm"
+                style="display: flex; align-items: center; gap: 6px;">
                 <i data-lucide="check-check"></i> Mark All as Read
               </button>
-              <button id="notif-clear-all-btn" class="btn btn-secondary btn-sm text-danger" style="display: flex; align-items: center; gap: 6px;">
+              <button id="notif-clear-all-btn" class="btn btn-secondary btn-sm text-danger"
+                style="display: flex; align-items: center; gap: 6px;">
                 <i data-lucide="trash-2"></i> Clear All
               </button>
             </div>
@@ -463,7 +473,8 @@
 
           <!-- Notification Settings Bar -->
           <div class="dashboard-card" style="margin-bottom: 20px; padding: 16px 20px;">
-            <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px;">
+            <div
+              style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px;">
               <div style="display: flex; align-items: center; gap: 24px; flex-wrap: wrap;">
                 <div class="toggle-setting-item" style="display: flex; align-items: center; gap: 12px;">
                   <label class="switch-toggle">
@@ -471,10 +482,13 @@
                     <span class="switch-slider"></span>
                   </label>
                   <div>
-                    <strong style="font-size: 0.95rem; display: block; color: var(--text-primary);">Desktop System Popups</strong>
-                    <span style="font-size: 0.8rem; color: var(--text-secondary);">Push Windows bottom-right popups even when dashboard is in background</span>
+                    <strong style="font-size: 0.95rem; display: block; color: var(--text-primary);">Desktop System
+                      Popups</strong>
+                    <span style="font-size: 0.8rem; color: var(--text-secondary);">Push Windows bottom-right popups even
+                      when dashboard is in background</span>
                   </div>
-                  <span id="notif-permission-badge" class="badge" style="margin-left: 6px; font-size: 0.75rem;">Status</span>
+                  <span id="notif-permission-badge" class="badge"
+                    style="margin-left: 6px; font-size: 0.75rem;">Status</span>
                 </div>
 
                 <div style="height: 30px; width: 1px; background: var(--border-color);" class="hide-mobile"></div>
@@ -485,8 +499,10 @@
                     <span class="switch-slider"></span>
                   </label>
                   <div>
-                    <strong style="font-size: 0.95rem; display: block; color: var(--text-primary);">Notification Sounds</strong>
-                    <span style="font-size: 0.8rem; color: var(--text-secondary);">Play audio alert sound when new notification arrives</span>
+                    <strong style="font-size: 0.95rem; display: block; color: var(--text-primary);">Notification
+                      Sounds</strong>
+                    <span style="font-size: 0.8rem; color: var(--text-secondary);">Play audio alert sound when new
+                      notification arrives</span>
                   </div>
                 </div>
               </div>
@@ -494,24 +510,34 @@
           </div>
 
           <!-- Notification Category Filters -->
-          <div class="notification-filters" style="display: flex; gap: 10px; margin-bottom: 20px; overflow-x: auto; padding-bottom: 4px;">
-            <button class="notif-filter-btn active" data-filter="all">All <span class="filter-count" id="notif-count-all">0</span></button>
-            <button class="notif-filter-btn" data-filter="unread">Unread <span class="filter-count" id="notif-count-unread">0</span></button>
-            <button class="notif-filter-btn" data-filter="chats">Chats <span class="filter-count" id="notif-count-chats">0</span></button>
-            <button class="notif-filter-btn" data-filter="tasks">Tasks <span class="filter-count" id="notif-count-tasks">0</span></button>
-            <button class="notif-filter-btn" data-filter="system">System & Meetings <span class="filter-count" id="notif-count-system">0</span></button>
+          <div class="notification-filters"
+            style="display: flex; gap: 10px; margin-bottom: 20px; overflow-x: auto; padding-bottom: 4px;">
+            <button class="notif-filter-btn active" data-filter="all">All <span class="filter-count"
+                id="notif-count-all">0</span></button>
+            <button class="notif-filter-btn" data-filter="unread">Unread <span class="filter-count"
+                id="notif-count-unread">0</span></button>
+            <button class="notif-filter-btn" data-filter="chats">Chats <span class="filter-count"
+                id="notif-count-chats">0</span></button>
+            <button class="notif-filter-btn" data-filter="tasks">Tasks <span class="filter-count"
+                id="notif-count-tasks">0</span></button>
+            <button class="notif-filter-btn" data-filter="system">System & Meetings <span class="filter-count"
+                id="notif-count-system">0</span></button>
           </div>
 
           <!-- Notification Cards List Container -->
-          <div id="notifications-list-container" class="notifications-list-grid" style="display: flex; flex-direction: column; gap: 12px;">
+          <div id="notifications-list-container" class="notifications-list-grid"
+            style="display: flex; flex-direction: column; gap: 12px;">
             <!-- Rendered dynamically -->
           </div>
 
           <!-- Empty State -->
-          <div id="notifications-empty-state" class="dashboard-card hidden" style="text-align: center; padding: 50px 20px;">
-            <i data-lucide="bell-off" style="width: 48px; height: 48px; color: var(--text-secondary); opacity: 0.5; margin-bottom: 12px;"></i>
+          <div id="notifications-empty-state" class="dashboard-card hidden"
+            style="text-align: center; padding: 50px 20px;">
+            <i data-lucide="bell-off"
+              style="width: 48px; height: 48px; color: var(--text-secondary); opacity: 0.5; margin-bottom: 12px;"></i>
             <h3 style="margin-bottom: 6px; color: var(--text-primary);">No Notifications Found</h3>
-            <p style="color: var(--text-secondary); font-size: 0.9rem;">You are all caught up with your notifications!</p>
+            <p style="color: var(--text-secondary); font-size: 0.9rem;">You are all caught up with your notifications!
+            </p>
           </div>
         </section>
 
@@ -599,7 +625,8 @@
 
               <h2>Team Performance Analytics</h2>
 
-              <p class="section-desc">Visual analytics tracking task completion metrics across your reporting staff hierarchy.</p>
+              <p class="section-desc">Visual analytics tracking task completion metrics across your reporting staff
+                hierarchy.</p>
 
             </div>
 
@@ -609,13 +636,16 @@
 
           <!-- Controls for Performance Chart -->
 
-          <div class="dashboard-card" style="margin-bottom: 24px; padding: 16px 24px; display: flex; flex-wrap: wrap; gap: 20px; align-items: center;">
+          <div class="dashboard-card"
+            style="margin-bottom: 24px; padding: 16px 24px; display: flex; flex-wrap: wrap; gap: 20px; align-items: center;">
 
             <div class="filter-box" style="margin-bottom: 0;">
 
-              <label for="perf-role-filter" style="font-weight:600; font-size:0.85rem; margin-right:8px;">Filter by Role:</label>
+              <label for="perf-role-filter" style="font-weight:600; font-size:0.85rem; margin-right:8px;">Filter by
+                Role:</label>
 
-              <select id="perf-role-filter" style="padding: 6px 12px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--bg-secondary); color: var(--text-primary);">
+              <select id="perf-role-filter"
+                style="padding: 6px 12px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--bg-secondary); color: var(--text-primary);">
 
                 <option value="all">All Roles</option>
 
@@ -631,9 +661,11 @@
 
             <div class="filter-box" style="margin-bottom: 0;">
 
-              <label for="perf-priority-filter" style="font-weight:600; font-size:0.85rem; margin-right:8px;">Task Priority:</label>
+              <label for="perf-priority-filter" style="font-weight:600; font-size:0.85rem; margin-right:8px;">Task
+                Priority:</label>
 
-              <select id="perf-priority-filter" style="padding: 6px 12px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--bg-secondary); color: var(--text-primary);">
+              <select id="perf-priority-filter"
+                style="padding: 6px 12px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--bg-secondary); color: var(--text-primary);">
 
                 <option value="all">All Priorities</option>
 
@@ -653,9 +685,11 @@
 
             <div class="filter-box" style="margin-bottom: 0;">
 
-              <label for="perf-date-filter" style="font-weight:600; font-size:0.85rem; margin-right:8px;">Due Date Range:</label>
+              <label for="perf-date-filter" style="font-weight:600; font-size:0.85rem; margin-right:8px;">Due Date
+                Range:</label>
 
-              <select id="perf-date-filter" style="padding: 6px 12px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--bg-secondary); color: var(--text-primary);">
+              <select id="perf-date-filter"
+                style="padding: 6px 12px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--bg-secondary); color: var(--text-primary);">
 
                 <option value="all">All Time</option>
 
@@ -671,7 +705,7 @@
 
           </div>
 
-          
+
 
           <div class="dashboard-card" style="width: 100%; min-height: 480px; padding: 28px;">
 
@@ -679,7 +713,8 @@
 
             <p class="text-muted" style="font-size: 0.85rem; margin-bottom: 24px;">
 
-              Teal bars represent standard Employees; Indigo bars represent Managers. Hover over bars to inspect details.
+              Teal bars represent standard Employees; Indigo bars represent Managers. Hover over bars to inspect
+              details.
 
             </p>
 
@@ -705,7 +740,8 @@
 
               <h2>MedAstraX Organization Hierarchy</h2>
 
-              <p class="section-desc">Interactive organization tree mapping reporting structures from Admin to Executives, Managers, and Employees.</p>
+              <p class="section-desc">Interactive organization tree mapping reporting structures from Admin to
+                Executives, Managers, and Employees.</p>
 
             </div>
 
@@ -790,7 +826,8 @@
               <!-- Filter Pills -->
               <div class="wa-filter-pills">
                 <button class="wa-pill active" data-filter="all">All</button>
-                <button class="wa-pill" data-filter="unread">Unread <span class="wa-pill-badge hidden" id="wa-unread-total-badge">0</span></button>
+                <button class="wa-pill" data-filter="unread">Unread <span class="wa-pill-badge hidden"
+                    id="wa-unread-total-badge">0</span></button>
                 <button class="wa-pill" data-filter="groups">Groups</button>
                 <button class="wa-pill" data-filter="archived">Archived</button>
               </div>
@@ -820,7 +857,8 @@
                 <h3>MedAstraX WhatsApp Chat</h3>
                 <p>Select any employee or group from the list to start messaging in real-time.</p>
                 <div class="wa-empty-security">
-                  <i data-lucide="shield-check"></i> Real-time status badges: 🟢 Free &bull; 🔴 In Meeting &bull; 🔴 On Leave
+                  <i data-lucide="shield-check"></i> Real-time status badges: 🟢 Free &bull; 🔴 In Meeting &bull; 🔴 On
+                  Leave
                 </div>
               </div>
 
@@ -881,7 +919,8 @@
 
               <h2>Employee Management Directory</h2>
 
-              <p class="section-desc">Add new employees, provision workspace credentials, assign manager hierarchies, and manage staff credentials.</p>
+              <p class="section-desc">Add new employees, provision workspace credentials, assign manager hierarchies,
+                and manage staff credentials.</p>
 
             </div>
 
@@ -991,7 +1030,8 @@
 
               <h2>Workspace Tasks Board</h2>
 
-              <p class="section-desc" id="tasks-board-desc">Track, organize, and transition project tasks and deliverables.</p>
+              <p class="section-desc" id="tasks-board-desc">Track, organize, and transition project tasks and
+                deliverables.</p>
 
             </div>
 
@@ -1007,7 +1047,8 @@
 
           <!-- Controls: Search, Sort and Filters -->
 
-          <div class="dashboard-card tasks-control-bar" style="margin-bottom: 24px; padding: 16px 24px; display: flex; flex-wrap: wrap; gap: 16px; align-items: center; justify-content: space-between;">
+          <div class="dashboard-card tasks-control-bar"
+            style="margin-bottom: 24px; padding: 16px 24px; display: flex; flex-wrap: wrap; gap: 16px; align-items: center; justify-content: space-between;">
 
             <div class="search-box" style="width: 280px; margin-bottom: 0;">
 
@@ -1017,7 +1058,7 @@
 
             </div>
 
-            
+
 
             <div style="display: flex; gap: 16px; align-items: center; flex-wrap: wrap;">
 
@@ -1041,7 +1082,7 @@
 
               </div>
 
-              
+
 
               <div class="filter-box">
 
@@ -1067,7 +1108,7 @@
 
           <!-- Dynamic tasks board layouts -->
 
-          
+
 
           <!-- MANAGER/ADMIN VIEW: List of Assigned Tasks with progress tracks -->
 
@@ -1224,23 +1265,33 @@
               <h2>Leave Management</h2>
               <p class="section-desc">Apply for official leaves, track approval status, and manage team requests.</p>
             </div>
-            <button class="btn btn-primary hidden" id="open-apply-leave-modal"><i data-lucide="calendar-plus"></i> Apply for Leave</button>
+            <button class="btn btn-primary hidden" id="open-apply-leave-modal"><i data-lucide="calendar-plus"></i> Apply
+              for Leave</button>
           </div>
 
           <!-- Leave sub-navigation tabs -->
-          <div id="leaves-subtabs-nav" class="leaves-tabs-nav hidden" style="display: flex; gap: 8px; margin-bottom: 24px; border-bottom: 1px solid var(--border-color); padding-bottom: 12px;">
-            <button class="subtab-btn" id="subtab-my-leaves" style="padding: 8px 16px; font-size: 0.85rem; border-radius: var(--radius-sm); cursor: pointer; border: 1px solid var(--border-color); background-color: var(--bg-primary); color: var(--text-muted); font-weight: 500; outline: none; transition: all 0.2s;">
-              <i data-lucide="user" style="width: 14px; height: 14px; display: inline-block; vertical-align: middle; margin-right: 6px;"></i>My Leaves
+          <div id="leaves-subtabs-nav" class="leaves-tabs-nav hidden"
+            style="display: flex; gap: 8px; margin-bottom: 24px; border-bottom: 1px solid var(--border-color); padding-bottom: 12px;">
+            <button class="subtab-btn" id="subtab-my-leaves"
+              style="padding: 8px 16px; font-size: 0.85rem; border-radius: var(--radius-sm); cursor: pointer; border: 1px solid var(--border-color); background-color: var(--bg-primary); color: var(--text-muted); font-weight: 500; outline: none; transition: all 0.2s;">
+              <i data-lucide="user"
+                style="width: 14px; height: 14px; display: inline-block; vertical-align: middle; margin-right: 6px;"></i>My
+              Leaves
             </button>
-            <button class="subtab-btn" id="subtab-team-history" style="padding: 8px 16px; font-size: 0.85rem; border-radius: var(--radius-sm); cursor: pointer; border: 1px solid var(--border-color); background-color: var(--bg-primary); color: var(--text-muted); font-weight: 500; outline: none; transition: all 0.2s;">
-              <i data-lucide="history" style="width: 14px; height: 14px; display: inline-block; vertical-align: middle; margin-right: 6px;"></i>Team Leaves History
+            <button class="subtab-btn" id="subtab-team-history"
+              style="padding: 8px 16px; font-size: 0.85rem; border-radius: var(--radius-sm); cursor: pointer; border: 1px solid var(--border-color); background-color: var(--bg-primary); color: var(--text-muted); font-weight: 500; outline: none; transition: all 0.2s;">
+              <i data-lucide="history"
+                style="width: 14px; height: 14px; display: inline-block; vertical-align: middle; margin-right: 6px;"></i>Team
+              Leaves History
             </button>
           </div>
 
           <div class="leaves-layout-grid">
             <!-- Pending Approvals (only shown to managers/admin/heads) -->
-            <div class="dashboard-card hidden" id="pending-approvals-card" style="width: 100%; margin-top: 0; margin-bottom: 24px;">
-              <h3 style="margin-bottom: 16px;"><i data-lucide="check-square" class="text-accent"></i> Pending Team Leaves</h3>
+            <div class="dashboard-card hidden" id="pending-approvals-card"
+              style="width: 100%; margin-top: 0; margin-bottom: 24px;">
+              <h3 style="margin-bottom: 16px;"><i data-lucide="check-square" class="text-accent"></i> Pending Team
+                Leaves</h3>
               <div class="table-responsive">
                 <table class="table">
                   <thead>
@@ -1262,12 +1313,17 @@
             </div>
 
             <!-- Team Leaves History (shown to managers/admin) -->
-            <div class="dashboard-card hidden" id="team-leaves-history-card" style="width: 100%; margin-top: 0; margin-bottom: 24px;">
-              <div class="section-header" style="padding: 0 0 16px 0; border-bottom: 1px solid var(--border-color); margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
-                <h3 style="margin: 0;"><i data-lucide="history" class="text-accent" style="color: #10b981;"></i> Team Leaves History</h3>
+            <div class="dashboard-card hidden" id="team-leaves-history-card"
+              style="width: 100%; margin-top: 0; margin-bottom: 24px;">
+              <div class="section-header"
+                style="padding: 0 0 16px 0; border-bottom: 1px solid var(--border-color); margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+                <h3 style="margin: 0;"><i data-lucide="history" class="text-accent" style="color: #10b981;"></i> Team
+                  Leaves History</h3>
                 <div class="filter-group" style="display: flex; align-items: center; gap: 8px;">
-                  <label for="history-leave-filter" style="font-size: 0.85rem; color: var(--text-muted); font-weight: 500;">Filter Status:</label>
-                  <select id="history-leave-filter" class="form-control" style="padding: 6px 12px; font-size: 0.85rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary); cursor: pointer; outline: none; width: auto;">
+                  <label for="history-leave-filter"
+                    style="font-size: 0.85rem; color: var(--text-muted); font-weight: 500;">Filter Status:</label>
+                  <select id="history-leave-filter" class="form-control"
+                    style="padding: 6px 12px; font-size: 0.85rem; border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary); cursor: pointer; outline: none; width: auto;">
                     <option value="all">All Leaves</option>
                     <option value="approved">Approved Leaves</option>
                     <option value="declined">Declined Leaves</option>
@@ -1296,7 +1352,8 @@
 
             <!-- My Leave History -->
             <div class="dashboard-card" id="my-leaves-card" style="width: 100%; margin-top: 0;">
-              <h3 style="margin-bottom: 16px;"><i data-lucide="history" class="text-accent"></i> My Leave Applications</h3>
+              <h3 style="margin-bottom: 16px;"><i data-lucide="history" class="text-accent"></i> My Leave Applications
+              </h3>
               <div class="table-responsive">
                 <table class="table">
                   <thead>
@@ -1331,7 +1388,8 @@
           </div>
 
           <!-- Manager Toggle Options -->
-          <div class="attendance-toggle-wrapper hidden" id="attendance-toggle-wrapper" style="margin-bottom: 20px; display: flex; gap: 10px;">
+          <div class="attendance-toggle-wrapper hidden" id="attendance-toggle-wrapper"
+            style="margin-bottom: 20px; display: flex; gap: 10px;">
             <button class="btn btn-primary" id="btn-toggle-my-attendance">My Attendance</button>
             <button class="btn btn-secondary" id="btn-toggle-team-attendance">Team Attendance</button>
           </div>
@@ -1341,14 +1399,17 @@
             <div class="card attendance-marking-card">
               <div class="attendance-marking-header">
                 <h3>Team Attendance Sheet</h3>
-                <div class="attendance-filters-wrapper" style="display: flex; gap: 16px; flex-wrap: wrap; align-items: center;">
+                <div class="attendance-filters-wrapper"
+                  style="display: flex; gap: 16px; flex-wrap: wrap; align-items: center;">
                   <div class="date-picker-wrapper">
                     <label for="attendance-date">Select Date:</label>
                     <input type="date" id="attendance-date">
                   </div>
                   <div class="meeting-selector-wrapper" style="display: flex; align-items: center; gap: 8px;">
-                    <label for="attendance-meeting-type" style="font-weight: 500; color: var(--text-secondary);">Meeting:</label>
-                    <select id="attendance-meeting-type" style="background-color: var(--bg-primary); border: 1px solid var(--border-color); border-radius: var(--radius-sm); color: var(--text-primary); padding: 8px 12px; font-family: inherit;">
+                    <label for="attendance-meeting-type"
+                      style="font-weight: 500; color: var(--text-secondary);">Meeting:</label>
+                    <select id="attendance-meeting-type"
+                      style="background-color: var(--bg-primary); border: 1px solid var(--border-color); border-radius: var(--radius-sm); color: var(--text-primary); padding: 8px 12px; font-family: inherit;">
                       <option value="Daily Meeting">Daily Meeting</option>
                       <option value="EOD Meeting">EOD Meeting</option>
                     </select>
@@ -1370,19 +1431,24 @@
                   </tbody>
                 </table>
               </div>
-              <div class="attendance-footer-actions" style="display: flex; justify-content: flex-end; gap: 16px; padding: 20px; border-top: 1px solid var(--border-color);">
-                <button type="button" id="btn-download-attendance" class="btn btn-secondary" style="display: flex; align-items: center; gap: 8px;">
+              <div class="attendance-footer-actions"
+                style="display: flex; justify-content: flex-end; gap: 16px; padding: 20px; border-top: 1px solid var(--border-color);">
+                <button type="button" id="btn-download-attendance" class="btn btn-secondary"
+                  style="display: flex; align-items: center; gap: 8px;">
                   <i data-lucide="download"></i> Download PDF
                 </button>
-                <button type="button" id="btn-submit-attendance" class="btn btn-primary glow-btn" style="display: flex; align-items: center; gap: 8px;">
+                <button type="button" id="btn-submit-attendance" class="btn btn-primary glow-btn"
+                  style="display: flex; align-items: center; gap: 8px;">
                   <i data-lucide="check-square"></i> Submit Attendance
                 </button>
               </div>
             </div>
 
             <!-- Attendance Graph -->
-            <div class="card attendance-graph-card" style="width: 100%; margin-top: 24px;" id="attendance-graph-wrapper">
-              <h3 style="margin-top: 0; margin-bottom: 16px; color: var(--text-primary);"><i data-lucide="bar-chart-2" class="text-accent"></i> Team Attendance</h3>
+            <div class="card attendance-graph-card" style="width: 100%; margin-top: 24px;"
+              id="attendance-graph-wrapper">
+              <h3 style="margin-top: 0; margin-bottom: 16px; color: var(--text-primary);"><i data-lucide="bar-chart-2"
+                  class="text-accent"></i> Team Attendance</h3>
               <div style="position: relative; height: 300px; width: 100%;">
                 <canvas id="teamAttendanceChart"></canvas>
               </div>
@@ -1395,25 +1461,30 @@
             <div class="attendance-filter-card card" style="margin-bottom: 24px; padding: 20px;">
               <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 16px;">
                 <div class="form-group" style="margin-bottom: 0; display: flex; align-items: center; gap: 8px;">
-                  <label for="att-filter-type" style="font-weight: 600; white-space: nowrap; color: var(--text-secondary);">Filter By:</label>
-                  <select id="att-filter-type" style="background-color: var(--bg-primary); border: 1px solid var(--border-color); border-radius: var(--radius-sm); color: var(--text-primary); padding: 8px 12px; font-family: inherit;">
+                  <label for="att-filter-type"
+                    style="font-weight: 600; white-space: nowrap; color: var(--text-secondary);">Filter By:</label>
+                  <select id="att-filter-type"
+                    style="background-color: var(--bg-primary); border: 1px solid var(--border-color); border-radius: var(--radius-sm); color: var(--text-primary); padding: 8px 12px; font-family: inherit;">
                     <option value="all">Till Date(All days)</option>
                     <option value="date-wise">Date wise</option>
                   </select>
                 </div>
-                
+
                 <div id="att-date-range-fields" class="hidden" style="display: flex; align-items: center; gap: 12px;">
                   <div class="form-group" style="margin-bottom: 0; display: flex; align-items: center; gap: 8px;">
                     <label for="att-filter-from" style="font-weight: 500; color: var(--text-secondary);">From:</label>
-                    <input type="date" id="att-filter-from" style="background-color: var(--bg-primary); border: 1px solid var(--border-color); border-radius: var(--radius-sm); color: var(--text-primary); padding: 8px 12px; font-family: inherit;">
+                    <input type="date" id="att-filter-from"
+                      style="background-color: var(--bg-primary); border: 1px solid var(--border-color); border-radius: var(--radius-sm); color: var(--text-primary); padding: 8px 12px; font-family: inherit;">
                   </div>
                   <div class="form-group" style="margin-bottom: 0; display: flex; align-items: center; gap: 8px;">
                     <label for="att-filter-to" style="font-weight: 500; color: var(--text-secondary);">To:</label>
-                    <input type="date" id="att-filter-to" style="background-color: var(--bg-primary); border: 1px solid var(--border-color); border-radius: var(--radius-sm); color: var(--text-primary); padding: 8px 12px; font-family: inherit;">
+                    <input type="date" id="att-filter-to"
+                      style="background-color: var(--bg-primary); border: 1px solid var(--border-color); border-radius: var(--radius-sm); color: var(--text-primary); padding: 8px 12px; font-family: inherit;">
                   </div>
                 </div>
 
-                <button type="button" id="btn-att-search" class="btn" style="background-color: #d32f2f; color: white; padding: 8px 20px; font-weight: 600; border-radius: 4px; border: none; cursor: pointer; transition: background-color 0.2s;">
+                <button type="button" id="btn-att-search" class="btn"
+                  style="background-color: #d32f2f; color: white; padding: 8px 20px; font-weight: 600; border-radius: 4px; border: none; cursor: pointer; transition: background-color 0.2s;">
                   SEARCH
                 </button>
               </div>
@@ -1423,27 +1494,35 @@
             </div>
 
             <!-- Stats Horizontal Line Bar -->
-            <div class="card" style="padding: 16px; margin-bottom: 24px; display: flex; justify-content: space-around; flex-wrap: wrap; gap: 16px;">
+            <div class="card"
+              style="padding: 16px; margin-bottom: 24px; display: flex; justify-content: space-around; flex-wrap: wrap; gap: 16px;">
               <div style="display: flex; align-items: center; gap: 8px;">
-                <span style="display: inline-block; width: 4px; height: 16px; background-color: #10b981; border-radius: 2px;"></span>
+                <span
+                  style="display: inline-block; width: 4px; height: 16px; background-color: #10b981; border-radius: 2px;"></span>
                 <span style="font-weight: 500; color: var(--text-secondary);">Present Days:</span>
-                <span id="att-stats-present" style="font-weight: 700; color: var(--text-primary); font-size: 1.1rem; margin-left: 4px;">0</span>
+                <span id="att-stats-present"
+                  style="font-weight: 700; color: var(--text-primary); font-size: 1.1rem; margin-left: 4px;">0</span>
               </div>
               <div style="display: flex; align-items: center; gap: 8px;">
-                <span style="display: inline-block; width: 4px; height: 16px; background-color: #ef4444; border-radius: 2px;"></span>
+                <span
+                  style="display: inline-block; width: 4px; height: 16px; background-color: #ef4444; border-radius: 2px;"></span>
                 <span style="font-weight: 500; color: var(--text-secondary);">Absent Days:</span>
-                <span id="att-stats-absent" style="font-weight: 700; color: var(--text-primary); font-size: 1.1rem; margin-left: 4px;">0</span>
+                <span id="att-stats-absent"
+                  style="font-weight: 700; color: var(--text-primary); font-size: 1.1rem; margin-left: 4px;">0</span>
               </div>
               <div style="display: flex; align-items: center; gap: 8px;">
-                <span style="display: inline-block; width: 4px; height: 16px; background-color: #06b6d4; border-radius: 2px;"></span>
+                <span
+                  style="display: inline-block; width: 4px; height: 16px; background-color: #06b6d4; border-radius: 2px;"></span>
                 <span style="font-weight: 500; color: var(--text-secondary);">Attendance Rate:</span>
-                <span id="att-stats-rate" style="font-weight: 700; color: var(--text-primary); font-size: 1.1rem; margin-left: 4px;">0%</span>
+                <span id="att-stats-rate"
+                  style="font-weight: 700; color: var(--text-primary); font-size: 1.1rem; margin-left: 4px;">0%</span>
               </div>
             </div>
 
             <!-- Chart Card -->
             <div id="attendance-chart-card" class="card" style="padding: 24px; margin-bottom: 24px;">
-              <h3 style="margin-top: 0; margin-bottom: 16px; color: var(--text-primary);">Meeting Attendance Comparison</h3>
+              <h3 style="margin-top: 0; margin-bottom: 16px; color: var(--text-primary);">Meeting Attendance Comparison
+              </h3>
               <div style="position: relative; height: 260px; max-width: 500px; margin: 0 auto;">
                 <canvas id="employee-attendance-chart"></canvas>
               </div>
@@ -1475,12 +1554,13 @@
         <!-- ==================== TAB: MEETINGS ==================== -->
         <section id="tab-meetings" class="tab-pane hidden">
           <div class="meetings-portal-container">
-            
+
             <!-- Left Sidebar -->
             <div class="meetings-sidebar">
               <div class="meetings-sidebar-header">
                 <h3>Meetings</h3>
-                <button type="button" class="meetings-menu-trigger" id="meetings-quick-action-btn" title="Quick Actions">
+                <button type="button" class="meetings-menu-trigger" id="meetings-quick-action-btn"
+                  title="Quick Actions">
                   <i data-lucide="plus"></i>
                 </button>
                 <!-- Quick Actions Dropdown Menu -->
@@ -1521,7 +1601,7 @@
 
             <!-- Right Main Content Panel -->
             <div class="meetings-main-content">
-              
+
               <!-- Dashboard View (Shown when not in call) -->
               <div class="meetings-dashboard-view" id="meetings-welcome-dashboard">
                 <div class="meetings-welcome-avatar" id="meetings-user-avatar">
@@ -1562,10 +1642,13 @@
               </div>
 
               <!-- Active Meeting Call UI (Hidden by default, shown during call) -->
-              <div class="active-meeting-view hidden" id="active-meeting-view" style="display: flex; flex-direction: column; height: 100%; position: relative;">
+              <div class="active-meeting-view hidden" id="active-meeting-view"
+                style="display: flex; flex-direction: column; height: 100%; position: relative;">
                 <div class="active-meeting-header">
                   <div>
-                    <h3 id="active-meeting-title" style="margin: 0; font-size: 1.1rem; font-weight: 600; color: var(--text-primary);">Active Meeting</h3>
+                    <h3 id="active-meeting-title"
+                      style="margin: 0; font-size: 1.1rem; font-weight: 600; color: var(--text-primary);">Active Meeting
+                    </h3>
                     <div style="margin-top: 4px; display: flex; align-items: center; gap: 8px;">
                       <span class="badge badge-employee" id="active-meeting-status">Connected</span>
                       <span class="badge badge-manager" id="active-meeting-room-badge">-</span>
@@ -1575,35 +1658,44 @@
                     <i data-lucide="phone-off" style="width: 16px; height: 16px;"></i> Leave Meeting
                   </button>
                 </div>
-                
-                <div class="active-meeting-body" style="display: flex; flex: 1; min-height: 0; padding: 16px; gap: 16px; background-color: #0f172a; position: relative;">
-                  
+
+                <div class="active-meeting-body"
+                  style="display: flex; flex: 1; min-height: 0; padding: 16px; gap: 16px; background-color: #0f172a; position: relative;">
+
                   <!-- ==================== INVITE PARTICIPANTS OVERLAY MODAL ==================== -->
-                  <div id="meeting-invite-overlay-modal" class="hidden" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 440px; max-width: 90%; background-color: #1e293b; border-radius: 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.5); border: 1px solid #334155; padding: 28px; z-index: 1001; display: flex; flex-direction: column; gap: 16px; color: #fff;">
+                  <div id="meeting-invite-overlay-modal" class="hidden"
+                    style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 440px; max-width: 90%; background-color: #1e293b; border-radius: 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.5); border: 1px solid #334155; padding: 28px; z-index: 1001; display: flex; flex-direction: column; gap: 16px; color: #fff;">
                     <!-- Close button -->
                     <div style="display: flex; justify-content: flex-end; position: absolute; top: 16px; right: 16px;">
                       <div style="display: flex; flex-direction: column; align-items: center; gap: 4px;">
-                        <button type="button" id="close-invite-overlay-btn" style="width: 32px; height: 32px; border-radius: 50%; background: #0f172a; border: none; color: #94a3b8; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow-sm);">&times;</button>
+                        <button type="button" id="close-invite-overlay-btn"
+                          style="width: 32px; height: 32px; border-radius: 50%; background: #0f172a; border: none; color: #94a3b8; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center; box-shadow: var(--shadow-sm);">&times;</button>
                         <span style="font-size: 10px; color: #64748b; font-weight: 500;">Close</span>
                       </div>
                     </div>
-                    
+
                     <h3 style="margin: 0; font-size: 1.1rem; font-weight: 600; color: #fff;">Invite participants</h3>
-                    <p style="margin: 0; font-size: 13px; color: #94a3b8; line-height: 1.4;">Share the joining information with people you want in the meeting.</p>
-                    
+                    <p style="margin: 0; font-size: 13px; color: #94a3b8; line-height: 1.4;">Share the joining
+                      information with people you want in the meeting.</p>
+
                     <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 8px;">
-                      <button type="button" id="btn-invite-copy-invitation" class="btn" style="width: 100%; padding: 12px; background-color: #0f172a; border: 1px solid #334155; color: #cbd5e1; border-radius: 8px; font-weight: 500; font-size: 13px; display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; transition: all 0.2s;">
+                      <button type="button" id="btn-invite-copy-invitation" class="btn"
+                        style="width: 100%; padding: 12px; background-color: #0f172a; border: 1px solid #334155; color: #cbd5e1; border-radius: 8px; font-weight: 500; font-size: 13px; display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; transition: all 0.2s;">
                         <i data-lucide="copy" style="width: 16px; height: 16px; color: #82b834;"></i> Copy invitation
                       </button>
-                      <button type="button" id="btn-invite-copy-link" class="btn" style="width: 100%; padding: 12px; background-color: #0f172a; border: 1px solid #334155; color: #cbd5e1; border-radius: 8px; font-weight: 500; font-size: 13px; display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; transition: all 0.2s;">
+                      <button type="button" id="btn-invite-copy-link" class="btn"
+                        style="width: 100%; padding: 12px; background-color: #0f172a; border: 1px solid #334155; color: #cbd5e1; border-radius: 8px; font-weight: 500; font-size: 13px; display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; transition: all 0.2s;">
                         <i data-lucide="link" style="width: 16px; height: 16px; color: #82b834;"></i> Copy link
                       </button>
-                      <button type="button" id="btn-invite-add-users" class="btn" style="width: 100%; padding: 12px; background-color: #0f172a; border: 1px solid #334155; color: #cbd5e1; border-radius: 8px; font-weight: 500; font-size: 13px; display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; transition: all 0.2s;">
-                        <i data-lucide="user-plus" style="width: 16px; height: 16px; color: #82b834;"></i> Add participants
+                      <button type="button" id="btn-invite-add-users" class="btn"
+                        style="width: 100%; padding: 12px; background-color: #0f172a; border: 1px solid #334155; color: #cbd5e1; border-radius: 8px; font-weight: 500; font-size: 13px; display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; transition: all 0.2s;">
+                        <i data-lucide="user-plus" style="width: 16px; height: 16px; color: #82b834;"></i> Add
+                        participants
                       </button>
                     </div>
-                    
-                    <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 8px; border-top: 1px solid #334155; padding-top: 16px;">
+
+                    <div
+                      style="display: flex; align-items: center; justify-content: space-between; margin-top: 8px; border-top: 1px solid #334155; padding-top: 16px;">
                       <span style="font-size: 13px; color: #cbd5e1; font-weight: 500;">Enable waiting room</span>
                       <label class="switch-toggle">
                         <input type="checkbox" id="invite-waiting-room-checkbox">
@@ -1613,51 +1705,73 @@
                   </div>
 
                   <!-- Video area -->
-                  <div id="video-grid" style="flex: 1; display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; border-radius: 12px; background-color: #111827; padding: 16px; overflow: hidden; position: relative;">
+                  <div id="video-grid"
+                    style="flex: 1; display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; border-radius: 12px; background-color: #111827; padding: 16px; overflow: hidden; position: relative;">
                     <!-- Populated dynamically via WebRTC -->
                   </div>
 
                   <!-- Google Meet Sidebar (Chat, Participants, Host Controls) -->
-                  <div id="active-meeting-sidebar" class="hidden" style="width: 320px; background-color: var(--bg-secondary); border-radius: 12px; border: 1px solid var(--border-color); display: flex; flex-direction: column; overflow: hidden; box-shadow: var(--shadow-lg);">
+                  <div id="active-meeting-sidebar" class="hidden"
+                    style="width: 320px; background-color: var(--bg-secondary); border-radius: 12px; border: 1px solid var(--border-color); display: flex; flex-direction: column; overflow: hidden; box-shadow: var(--shadow-lg);">
                     <!-- Sidebar Navigation Tabs -->
-                    <div style="display: flex; border-bottom: 1px solid var(--border-color); background-color: var(--bg-secondary);">
-                      <button type="button" id="tab-btn-people" class="subtab-btn active" style="flex: 1; padding: 12px; font-size: 0.85rem; font-weight: 600; border: none; background: none; border-bottom: 3px solid var(--accent-color); color: var(--accent-color); cursor: pointer;">People</button>
-                      <button type="button" id="tab-btn-chat" class="subtab-btn" style="flex: 1; padding: 12px; font-size: 0.85rem; font-weight: 600; border: none; background: none; border-bottom: 3px solid transparent; color: var(--text-secondary); cursor: pointer;">Chat</button>
-                      <button type="button" id="tab-btn-host" class="subtab-btn hidden" style="flex: 1; padding: 12px; font-size: 0.85rem; font-weight: 600; border: none; background: none; border-bottom: 3px solid transparent; color: var(--text-secondary); cursor: pointer;">Host</button>
+                    <div
+                      style="display: flex; border-bottom: 1px solid var(--border-color); background-color: var(--bg-secondary);">
+                      <button type="button" id="tab-btn-people" class="subtab-btn active"
+                        style="flex: 1; padding: 12px; font-size: 0.85rem; font-weight: 600; border: none; background: none; border-bottom: 3px solid var(--accent-color); color: var(--accent-color); cursor: pointer;">People</button>
+                      <button type="button" id="tab-btn-chat" class="subtab-btn"
+                        style="flex: 1; padding: 12px; font-size: 0.85rem; font-weight: 600; border: none; background: none; border-bottom: 3px solid transparent; color: var(--text-secondary); cursor: pointer;">Chat</button>
+                      <button type="button" id="tab-btn-host" class="subtab-btn hidden"
+                        style="flex: 1; padding: 12px; font-size: 0.85rem; font-weight: 600; border: none; background: none; border-bottom: 3px solid transparent; color: var(--text-secondary); cursor: pointer;">Host</button>
                     </div>
 
                     <!-- Sidebar Panels Content -->
-                    <div style="flex: 1; display: flex; flex-direction: column; overflow-y: auto; padding: 16px; min-height: 0; background-color: var(--bg-primary);">
-                      
+                    <div
+                      style="flex: 1; display: flex; flex-direction: column; overflow-y: auto; padding: 16px; min-height: 0; background-color: var(--bg-primary);">
+
                       <!-- Panel: People -->
                       <div id="panel-people" style="display: flex; flex-direction: column; gap: 12px; height: 100%;">
-                        <h4 style="margin: 0; font-size: 0.95rem; font-weight: 700; color: var(--text-primary);">Participants</h4>
+                        <h4 style="margin: 0; font-size: 0.95rem; font-weight: 700; color: var(--text-primary);">
+                          Participants</h4>
                         <div id="meeting-participants-list" style="display: flex; flex-direction: column; gap: 10px;">
                           <!-- Dynamic participant items -->
                         </div>
                       </div>
 
                       <!-- Panel: Chat -->
-                      <div id="panel-chat" class="hidden" style="display: flex; flex-direction: column; height: 100%; min-height: 0;">
-                        <div id="meeting-chat-messages" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; min-height: 100px; padding: 4px;">
+                      <div id="panel-chat" class="hidden"
+                        style="display: flex; flex-direction: column; height: 100%; min-height: 0;">
+                        <div id="meeting-chat-messages"
+                          style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; min-height: 100px; padding: 4px;">
                           <!-- Chat messages will print here -->
                         </div>
-                        <form id="meeting-chat-form" style="display: flex; gap: 8px; border-top: 1px solid var(--border-color); padding-top: 8px;">
-                          <input type="text" id="meeting-chat-input" placeholder="Send a message" style="flex: 1; padding: 8px 12px; font-size: 0.85rem; border-radius: 6px; border: 1px solid var(--border-color); background-color: var(--bg-secondary); color: var(--text-primary); outline: none;">
-                          <button type="submit" class="btn btn-primary" style="padding: 8px 12px; font-size: 0.85rem; border-radius: 6px;"><i data-lucide="send" style="width: 14px; height: 14px;"></i></button>
+                        <form id="meeting-chat-form"
+                          style="display: flex; gap: 8px; border-top: 1px solid var(--border-color); padding-top: 8px;">
+                          <input type="text" id="meeting-chat-input" placeholder="Send a message"
+                            style="flex: 1; padding: 8px 12px; font-size: 0.85rem; border-radius: 6px; border: 1px solid var(--border-color); background-color: var(--bg-secondary); color: var(--text-primary); outline: none;">
+                          <button type="submit" class="btn btn-primary"
+                            style="padding: 8px 12px; font-size: 0.85rem; border-radius: 6px;"><i data-lucide="send"
+                              style="width: 14px; height: 14px;"></i></button>
                         </form>
                       </div>
 
                       <!-- Panel: Host -->
-                      <div id="panel-host" class="hidden" style="display: flex; flex-direction: column; gap: 16px; height: 100%;">
-                        <h4 style="margin: 0; font-size: 0.95rem; font-weight: 700; color: var(--text-primary);">Host Control Panel</h4>
-                        <p style="font-size: 0.78rem; color: var(--text-muted); line-height: 1.4; margin: 0;">Use these host settings to manage participants in this meeting.</p>
-                        <div style="display: flex; flex-direction: column; gap: 12px; border-top: 1px solid var(--border-color); padding-top: 16px;">
-                          <button type="button" id="btn-host-mute-all" class="btn btn-secondary" style="width: 100%; justify-content: flex-start; gap: 10px; font-size: 0.85rem; padding: 10px 14px;">
-                            <i data-lucide="mic-off" style="width: 16px; height: 16px; color: var(--color-danger);"></i> Mute Everyone
+                      <div id="panel-host" class="hidden"
+                        style="display: flex; flex-direction: column; gap: 16px; height: 100%;">
+                        <h4 style="margin: 0; font-size: 0.95rem; font-weight: 700; color: var(--text-primary);">Host
+                          Control Panel</h4>
+                        <p style="font-size: 0.78rem; color: var(--text-muted); line-height: 1.4; margin: 0;">Use these
+                          host settings to manage participants in this meeting.</p>
+                        <div
+                          style="display: flex; flex-direction: column; gap: 12px; border-top: 1px solid var(--border-color); padding-top: 16px;">
+                          <button type="button" id="btn-host-mute-all" class="btn btn-secondary"
+                            style="width: 100%; justify-content: flex-start; gap: 10px; font-size: 0.85rem; padding: 10px 14px;">
+                            <i data-lucide="mic-off" style="width: 16px; height: 16px; color: var(--color-danger);"></i>
+                            Mute Everyone
                           </button>
-                          <button type="button" id="btn-host-cameras-off" class="btn btn-secondary" style="width: 100%; justify-content: flex-start; gap: 10px; font-size: 0.85rem; padding: 10px 14px;">
-                            <i data-lucide="video-off" style="width: 16px; height: 16px; color: var(--color-danger);"></i> Turn Off All Cameras
+                          <button type="button" id="btn-host-cameras-off" class="btn btn-secondary"
+                            style="width: 100%; justify-content: flex-start; gap: 10px; font-size: 0.85rem; padding: 10px 14px;">
+                            <i data-lucide="video-off"
+                              style="width: 16px; height: 16px; color: var(--color-danger);"></i> Turn Off All Cameras
                           </button>
                         </div>
                       </div>
@@ -1666,49 +1780,66 @@
                   </div>
                 </div>
 
-                <div class="active-meeting-controls" style="background-color: var(--bg-secondary); border-top: 1px solid var(--border-color); padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; gap: 16px; width: 100%;">
-                  
+                <div class="active-meeting-controls"
+                  style="background-color: var(--bg-secondary); border-top: 1px solid var(--border-color); padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; gap: 16px; width: 100%;">
+
                   <!-- Left side: Layouts and Pause -->
                   <div style="display: flex; gap: 12px; align-items: center;">
-                    <button type="button" id="btn-layout-grid" class="btn-icon" title="Grid Layout" style="background-color: var(--bg-primary); border-radius: 4px; border: 1px solid var(--border-color); color: var(--text-primary); width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+                    <button type="button" id="btn-layout-grid" class="btn-icon" title="Grid Layout"
+                      style="background-color: var(--bg-primary); border-radius: 4px; border: 1px solid var(--border-color); color: var(--text-primary); width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; cursor: pointer;">
                       <i data-lucide="layout-grid" style="width: 18px; height: 18px;"></i>
                     </button>
-                    <button type="button" id="btn-layout-focus" class="btn-icon" title="Spotlight Layout" style="background-color: var(--bg-primary); border-radius: 4px; border: 1px solid var(--border-color); color: var(--text-primary); width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+                    <button type="button" id="btn-layout-focus" class="btn-icon" title="Spotlight Layout"
+                      style="background-color: var(--bg-primary); border-radius: 4px; border: 1px solid var(--border-color); color: var(--text-primary); width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; cursor: pointer;">
                       <i data-lucide="square" style="width: 18px; height: 18px;"></i>
                     </button>
-                    <button type="button" id="btn-active-pause" class="btn-icon" title="Pause stream" style="background-color: var(--bg-primary); border-radius: 4px; border: 1px solid var(--border-color); color: var(--text-primary); width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+                    <button type="button" id="btn-active-pause" class="btn-icon" title="Pause stream"
+                      style="background-color: var(--bg-primary); border-radius: 4px; border: 1px solid var(--border-color); color: var(--text-primary); width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; cursor: pointer;">
                       <i data-lucide="pause" style="width: 18px; height: 18px;"></i>
                     </button>
                   </div>
 
                   <!-- Center: Mic, Cam, Leave (Red), 3-Dot -->
                   <div style="display: flex; gap: 16px; align-items: center;">
-                    <button type="button" id="btn-active-toggle-mic" class="btn-icon" title="Toggle Microphone" style="border-radius: 50%; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; cursor: pointer; border: 1px solid var(--border-color);">
+                    <button type="button" id="btn-active-toggle-mic" class="btn-icon" title="Toggle Microphone"
+                      style="border-radius: 50%; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; cursor: pointer; border: 1px solid var(--border-color);">
                       <i data-lucide="mic"></i>
                     </button>
-                    <button type="button" id="btn-active-toggle-cam" class="btn-icon" title="Toggle Camera" style="border-radius: 50%; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; cursor: pointer; border: 1px solid var(--border-color);">
+                    <button type="button" id="btn-active-toggle-cam" class="btn-icon" title="Toggle Camera"
+                      style="border-radius: 50%; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; cursor: pointer; border: 1px solid var(--border-color);">
                       <i data-lucide="video"></i>
                     </button>
-                    <button type="button" id="btn-active-leave-meeting" class="btn-icon" title="Leave Meeting" style="background-color: #ef4444; color: #fff; border-radius: 50%; width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; border: none; cursor: pointer;">
+                    <button type="button" id="btn-active-leave-meeting" class="btn-icon" title="Leave Meeting"
+                      style="background-color: #ef4444; color: #fff; border-radius: 50%; width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; border: none; cursor: pointer;">
                       <i data-lucide="phone-off" style="width: 20px; height: 20px;"></i>
                     </button>
                     <div style="position: relative; display: inline-block;">
-                      <button type="button" id="btn-active-more" class="btn-icon" title="More options" style="background-color: var(--bg-primary); border-radius: 50%; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; border: 1px solid var(--border-color); color: var(--text-primary); cursor: pointer;">
+                      <button type="button" id="btn-active-more" class="btn-icon" title="More options"
+                        style="background-color: var(--bg-primary); border-radius: 50%; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; border: 1px solid var(--border-color); color: var(--text-primary); cursor: pointer;">
                         <i data-lucide="more-horizontal"></i>
                       </button>
                       <!-- More options dropdown menu -->
-                      <div id="active-more-menu" class="hidden" style="position: absolute; bottom: 55px; left: 50%; transform: translateX(-50%); width: 220px; background-color: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 8px; box-shadow: var(--shadow-lg); z-index: 1000; padding: 6px 0;">
-                        <button type="button" id="menu-opt-pip" style="width: 100%; text-align: left; padding: 10px 16px; border: none; background: none; color: var(--text-primary); font-size: 13px; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 8px; font-family: inherit;">
-                          <i data-lucide="picture-in-picture" style="width: 14px; height: 14px; color: var(--accent-color);"></i> Minimize to Pop-up
+                      <div id="active-more-menu" class="hidden"
+                        style="position: absolute; bottom: 55px; left: 50%; transform: translateX(-50%); width: 220px; background-color: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 8px; box-shadow: var(--shadow-lg); z-index: 1000; padding: 6px 0;">
+                        <button type="button" id="menu-opt-pip"
+                          style="width: 100%; text-align: left; padding: 10px 16px; border: none; background: none; color: var(--text-primary); font-size: 13px; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 8px; font-family: inherit;">
+                          <i data-lucide="picture-in-picture"
+                            style="width: 14px; height: 14px; color: var(--accent-color);"></i> Minimize to Pop-up
                         </button>
-                        <button type="button" id="menu-opt-fullscreen" style="width: 100%; text-align: left; padding: 10px 16px; border: none; background: none; color: var(--text-primary); font-size: 13px; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 8px; font-family: inherit;">
-                          <i data-lucide="maximize" style="width: 14px; height: 14px; color: var(--accent-color);"></i> Toggle Fullscreen
+                        <button type="button" id="menu-opt-fullscreen"
+                          style="width: 100%; text-align: left; padding: 10px 16px; border: none; background: none; color: var(--text-primary); font-size: 13px; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 8px; font-family: inherit;">
+                          <i data-lucide="maximize" style="width: 14px; height: 14px; color: var(--accent-color);"></i>
+                          Toggle Fullscreen
                         </button>
-                        <button type="button" id="menu-opt-info" style="width: 100%; text-align: left; padding: 10px 16px; border: none; background: none; color: var(--text-primary); font-size: 13px; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 8px; font-family: inherit;">
-                          <i data-lucide="copy" style="width: 14px; height: 14px; color: var(--accent-color);"></i> Copy Meeting Info
+                        <button type="button" id="menu-opt-info"
+                          style="width: 100%; text-align: left; padding: 10px 16px; border: none; background: none; color: var(--text-primary); font-size: 13px; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 8px; font-family: inherit;">
+                          <i data-lucide="copy" style="width: 14px; height: 14px; color: var(--accent-color);"></i> Copy
+                          Meeting Info
                         </button>
-                        <button type="button" id="menu-opt-settings" style="width: 100%; text-align: left; padding: 10px 16px; border: none; background: none; color: var(--text-primary); font-size: 13px; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 8px; font-family: inherit;">
-                          <i data-lucide="settings" style="width: 14px; height: 14px; color: var(--accent-color);"></i> Device Settings
+                        <button type="button" id="menu-opt-settings"
+                          style="width: 100%; text-align: left; padding: 10px 16px; border: none; background: none; color: var(--text-primary); font-size: 13px; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 8px; font-family: inherit;">
+                          <i data-lucide="settings" style="width: 14px; height: 14px; color: var(--accent-color);"></i>
+                          Device Settings
                         </button>
                       </div>
                     </div>
@@ -1718,206 +1849,222 @@
                   <div style="display: flex; gap: 12px; align-items: center;">
                     <!-- Emoji React -->
                     <div style="position: relative; display: inline-block;">
-                      <button type="button" id="btn-active-react" class="btn-icon" title="Send Reaction" style="background-color: var(--bg-primary); border-radius: 4px; border: 1px solid var(--border-color); color: var(--text-primary); width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+                      <button type="button" id="btn-active-react" class="btn-icon" title="Send Reaction"
+                        style="background-color: var(--bg-primary); border-radius: 4px; border: 1px solid var(--border-color); color: var(--text-primary); width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; cursor: pointer;">
                         <i data-lucide="smile" style="width: 18px; height: 18px;"></i>
                       </button>
                       <!-- Reaction emojis floating list -->
-                      <div id="active-reaction-bar" class="hidden" style="position: absolute; bottom: 45px; left: 50%; transform: translateX(-50%); background-color: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 20px; box-shadow: var(--shadow-lg); z-index: 1000; padding: 6px 12px; display: flex; gap: 8px;">
-                        <button type="button" class="reaction-emoji-btn" data-emoji="👍" style="border:none; background:none; font-size:18px; cursor:pointer; padding:2px;">👍</button>
-                        <button type="button" class="reaction-emoji-btn" data-emoji="❤️" style="border:none; background:none; font-size:18px; cursor:pointer; padding:2px;">❤️</button>
-                        <button type="button" class="reaction-emoji-btn" data-emoji="👏" style="border:none; background:none; font-size:18px; cursor:pointer; padding:2px;">👏</button>
-                        <button type="button" class="reaction-emoji-btn" data-emoji="😂" style="border:none; background:none; font-size:18px; cursor:pointer; padding:2px;">😂</button>
-                        <button type="button" class="reaction-emoji-btn" data-emoji="🎉" style="border:none; background:none; font-size:18px; cursor:pointer; padding:2px;">🎉</button>
+                      <div id="active-reaction-bar" class="hidden"
+                        style="position: absolute; bottom: 45px; left: 50%; transform: translateX(-50%); background-color: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: 20px; box-shadow: var(--shadow-lg); z-index: 1000; padding: 6px 12px; display: flex; gap: 8px;">
+                        <button type="button" class="reaction-emoji-btn" data-emoji="👍"
+                          style="border:none; background:none; font-size:18px; cursor:pointer; padding:2px;">👍</button>
+                        <button type="button" class="reaction-emoji-btn" data-emoji="❤️"
+                          style="border:none; background:none; font-size:18px; cursor:pointer; padding:2px;">❤️</button>
+                        <button type="button" class="reaction-emoji-btn" data-emoji="👏"
+                          style="border:none; background:none; font-size:18px; cursor:pointer; padding:2px;">👏</button>
+                        <button type="button" class="reaction-emoji-btn" data-emoji="😂"
+                          style="border:none; background:none; font-size:18px; cursor:pointer; padding:2px;">😂</button>
+                        <button type="button" class="reaction-emoji-btn" data-emoji="🎉"
+                          style="border:none; background:none; font-size:18px; cursor:pointer; padding:2px;">🎉</button>
                       </div>
                     </div>
                     <!-- Raise Hand -->
-                    <button type="button" id="btn-active-raise-hand" class="btn-icon" title="Raise Hand" style="background-color: var(--bg-primary); border-radius: 4px; border: 1px solid var(--border-color); color: var(--text-primary); width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+                    <button type="button" id="btn-active-raise-hand" class="btn-icon" title="Raise Hand"
+                      style="background-color: var(--bg-primary); border-radius: 4px; border: 1px solid var(--border-color); color: var(--text-primary); width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; cursor: pointer;">
                       <i data-lucide="hand" style="width: 18px; height: 18px;"></i>
                     </button>
                     <!-- Participants list -->
-                    <button type="button" id="btn-active-toggle-people" class="btn-icon" title="Show Participants" style="background-color: var(--bg-primary); border-radius: 4px; border: 1px solid var(--border-color); color: var(--text-primary); width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+                    <button type="button" id="btn-active-toggle-people" class="btn-icon" title="Show Participants"
+                      style="background-color: var(--bg-primary); border-radius: 4px; border: 1px solid var(--border-color); color: var(--text-primary); width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; cursor: pointer;">
                       <i data-lucide="users" style="width: 18px; height: 18px;"></i>
                     </button>
                     <!-- Chat list -->
-                    <button type="button" id="btn-active-toggle-chat" class="btn-icon" title="Show Chat" style="background-color: var(--bg-primary); border-radius: 4px; border: 1px solid var(--border-color); color: var(--text-primary); width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+                    <button type="button" id="btn-active-toggle-chat" class="btn-icon" title="Show Chat"
+                      style="background-color: var(--bg-primary); border-radius: 4px; border: 1px solid var(--border-color); color: var(--text-primary); width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; cursor: pointer;">
                       <i data-lucide="message-square" style="width: 18px; height: 18px;"></i>
                     </button>
                     <!-- Host controls -->
-                    <button type="button" id="btn-active-toggle-host-controls" class="btn-icon hidden" title="Host controls" style="background-color: var(--bg-primary); border-radius: 4px; border: 1px solid var(--border-color); color: var(--text-primary); width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+                    <button type="button" id="btn-active-toggle-host-controls" class="btn-icon hidden"
+                      title="Host controls"
+                      style="background-color: var(--bg-primary); border-radius: 4px; border: 1px solid var(--border-color); color: var(--text-primary); width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; cursor: pointer;">
                       <i data-lucide="shield-alert" style="width: 18px; height: 18px;"></i>
                     </button>
                   </div>
 
                 </div>
               </div>
-              </div>
-
             </div>
 
           </div>
-
-          <!-- Hidden components required for backend bindings -->
-          <input type="text" id="meeting-room-input" class="hidden">
-          <button id="btn-open-sched-modal" class="hidden"></button>
-          <button id="btn-join-meeting" class="hidden"></button>
-          <button id="btn-leave-meeting" class="hidden"></button>
-          <button id="btn-toggle-cam" class="hidden"></button>
-          <button id="btn-toggle-mic" class="hidden"></button>
-          <button id="btn-share-screen" class="hidden"></button>
-          <span id="meeting-status-text" class="hidden"></span>
-          <span id="meeting-room-badge" class="hidden"></span>
-          <div id="meeting-active-room-display" class="hidden"></div>
-          <div id="meeting-media-controls" class="hidden"></div>
-        </section>
-
-        <!-- ==================== TAB: SETTINGS ==================== -->
-
-        <section id="tab-settings" class="tab-pane hidden">
-
-          <div class="section-header">
-
-            <div>
-
-              <h2>Profile & Portal Settings</h2>
-
-              <p class="section-desc">Manage your workspace account password and availability status configurations.</p>
-
-            </div>
-
-          </div>
-
-
-
-          <div class="overview-layout">
-
-            <!-- Account Settings Card -->
-
-            <div class="dashboard-card" id="change-password-card">
-
-              <h3><i data-lucide="key" class="text-accent"></i> Change Password</h3>
-
-              <form id="change-password-form" style="margin-top: 15px;">
-
-                <div class="form-group">
-
-                  <label for="settings-current-pass">Current Password</label>
-
-                  <input type="password" id="settings-current-pass" required placeholder="••••••••">
-
-                </div>
-
-                <div class="form-group">
-
-                  <label for="settings-new-pass">New Password</label>
-
-                  <input type="password" id="settings-new-pass" required placeholder="••••••••">
-
-                </div>
-
-                <div class="form-group">
-
-                  <label for="settings-confirm-pass">Confirm New Password</label>
-
-                  <input type="password" id="settings-confirm-pass" required placeholder="••••••••">
-
-                </div>
-
-                <button type="submit" class="btn btn-primary glow-btn" style="width: 100%;">Change Password</button>
-
-              </form>
-
-            </div>
-
-
-
-            <!-- Status Customization Card -->
-
-            <div class="dashboard-card" id="duty-status-card">
-
-              <h3><i data-lucide="user-check" class="text-accent"></i> Duty Status</h3>
-
-              <p class="text-muted" style="font-size: 0.9rem; margin-bottom: 20px;">
-
-                Toggle your duty status. This lets your manager and team know your current availability.
-
-              </p>
-
-              
-
-              <div class="form-group">
-
-                <label for="settings-status-select">Select Availability</label>
-
-                <select id="settings-status-select">
-
-                  <option value="Active">🟢 Active / On Duty</option>
-
-                  <option value="On Leave">🟡 On Leave</option>
-
-                  <option value="Out of Office">🔴 Out of Office</option>
-
-                </select>
-
-              </div>
-
-
-
-              <div class="info-row" style="margin-top: 24px;">
-
-                <span class="info-label">Current Status Display:</span>
-
-                <span id="settings-current-status-badge" class="badge">Active</span>
-
-              </div>
-
-            </div>
-
-            <!-- Desktop Notifications Settings Card -->
-            <div class="dashboard-card" id="desktop-notifications-settings-card">
-              <h3><i data-lucide="bell-ring" class="text-accent"></i> Desktop & System Notifications</h3>
-              <p class="text-muted" style="font-size: 0.9rem; margin-bottom: 20px;">
-                Configure Windows bottom-right popup alerts and notification sound chimes for instant real-time updates.
-              </p>
-
-              <div class="form-group" style="margin-bottom: 20px;">
-                <div style="display: flex; align-items: center; justify-content: space-between; gap: 15px;">
-                  <div>
-                    <strong style="display: block; font-size: 0.95rem; color: var(--text-primary);">Desktop System Popups</strong>
-                    <span class="text-muted" style="font-size: 0.82rem;">Push popups to OS even when dashboard is in background</span>
-                  </div>
-                  <label class="switch-toggle">
-                    <input type="checkbox" id="settings-desktop-notif-toggle">
-                    <span class="switch-slider"></span>
-                  </label>
-                </div>
-                <div style="margin-top: 8px;">
-                  <span id="settings-permission-badge" class="badge">Permission Status</span>
-                </div>
-              </div>
-
-              <div class="form-group">
-                <div style="display: flex; align-items: center; justify-content: space-between; gap: 15px;">
-                  <div>
-                    <strong style="display: block; font-size: 0.95rem; color: var(--text-primary);">Notification Sounds</strong>
-                    <span class="text-muted" style="font-size: 0.82rem;">Play audio alert sound when new notification arrives</span>
-                  </div>
-                  <label class="switch-toggle">
-                    <input type="checkbox" id="settings-sound-notif-toggle">
-                    <span class="switch-slider"></span>
-                  </label>
-                </div>
-              </div>
-            </div>
-
-          </div>
-
-        </section>
-
-
 
       </div>
 
-    </main>
+      <!-- Hidden components required for backend bindings -->
+      <input type="text" id="meeting-room-input" class="hidden">
+      <button id="btn-open-sched-modal" class="hidden"></button>
+      <button id="btn-join-meeting" class="hidden"></button>
+      <button id="btn-leave-meeting" class="hidden"></button>
+      <button id="btn-toggle-cam" class="hidden"></button>
+      <button id="btn-toggle-mic" class="hidden"></button>
+      <button id="btn-share-screen" class="hidden"></button>
+      <span id="meeting-status-text" class="hidden"></span>
+      <span id="meeting-room-badge" class="hidden"></span>
+      <div id="meeting-active-room-display" class="hidden"></div>
+      <div id="meeting-media-controls" class="hidden"></div>
+      </section>
+
+      <!-- ==================== TAB: SETTINGS ==================== -->
+
+      <section id="tab-settings" class="tab-pane hidden">
+
+        <div class="section-header">
+
+          <div>
+
+            <h2>Profile & Portal Settings</h2>
+
+            <p class="section-desc">Manage your workspace account password and availability status configurations.</p>
+
+          </div>
+
+        </div>
+
+
+
+        <div class="overview-layout">
+
+          <!-- Account Settings Card -->
+
+          <div class="dashboard-card" id="change-password-card">
+
+            <h3><i data-lucide="key" class="text-accent"></i> Change Password</h3>
+
+            <form id="change-password-form" style="margin-top: 15px;">
+
+              <div class="form-group">
+
+                <label for="settings-current-pass">Current Password</label>
+
+                <input type="password" id="settings-current-pass" required placeholder="••••••••">
+
+              </div>
+
+              <div class="form-group">
+
+                <label for="settings-new-pass">New Password</label>
+
+                <input type="password" id="settings-new-pass" required placeholder="••••••••">
+
+              </div>
+
+              <div class="form-group">
+
+                <label for="settings-confirm-pass">Confirm New Password</label>
+
+                <input type="password" id="settings-confirm-pass" required placeholder="••••••••">
+
+              </div>
+
+              <button type="submit" class="btn btn-primary glow-btn" style="width: 100%;">Change Password</button>
+
+            </form>
+
+          </div>
+
+
+
+          <!-- Status Customization Card -->
+
+          <div class="dashboard-card" id="duty-status-card">
+
+            <h3><i data-lucide="user-check" class="text-accent"></i> Duty Status</h3>
+
+            <p class="text-muted" style="font-size: 0.9rem; margin-bottom: 20px;">
+
+              Toggle your duty status. This lets your manager and team know your current availability.
+
+            </p>
+
+
+
+            <div class="form-group">
+
+              <label for="settings-status-select">Select Availability</label>
+
+              <select id="settings-status-select">
+
+                <option value="Active">🟢 Active / On Duty</option>
+
+                <option value="On Leave">🟡 On Leave</option>
+
+                <option value="Out of Office">🔴 Out of Office</option>
+
+              </select>
+
+            </div>
+
+
+
+            <div class="info-row" style="margin-top: 24px;">
+
+              <span class="info-label">Current Status Display:</span>
+
+              <span id="settings-current-status-badge" class="badge">Active</span>
+
+            </div>
+
+          </div>
+
+          <!-- Desktop Notifications Settings Card -->
+          <div class="dashboard-card" id="desktop-notifications-settings-card">
+            <h3><i data-lucide="bell-ring" class="text-accent"></i> Desktop & System Notifications</h3>
+            <p class="text-muted" style="font-size: 0.9rem; margin-bottom: 20px;">
+              Configure Windows bottom-right popup alerts and notification sound chimes for instant real-time updates.
+            </p>
+
+            <div class="form-group" style="margin-bottom: 20px;">
+              <div style="display: flex; align-items: center; justify-content: space-between; gap: 15px;">
+                <div>
+                  <strong style="display: block; font-size: 0.95rem; color: var(--text-primary);">Desktop System
+                    Popups</strong>
+                  <span class="text-muted" style="font-size: 0.82rem;">Push popups to OS even when dashboard is in
+                    background</span>
+                </div>
+                <label class="switch-toggle">
+                  <input type="checkbox" id="settings-desktop-notif-toggle">
+                  <span class="switch-slider"></span>
+                </label>
+              </div>
+              <div style="margin-top: 8px;">
+                <span id="settings-permission-badge" class="badge">Permission Status</span>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <div style="display: flex; align-items: center; justify-content: space-between; gap: 15px;">
+                <div>
+                  <strong style="display: block; font-size: 0.95rem; color: var(--text-primary);">Notification
+                    Sounds</strong>
+                  <span class="text-muted" style="font-size: 0.82rem;">Play audio alert sound when new notification
+                    arrives</span>
+                </div>
+                <label class="switch-toggle">
+                  <input type="checkbox" id="settings-sound-notif-toggle">
+                  <span class="switch-slider"></span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+      </section>
+
+
+
+  </div>
+
+  </main>
 
   </div>
 
@@ -1947,7 +2094,7 @@
 
         </div>
 
-        
+
 
         <div class="form-row">
 
@@ -1967,7 +2114,8 @@
 
               <input type="password" id="new-password" placeholder="e.g. temp123" required>
 
-              <button type="button" id="toggle-new-password" class="icon-btn-toggle" aria-label="Toggle Password Visibility">
+              <button type="button" id="toggle-new-password" class="icon-btn-toggle"
+                aria-label="Toggle Password Visibility">
 
                 <i data-lucide="eye"></i>
 
@@ -2067,7 +2215,8 @@
 
             <label for="new-aadhar">Aadhar Card</label>
 
-            <input type="text" id="new-aadhar" placeholder="e.g. 1234 5678 9012" pattern="\d{4}\s?\d{4}\s?\d{4}|\d{12}" title="Aadhar card number must be a 12-digit number" required>
+            <input type="text" id="new-aadhar" placeholder="e.g. 1234 5678 9012" pattern="\d{4}\s?\d{4}\s?\d{4}|\d{12}"
+              title="Aadhar card number must be a 12-digit number" required>
 
           </div>
 
@@ -2119,7 +2268,7 @@
 
         <input type="hidden" id="edit-user-id">
 
-        
+
 
         <div class="form-group">
 
@@ -2129,7 +2278,7 @@
 
         </div>
 
-        
+
 
         <div class="form-group">
 
@@ -2229,7 +2378,8 @@
 
             <label for="edit-aadhar">Aadhar Card</label>
 
-            <input type="text" id="edit-aadhar" placeholder="e.g. 1234 5678 9012" pattern="\d{4}\s?\d{4}\s?\d{4}|\d{12}" title="Aadhar card number must be a 12-digit number" required>
+            <input type="text" id="edit-aadhar" placeholder="e.g. 1234 5678 9012" pattern="\d{4}\s?\d{4}\s?\d{4}|\d{12}"
+              title="Aadhar card number must be a 12-digit number" required>
 
           </div>
 
@@ -2385,7 +2535,7 @@
 
       </div>
 
-      
+
 
       <div class="task-details-body" style="display: flex; flex-direction: column; gap: 20px; text-align: left;">
 
@@ -2395,7 +2545,8 @@
 
           <h4 class="text-muted" style="font-size: 0.8rem; text-transform: uppercase;">Description</h4>
 
-          <p id="detail-task-desc" style="margin-top: 4px; font-size: 0.95rem; line-height: 1.5; color: var(--text-primary);"></p>
+          <p id="detail-task-desc"
+            style="margin-top: 4px; font-size: 0.95rem; line-height: 1.5; color: var(--text-primary);"></p>
 
         </div>
 
@@ -2403,7 +2554,8 @@
 
         <!-- Details Grid -->
 
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; background-color: rgba(5,47,95,0.03); padding: 16px; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+        <div
+          style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; background-color: rgba(5,47,95,0.03); padding: 16px; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
 
           <div>
 
@@ -2475,7 +2627,8 @@
 
         <!-- Manager Rejection Feedback -->
 
-        <div id="detail-feedback-alert" class="hidden" style="background-color: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: var(--radius-sm); padding: 12px 16px;">
+        <div id="detail-feedback-alert" class="hidden"
+          style="background-color: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: var(--radius-sm); padding: 12px 16px;">
 
           <h4 style="color: var(--color-danger); font-size: 0.85rem; display: flex; align-items: center; gap: 6px;">
 
@@ -2501,11 +2654,14 @@
 
         <!-- Manager Request Feedback text area (shows when reject is clicked) -->
 
-        <div id="detail-reject-textarea-container" class="hidden" style="display: flex; flex-direction: column; gap: 8px;">
+        <div id="detail-reject-textarea-container" class="hidden"
+          style="display: flex; flex-direction: column; gap: 8px;">
 
-          <label for="detail-reject-feedback" style="font-weight: 600; font-size: 0.85rem;">Provide Feedback for Rejection</label>
+          <label for="detail-reject-feedback" style="font-weight: 600; font-size: 0.85rem;">Provide Feedback for
+            Rejection</label>
 
-          <textarea id="detail-reject-feedback" rows="2" placeholder="Explain what changes are needed..." style="width:100%; padding: 10px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); color: var(--text-primary); background: transparent;"></textarea>
+          <textarea id="detail-reject-feedback" rows="2" placeholder="Explain what changes are needed..."
+            style="width:100%; padding: 10px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); color: var(--text-primary); background: transparent;"></textarea>
 
           <div style="display:flex; justify-content: flex-end; gap:8px;">
 
@@ -2529,11 +2685,12 @@
 
           </h3>
 
-          
+
 
           <!-- Comments scroll list -->
 
-          <div id="detail-comments-list" style="max-height: 150px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; padding-right: 4px;">
+          <div id="detail-comments-list"
+            style="max-height: 150px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; padding-right: 4px;">
 
             <!-- Rendered in JS -->
 
@@ -2545,9 +2702,11 @@
 
           <form id="add-comment-form" style="display: flex; gap: 10px;">
 
-            <input type="text" id="new-comment-input" required placeholder="Post a progress update or comment..." style="flex-grow: 1; padding: 10px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: transparent; color: var(--text-primary);">
+            <input type="text" id="new-comment-input" required placeholder="Post a progress update or comment..."
+              style="flex-grow: 1; padding: 10px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); background: transparent; color: var(--text-primary);">
 
-            <button type="submit" class="btn btn-primary" style="padding: 10px 16px;"><i data-lucide="send"></i></button>
+            <button type="submit" class="btn btn-primary" style="padding: 10px 16px;"><i
+                data-lucide="send"></i></button>
 
           </form>
 
@@ -2555,7 +2714,7 @@
 
       </div>
 
-      
+
 
       <div class="modal-footer" style="margin-top: 20px;">
         <button type="button" class="btn btn-secondary" id="close-detail-modal-footer">Close</button>
@@ -2571,7 +2730,7 @@
         <button class="close-modal-btn" id="close-leave-modal">&times;</button>
       </div>
       <form id="leave-application-form">
-        
+
         <!-- MedAstraX Branding inside modal matching PDF -->
         <div class="leave-pdf-brand">
           <img src="medastrax_logo.png" alt="Medastrax Logo" class="brand-logo-small">
@@ -2629,14 +2788,16 @@
             </tr>
             <tr>
               <td><strong>Reason for Leave</strong></td>
-              <td><textarea id="leave-reason" rows="3" placeholder="Please specify the reason for leave..." required></textarea></td>
+              <td><textarea id="leave-reason" rows="3" placeholder="Please specify the reason for leave..."
+                  required></textarea></td>
             </tr>
           </tbody>
         </table>
 
         <h3 class="leave-section-title">3. Recommendation Guidelines</h3>
         <div class="leave-guideline-note">
-          <p><strong>Note:</strong> Leave applications are routed through your management hierarchy for approval. A maximum of two (2) days leave is allowed in a single week.</p>
+          <p><strong>Note:</strong> Leave applications are routed through your management hierarchy for approval. A
+            maximum of two (2) days leave is allowed in a single week.</p>
         </div>
 
         <div class="modal-footer">
@@ -2649,17 +2810,21 @@
 
   <!-- ==================== MODAL: LEAVE APPROVAL CHAIN DETAILS ==================== -->
   <div id="leave-chain-modal" class="modal-overlay hidden">
-    <div class="modal-card" style="max-width: 500px; background-color: var(--card-bg); border: 1px solid var(--border-color);">
-      <div class="modal-header" style="border-bottom: 1px solid var(--border-color); padding-bottom: 12px; margin-bottom: 16px;">
+    <div class="modal-card"
+      style="max-width: 500px; background-color: var(--card-bg); border: 1px solid var(--border-color);">
+      <div class="modal-header"
+        style="border-bottom: 1px solid var(--border-color); padding-bottom: 12px; margin-bottom: 16px;">
         <h2><i data-lucide="git-commit" style="color: var(--accent-color);"></i> Leave Approval Hierarchy</h2>
         <button class="close-modal-btn" id="close-leave-chain-modal">&times;</button>
       </div>
       <div class="modal-body" style="padding: 10px 0;">
-        <div id="leave-chain-flow-container" style="display: flex; flex-direction: column; gap: 24px; position: relative; margin-left: 20px; border-left: 2px dashed var(--border-color); padding-left: 24px;">
+        <div id="leave-chain-flow-container"
+          style="display: flex; flex-direction: column; gap: 24px; position: relative; margin-left: 20px; border-left: 2px dashed var(--border-color); padding-left: 24px;">
           <!-- Populated dynamically with timeline nodes -->
         </div>
       </div>
-      <div class="modal-footer" style="margin-top: 20px; border-top: 1px solid var(--border-color); padding-top: 12px; display: flex; justify-content: flex-end;">
+      <div class="modal-footer"
+        style="margin-top: 20px; border-top: 1px solid var(--border-color); padding-top: 12px; display: flex; justify-content: flex-end;">
         <button type="button" class="btn btn-secondary" id="close-leave-chain-btn">Close</button>
       </div>
     </div>
@@ -2688,28 +2853,39 @@
           </div>
         </div>
         <div class="form-group" style="margin-bottom: 16px;">
-          <label for="sched-desc" style="display: block; margin-bottom: 8px; font-weight: 500;">Meeting Description</label>
-          <textarea id="sched-desc" placeholder="e.g. Discuss Q3 deliverables and blockers" style="width: 100%; border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 8px; font-size: 13px; resize: vertical; min-height: 60px; background-color: var(--bg-primary); color: var(--text-primary); font-family: inherit;"></textarea>
+          <label for="sched-desc" style="display: block; margin-bottom: 8px; font-weight: 500;">Meeting
+            Description</label>
+          <textarea id="sched-desc" placeholder="e.g. Discuss Q3 deliverables and blockers"
+            style="width: 100%; border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 8px; font-size: 13px; resize: vertical; min-height: 60px; background-color: var(--bg-primary); color: var(--text-primary); font-family: inherit;"></textarea>
         </div>
 
         <!-- Recurring Meeting Option -->
-        <div class="form-group" style="margin-bottom: 16px; background: var(--bg-secondary); padding: 14px; border-radius: 12px; border: 1px solid var(--border-color);">
-          <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; font-weight: 600; font-size: 0.9rem; color: var(--text-primary); margin: 0;">
-            <input type="checkbox" id="sched-is-recurring" style="width: 18px; height: 18px; accent-color: var(--accent-color); cursor: pointer;">
+        <div class="form-group"
+          style="margin-bottom: 16px; background: var(--bg-secondary); padding: 14px; border-radius: 12px; border: 1px solid var(--border-color);">
+          <label
+            style="display: flex; align-items: center; gap: 10px; cursor: pointer; font-weight: 600; font-size: 0.9rem; color: var(--text-primary); margin: 0;">
+            <input type="checkbox" id="sched-is-recurring"
+              style="width: 18px; height: 18px; accent-color: var(--accent-color); cursor: pointer;">
             <span>Recurring meeting</span>
           </label>
-          <div id="sched-recurring-summary" style="margin-top: 4px; margin-left: 28px; font-size: 0.8rem; color: var(--text-secondary);">
+          <div id="sched-recurring-summary"
+            style="margin-top: 4px; margin-left: 28px; font-size: 0.8rem; color: var(--text-secondary);">
             Repeats every day at scheduled time
           </div>
 
           <!-- Recurrence Details Box -->
-          <div id="sched-recurrence-options" class="hidden" style="margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 14px; position: relative;">
-            
+          <div id="sched-recurrence-options" class="hidden"
+            style="margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 14px; position: relative;">
+
             <!-- Recurrence Type -->
-            <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; position: relative; padding-left: 20px;">
-              <span style="position: absolute; left: 0; width: 10px; height: 10px; border-radius: 50%; background: #22c55e;"></span>
-              <label for="sched-recurrence-type" style="font-size: 0.85rem; font-weight: 600; color: var(--text-primary);">Recurrence</label>
-              <select id="sched-recurrence-type" style="padding: 6px 12px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary); font-size: 0.85rem; outline: none; width: 170px;">
+            <div
+              style="display: flex; align-items: center; justify-content: space-between; gap: 12px; position: relative; padding-left: 20px;">
+              <span
+                style="position: absolute; left: 0; width: 10px; height: 10px; border-radius: 50%; background: #22c55e;"></span>
+              <label for="sched-recurrence-type"
+                style="font-size: 0.85rem; font-weight: 600; color: var(--text-primary);">Recurrence</label>
+              <select id="sched-recurrence-type"
+                style="padding: 6px 12px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary); font-size: 0.85rem; outline: none; width: 170px;">
                 <option value="Daily">Daily</option>
                 <option value="Weekly">Weekly</option>
                 <option value="Weekdays">Weekdays (Mon-Fri)</option>
@@ -2718,38 +2894,48 @@
             </div>
 
             <!-- Repeat Every -->
-            <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; position: relative; padding-left: 20px;">
-              <label for="sched-repeat-interval" style="font-size: 0.85rem; font-weight: 600; color: var(--text-primary);">Repeat every</label>
+            <div
+              style="display: flex; align-items: center; justify-content: space-between; gap: 12px; position: relative; padding-left: 20px;">
+              <label for="sched-repeat-interval"
+                style="font-size: 0.85rem; font-weight: 600; color: var(--text-primary);">Repeat every</label>
               <div style="display: flex; align-items: center; gap: 8px;">
-                <input type="number" id="sched-repeat-interval" value="1" min="1" max="99" style="width: 65px; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary); font-size: 0.85rem; outline: none; text-align: center;">
+                <input type="number" id="sched-repeat-interval" value="1" min="1" max="99"
+                  style="width: 65px; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary); font-size: 0.85rem; outline: none; text-align: center;">
                 <span id="sched-repeat-unit" style="font-size: 0.85rem; color: var(--text-secondary);">day</span>
               </div>
             </div>
 
             <!-- Ends Options -->
             <div style="display: flex; flex-direction: column; gap: 10px; position: relative; padding-left: 20px;">
-              <span style="position: absolute; left: 0; top: 4px; width: 10px; height: 10px; border-radius: 50%; background: #ef4444;"></span>
-              <label style="font-size: 0.85rem; font-weight: 600; color: var(--text-primary); margin-bottom: 2px;">Ends</label>
-              
-              <label style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: var(--text-primary); cursor: pointer;">
+              <span
+                style="position: absolute; left: 0; top: 4px; width: 10px; height: 10px; border-radius: 50%; background: #ef4444;"></span>
+              <label
+                style="font-size: 0.85rem; font-weight: 600; color: var(--text-primary); margin-bottom: 2px;">Ends</label>
+
+              <label
+                style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: var(--text-primary); cursor: pointer;">
                 <input type="radio" name="sched-ends" value="never" checked style="accent-color: var(--accent-color);">
                 <span>never</span>
               </label>
 
               <div style="display: flex; align-items: center; gap: 8px;">
-                <label style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: var(--text-primary); cursor: pointer; flex-shrink: 0;">
+                <label
+                  style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: var(--text-primary); cursor: pointer; flex-shrink: 0;">
                   <input type="radio" name="sched-ends" value="on" style="accent-color: var(--accent-color);">
                   <span>On</span>
                 </label>
-                <input type="date" id="sched-ends-date" style="padding: 4px 8px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary); font-size: 0.8rem; outline: none; width: 150px;">
+                <input type="date" id="sched-ends-date"
+                  style="padding: 4px 8px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary); font-size: 0.8rem; outline: none; width: 150px;">
               </div>
 
               <div style="display: flex; align-items: center; gap: 8px;">
-                <label style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: var(--text-primary); cursor: pointer; flex-shrink: 0;">
+                <label
+                  style="display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: var(--text-primary); cursor: pointer; flex-shrink: 0;">
                   <input type="radio" name="sched-ends" value="after" style="accent-color: var(--accent-color);">
                   <span>after</span>
                 </label>
-                <input type="number" id="sched-ends-after-count" value="10" min="1" max="999" style="width: 65px; padding: 4px 8px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary); font-size: 0.8rem; outline: none; text-align: center;">
+                <input type="number" id="sched-ends-after-count" value="10" min="1" max="999"
+                  style="width: 65px; padding: 4px 8px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-primary); color: var(--text-primary); font-size: 0.8rem; outline: none; text-align: center;">
                 <span style="font-size: 0.85rem; color: var(--text-secondary);">occurrence(s)</span>
               </div>
             </div>
@@ -2757,7 +2943,8 @@
         </div>
         <div class="form-group" style="margin-bottom: 16px;">
           <label style="display: block; margin-bottom: 8px; font-weight: 500;">Select Participants</label>
-          <div id="sched-participants-list" style="max-height: 150px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 10px; background-color: var(--bg-primary); display: flex; flex-direction: column; gap: 8px;">
+          <div id="sched-participants-list"
+            style="max-height: 150px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 10px; background-color: var(--bg-primary); display: flex; flex-direction: column; gap: 8px;">
             <!-- Loaded dynamically in app.js -->
           </div>
         </div>
@@ -2780,15 +2967,19 @@
         <input type="hidden" id="edit-mtg-id">
         <div class="form-group" style="margin-bottom: 20px;">
           <label for="edit-mtg-title" style="font-weight: 500; display: block; margin-bottom: 8px;">Meeting</label>
-          <input type="text" id="edit-mtg-title" readonly style="background-color: var(--bg-secondary); border-color: var(--border-color); width: 100%; padding: 8px; border-radius: var(--radius-sm); color: var(--text-primary);">
+          <input type="text" id="edit-mtg-title" readonly
+            style="background-color: var(--bg-secondary); border-color: var(--border-color); width: 100%; padding: 8px; border-radius: var(--radius-sm); color: var(--text-primary);">
         </div>
         <div class="form-group" style="margin-bottom: 20px;">
-          <label for="edit-mtg-time" style="font-weight: 500; display: block; margin-bottom: 8px;">New Time (HH:MM)</label>
-          <input type="time" id="edit-mtg-time" required style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); background-color: var(--bg-primary); color: var(--text-primary);">
+          <label for="edit-mtg-time" style="font-weight: 500; display: block; margin-bottom: 8px;">New Time
+            (HH:MM)</label>
+          <input type="time" id="edit-mtg-time" required
+            style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); background-color: var(--bg-primary); color: var(--text-primary);">
         </div>
         <div class="form-group" style="margin-bottom: 20px;">
           <label for="edit-mtg-desc" style="font-weight: 500; display: block; margin-bottom: 8px;">Description</label>
-          <textarea id="edit-mtg-desc" placeholder="e.g. Weekly review of tech roadmap" style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); background-color: var(--bg-primary); color: var(--text-primary); font-size: 13px; resize: vertical; min-height: 60px; font-family: inherit;"></textarea>
+          <textarea id="edit-mtg-desc" placeholder="e.g. Weekly review of tech roadmap"
+            style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); background-color: var(--bg-primary); color: var(--text-primary); font-size: 13px; resize: vertical; min-height: 60px; font-family: inherit;"></textarea>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" id="cancel-edit-mtg-btn">Cancel</button>
@@ -2807,8 +2998,10 @@
       </div>
       <form id="join-meeting-prompt-form">
         <div class="form-group" style="margin-bottom: 20px;">
-          <label for="join-prompt-room-input" style="font-weight: 500; display: block; margin-bottom: 8px;">Room Code / ID</label>
-          <input type="text" id="join-prompt-room-input" placeholder="e.g. tech-daily-meeting" required style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); background-color: var(--bg-primary); color: var(--text-primary); font-family: inherit;">
+          <label for="join-prompt-room-input" style="font-weight: 500; display: block; margin-bottom: 8px;">Room Code /
+            ID</label>
+          <input type="text" id="join-prompt-room-input" placeholder="e.g. tech-daily-meeting" required
+            style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); background-color: var(--bg-primary); color: var(--text-primary); font-family: inherit;">
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" id="cancel-join-prompt-btn">Cancel</button>
@@ -2827,12 +3020,16 @@
       </div>
       <form id="device-settings-form">
         <div class="form-group" style="margin-bottom: 16px;">
-          <label for="select-video-input" style="font-weight: 500; display: block; margin-bottom: 6px;">Camera Input</label>
-          <select id="select-video-input" style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); background-color: var(--bg-primary); color: var(--text-primary); font-family: inherit;"></select>
+          <label for="select-video-input" style="font-weight: 500; display: block; margin-bottom: 6px;">Camera
+            Input</label>
+          <select id="select-video-input"
+            style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); background-color: var(--bg-primary); color: var(--text-primary); font-family: inherit;"></select>
         </div>
         <div class="form-group" style="margin-bottom: 16px;">
-          <label for="select-audio-input" style="font-weight: 500; display: block; margin-bottom: 6px;">Microphone Input</label>
-          <select id="select-audio-input" style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); background-color: var(--bg-primary); color: var(--text-primary); font-family: inherit;"></select>
+          <label for="select-audio-input" style="font-weight: 500; display: block; margin-bottom: 6px;">Microphone
+            Input</label>
+          <select id="select-audio-input"
+            style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); background-color: var(--bg-primary); color: var(--text-primary); font-family: inherit;"></select>
         </div>
         <div class="modal-footer" style="margin-top: 20px;">
           <button type="button" class="btn btn-secondary" id="btn-close-device-settings">Cancel</button>
@@ -2845,32 +3042,44 @@
   <!-- ==================== MODAL: MEETING LOBBY / PREVIEW ==================== -->
   <!-- ==================== MODAL: MEETING LOBBY / PREVIEW ==================== -->
   <div id="meeting-lobby-modal" class="modal-overlay hidden">
-    <div class="modal-card" style="max-width: 780px; width: 90%; background-color: #1a2332; border: none; border-radius: 12px; box-shadow: 0 20px 50px rgba(0,0,0,0.4); padding: 32px; display: flex; flex-direction: column; gap: 24px;">
-      
+    <div class="modal-card"
+      style="max-width: 780px; width: 90%; background-color: #1a2332; border: none; border-radius: 12px; box-shadow: 0 20px 50px rgba(0,0,0,0.4); padding: 32px; display: flex; flex-direction: column; gap: 24px;">
+
       <!-- Close button top right -->
-      <button class="close-modal-btn" id="close-lobby-modal" style="position: absolute; top: 20px; right: 20px; font-size: 24px; color: #94a3b8; background: none; border: none; cursor: pointer;">&times;</button>
-      
-      <h2 style="font-size: 1.25rem; font-weight: 600; color: #fff; margin: 0 0 8px; font-family: inherit;">Manage audio and video settings</h2>
-      
-      <div class="modal-body" style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 32px; padding: 0; align-items: start;">
-        
+      <button class="close-modal-btn" id="close-lobby-modal"
+        style="position: absolute; top: 20px; right: 20px; font-size: 24px; color: #94a3b8; background: none; border: none; cursor: pointer;">&times;</button>
+
+      <h2 style="font-size: 1.25rem; font-weight: 600; color: #fff; margin: 0 0 8px; font-family: inherit;">Manage audio
+        and video settings</h2>
+
+      <div class="modal-body"
+        style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 32px; padding: 0; align-items: start;">
+
         <!-- Left: Video Preview and mirror checkbox -->
         <div style="display: flex; flex-direction: column; gap: 16px;">
-          <div id="lobby-preview-wrapper" style="position: relative; border-radius: 8px; overflow: hidden; background-color: #0f172a; aspect-ratio: 16/10; width: 100%; display: flex; align-items: center; justify-content: center; border: 1px solid #334155;">
-            <video id="lobby-camera-preview" autoplay playsinline muted style="width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1);"></video>
+          <div id="lobby-preview-wrapper"
+            style="position: relative; border-radius: 8px; overflow: hidden; background-color: #0f172a; aspect-ratio: 16/10; width: 100%; display: flex; align-items: center; justify-content: center; border: 1px solid #334155;">
+            <video id="lobby-camera-preview" autoplay playsinline muted
+              style="width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1);"></video>
             <!-- Camera Off Avatar overlay -->
-            <div id="lobby-camera-off-avatar" class="hidden" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background-color: #1e293b; color: #fff; font-size: 2.5rem; font-weight: 700; z-index: 2;">
-              <div id="lobby-avatar-char" style="width: 90px; height: 90px; border-radius: 50%; background: linear-gradient(135deg, var(--accent-secondary), var(--accent-color)); display: flex; align-items: center; justify-content: center; font-size: 2.25rem; font-weight: 700; box-shadow: 0 4px 12px rgba(0,0,0,0.25);">U</div>
+            <div id="lobby-camera-off-avatar" class="hidden"
+              style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background-color: #1e293b; color: #fff; font-size: 2.5rem; font-weight: 700; z-index: 2;">
+              <div id="lobby-avatar-char"
+                style="width: 90px; height: 90px; border-radius: 50%; background: linear-gradient(135deg, var(--accent-secondary), var(--accent-color)); display: flex; align-items: center; justify-content: center; font-size: 2.25rem; font-weight: 700; box-shadow: 0 4px 12px rgba(0,0,0,0.25);">
+                U</div>
             </div>
             <!-- Unable to access the camera text overlay -->
-            <div id="lobby-no-cam-warning" class="hidden" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; background-color: #1e293b; color: #94a3b8; text-align: center; padding: 20px; z-index: 2;">
+            <div id="lobby-no-cam-warning" class="hidden"
+              style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; background-color: #1e293b; color: #94a3b8; text-align: center; padding: 20px; z-index: 2;">
               <i data-lucide="video-off" style="width: 32px; height: 32px; margin-bottom: 12px; color: #ef4444;"></i>
               <p style="margin: 0; font-weight: 600; color: #fff; font-size: 14px;">Unable to access the camera</p>
-              <p style="margin: 4px 0 0; font-size: 12px; color: #64748b;">Please check your browser/system settings.</p>
+              <p style="margin: 4px 0 0; font-size: 12px; color: #64748b;">Please check your browser/system settings.
+              </p>
             </div>
           </div>
           <!-- Mirror my video checkbox -->
-          <label style="display: flex; align-items: center; gap: 8px; font-size: 12px; color: #94a3b8; cursor: pointer; user-select: none;">
+          <label
+            style="display: flex; align-items: center; gap: 8px; font-size: 12px; color: #94a3b8; cursor: pointer; user-select: none;">
             <input type="checkbox" id="lobby-mirror-chk" checked style="accent-color: #82b834; cursor: pointer;">
             Mirror my video
           </label>
@@ -2878,7 +3087,7 @@
 
         <!-- Right: iOS Toggles & Dropdowns -->
         <div style="display: flex; flex-direction: column; gap: 20px;">
-          
+
           <!-- Camera row -->
           <div style="display: flex; flex-direction: column; gap: 8px;">
             <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -2889,9 +3098,12 @@
               </label>
             </div>
             <div style="position: relative;">
-              <select id="lobby-video-input" style="width: 100%; padding: 10px; padding-left: 36px; border: 1px solid #334155; border-radius: 6px; background-color: #0f172a; color: #fff; font-family: inherit; font-size: 13px; cursor: pointer; outline: none; -webkit-appearance: none; -moz-appearance: none; appearance: none;"></select>
-              <i data-lucide="video" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #94a3b8;"></i>
-              <i data-lucide="chevron-down" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); width: 14px; height: 14px; color: #94a3b8; pointer-events: none;"></i>
+              <select id="lobby-video-input"
+                style="width: 100%; padding: 10px; padding-left: 36px; border: 1px solid #334155; border-radius: 6px; background-color: #0f172a; color: #fff; font-family: inherit; font-size: 13px; cursor: pointer; outline: none; -webkit-appearance: none; -moz-appearance: none; appearance: none;"></select>
+              <i data-lucide="video"
+                style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #94a3b8;"></i>
+              <i data-lucide="chevron-down"
+                style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); width: 14px; height: 14px; color: #94a3b8; pointer-events: none;"></i>
             </div>
           </div>
 
@@ -2905,9 +3117,12 @@
               </label>
             </div>
             <div style="position: relative;">
-              <select id="lobby-audio-input" style="width: 100%; padding: 10px; padding-left: 36px; border: 1px solid #334155; border-radius: 6px; background-color: #0f172a; color: #fff; font-family: inherit; font-size: 13px; cursor: pointer; outline: none; -webkit-appearance: none; -moz-appearance: none; appearance: none;"></select>
-              <i data-lucide="mic" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #94a3b8;"></i>
-              <i data-lucide="chevron-down" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); width: 14px; height: 14px; color: #94a3b8; pointer-events: none;"></i>
+              <select id="lobby-audio-input"
+                style="width: 100%; padding: 10px; padding-left: 36px; border: 1px solid #334155; border-radius: 6px; background-color: #0f172a; color: #fff; font-family: inherit; font-size: 13px; cursor: pointer; outline: none; -webkit-appearance: none; -moz-appearance: none; appearance: none;"></select>
+              <i data-lucide="mic"
+                style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #94a3b8;"></i>
+              <i data-lucide="chevron-down"
+                style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); width: 14px; height: 14px; color: #94a3b8; pointer-events: none;"></i>
             </div>
           </div>
 
@@ -2916,18 +3131,22 @@
             <div style="display: flex; justify-content: space-between; align-items: center;">
               <div style="display: flex; align-items: center; gap: 8px;">
                 <span style="font-size: 13px; font-weight: 500; color: #e2e8f0;">Speaker</span>
-                <button type="button" id="lobby-btn-test-sound" style="border: none; border-radius: 12px; background-color: #82b834; color: #fff; padding: 2px 10px; font-size: 11px; cursor: pointer; font-weight: 600; transition: background 0.2s; outline: none;">Play</button>
+                <button type="button" id="lobby-btn-test-sound"
+                  style="border: none; border-radius: 12px; background-color: #82b834; color: #fff; padding: 2px 10px; font-size: 11px; cursor: pointer; font-weight: 600; transition: background 0.2s; outline: none;">Play</button>
               </div>
             </div>
             <div style="position: relative;">
-              <select id="lobby-speaker-input" style="width: 100%; padding: 10px; padding-left: 36px; border: 1px solid #334155; border-radius: 6px; background-color: #0f172a; color: #fff; font-family: inherit; font-size: 13px; cursor: pointer; outline: none; -webkit-appearance: none; -moz-appearance: none; appearance: none;">
+              <select id="lobby-speaker-input"
+                style="width: 100%; padding: 10px; padding-left: 36px; border: 1px solid #334155; border-radius: 6px; background-color: #0f172a; color: #fff; font-family: inherit; font-size: 13px; cursor: pointer; outline: none; -webkit-appearance: none; -moz-appearance: none; appearance: none;">
                 <option value="default">Default - Headphones/Speaker</option>
               </select>
-              <i data-lucide="volume-2" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #94a3b8;"></i>
-              <i data-lucide="chevron-down" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); width: 14px; height: 14px; color: #94a3b8; pointer-events: none;"></i>
+              <i data-lucide="volume-2"
+                style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: #94a3b8;"></i>
+              <i data-lucide="chevron-down"
+                style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); width: 14px; height: 14px; color: #94a3b8; pointer-events: none;"></i>
             </div>
           </div>
-          
+
           <!-- Hidden inputs for display names and invites -->
           <input type="hidden" id="lobby-display-name">
           <div id="lobby-invite-list" class="hidden"></div>
@@ -2936,11 +3155,15 @@
         </div>
 
       </div>
-      
+
       <!-- Footer Buttons -->
-      <div style="display: flex; justify-content: center; gap: 16px; margin-top: 12px; border-top: 1px solid #334155; padding-top: 24px;">
-        <button type="button" id="btn-cancel-lobby" style="border: 1px solid #475569; border-radius: 24px; color: #cbd5e1; background: none; padding: 10px 40px; font-weight: 500; font-size: 13px; cursor: pointer; transition: all 0.2s;">Cancel</button>
-        <button type="button" id="btn-lobby-join-meeting" style="border: none; border-radius: 24px; color: #fff; background-color: #82b834; padding: 10px 40px; font-weight: 600; font-size: 13px; cursor: pointer; transition: all 0.2s;">Start meeting</button>
+      <div
+        style="display: flex; justify-content: center; gap: 16px; margin-top: 12px; border-top: 1px solid #334155; padding-top: 24px;">
+        <button type="button" id="btn-cancel-lobby"
+          style="border: 1px solid #475569; border-radius: 24px; color: #cbd5e1; background: none; padding: 10px 40px; font-weight: 500; font-size: 13px; cursor: pointer; transition: all 0.2s;">Cancel</button>
+        <button type="button" id="btn-lobby-join-meeting"
+          style="border: none; border-radius: 24px; color: #fff; background-color: #82b834; padding: 10px 40px; font-weight: 600; font-size: 13px; cursor: pointer; transition: all 0.2s;">Start
+          meeting</button>
       </div>
 
     </div>
@@ -2955,13 +3178,17 @@
       </div>
       <form id="create-group-form">
         <div class="form-group" style="margin-bottom: 16px;">
-          <label for="group-name-input" style="font-weight: 600; display: block; margin-bottom: 6px;">Group Subject / Name</label>
-          <input type="text" id="group-name-input" placeholder="e.g. Tech Core Team" required style="width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); background: var(--bg-secondary); color: var(--text-primary);">
+          <label for="group-name-input" style="font-weight: 600; display: block; margin-bottom: 6px;">Group Subject /
+            Name</label>
+          <input type="text" id="group-name-input" placeholder="e.g. Tech Core Team" required
+            style="width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); background: var(--bg-secondary); color: var(--text-primary);">
         </div>
         <div class="form-group" style="margin-bottom: 16px;">
           <label style="font-weight: 600; display: block; margin-bottom: 6px;">Select Group Members</label>
-          <input type="text" id="group-member-search" placeholder="Search employees..." style="width: 100%; margin-bottom: 8px; font-size: 0.85rem; padding: 8px 12px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); background: var(--bg-secondary); color: var(--text-primary);">
-          <div id="group-members-list" style="max-height: 220px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 8px; background: var(--bg-secondary);">
+          <input type="text" id="group-member-search" placeholder="Search employees..."
+            style="width: 100%; margin-bottom: 8px; font-size: 0.85rem; padding: 8px 12px; border: 1px solid var(--border-color); border-radius: var(--radius-sm); background: var(--bg-secondary); color: var(--text-primary);">
+          <div id="group-members-list"
+            style="max-height: 220px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: var(--radius-sm); padding: 8px; background: var(--bg-secondary);">
             <!-- Populated dynamically with checkboxes -->
           </div>
         </div>
@@ -2974,34 +3201,43 @@
   </div>
 
   <!-- ==================== FLOATING PIP WIDGET ==================== -->
-  <div id="meeting-pip-widget" class="hidden" style="position: fixed; bottom: 24px; right: 24px; width: 280px; height: 180px; z-index: 9999; border-radius: 12px; background: #0f172a; border: 2px solid var(--accent-color); box-shadow: 0 12px 36px rgba(0, 0, 0, 0.4); display: flex; flex-direction: column; overflow: hidden; transition: all 0.3s ease;">
+  <div id="meeting-pip-widget" class="hidden"
+    style="position: fixed; bottom: 24px; right: 24px; width: 280px; height: 180px; z-index: 9999; border-radius: 12px; background: #0f172a; border: 2px solid var(--accent-color); box-shadow: 0 12px 36px rgba(0, 0, 0, 0.4); display: flex; flex-direction: column; overflow: hidden; transition: all 0.3s ease;">
     <!-- PIP Header -->
-    <div style="padding: 8px 12px; background: var(--bg-secondary); border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
-      <span style="font-size: 11px; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 4px;">
-        <span style="width: 8px; height: 8px; border-radius: 50%; background: #10b981; display: inline-block;"></span> Active Call
+    <div
+      style="padding: 8px 12px; background: var(--bg-secondary); border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+      <span
+        style="font-size: 11px; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 4px;">
+        <span style="width: 8px; height: 8px; border-radius: 50%; background: #10b981; display: inline-block;"></span>
+        Active Call
       </span>
       <div style="display: flex; gap: 6px;">
         <!-- Minimize / Background button -->
-        <button type="button" id="btn-pip-minimize" style="background: none; border: none; color: var(--text-secondary); cursor: pointer; padding: 2px; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center;" title="Send to Background">
+        <button type="button" id="btn-pip-minimize"
+          style="background: none; border: none; color: var(--text-secondary); cursor: pointer; padding: 2px; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center;"
+          title="Send to Background">
           <i data-lucide="minus" style="width: 14px; height: 14px;"></i>
         </button>
         <!-- Restore to Meetings Tab button -->
-        <button type="button" id="btn-pip-expand" style="background: none; border: none; color: var(--text-secondary); cursor: pointer; padding: 2px; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center;" title="Expand to Tab">
+        <button type="button" id="btn-pip-expand"
+          style="background: none; border: none; color: var(--text-secondary); cursor: pointer; padding: 2px; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center;"
+          title="Expand to Tab">
           <i data-lucide="maximize-2" style="width: 14px; height: 14px;"></i>
         </button>
       </div>
     </div>
     <!-- PIP Video Area -->
-    <div id="meeting-pip-video-container" style="flex: 1; display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 4px; padding: 6px; background: #0f172a; overflow: hidden; min-height: 0;">
+    <div id="meeting-pip-video-container"
+      style="flex: 1; display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 4px; padding: 6px; background: #0f172a; overflow: hidden; min-height: 0;">
       <!-- Video containers will be moved here dynamically -->
     </div>
   </div>
 
   <!-- ==================== SCRIPTS ==================== -->
-  
+
   <script src="/socket.io/socket.io.js"></script>
-  <script src="app.js?v=2.3"></script>
-  <script src="auth-ui.js?v=1.0"></script>
+  <script src="app.js?v=2.4"></script>
+  <script src="auth-ui.js?v=1.1"></script>
 
   <!-- ==================== ADD PARTICIPANTS PICKER MODAL ==================== -->
   <div id="add-participants-modal" style="
@@ -3017,18 +3253,21 @@
       display: flex; flex-direction: column; max-height: 90vh;
     ">
       <!-- Header -->
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:22px 24px 18px;border-bottom:1px solid #263348;flex-shrink:0;">
+      <div
+        style="display:flex;align-items:center;justify-content:space-between;padding:22px 24px 18px;border-bottom:1px solid #263348;flex-shrink:0;">
         <div>
           <h3 style="margin:0;font-size:1.05rem;font-weight:700;color:#fff;">Add Participants</h3>
           <p style="margin:4px 0 0;font-size:12px;color:#64748b;">Select colleagues to invite to this meeting</p>
         </div>
-        <button id="close-add-participants-modal" style="width:30px;height:30px;border-radius:50%;background:#0f172a;border:none;color:#94a3b8;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;">&times;</button>
+        <button id="close-add-participants-modal"
+          style="width:30px;height:30px;border-radius:50%;background:#0f172a;border:none;color:#94a3b8;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;">&times;</button>
       </div>
 
       <!-- Search -->
       <div style="padding:14px 24px 10px;border-bottom:1px solid #1e2d42;flex-shrink:0;">
         <div style="position:relative;">
-          <i data-lucide="search" style="position:absolute;left:11px;top:50%;transform:translateY(-50%);width:15px;height:15px;color:#64748b;pointer-events:none;"></i>
+          <i data-lucide="search"
+            style="position:absolute;left:11px;top:50%;transform:translateY(-50%);width:15px;height:15px;color:#64748b;pointer-events:none;"></i>
           <input type="text" id="add-participants-search" placeholder="Search employees..." autocomplete="off"
             style="width:100%;padding:9px 12px 9px 34px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;font-size:13px;outline:none;font-family:inherit;box-sizing:border-box;">
         </div>
@@ -3044,11 +3283,14 @@
       </div>
 
       <!-- Footer -->
-      <div style="padding:16px 24px;border-top:1px solid #263348;display:flex;align-items:center;justify-content:space-between;gap:12px;background:#141e2d;flex-shrink:0;">
+      <div
+        style="padding:16px 24px;border-top:1px solid #263348;display:flex;align-items:center;justify-content:space-between;gap:12px;background:#141e2d;flex-shrink:0;">
         <span id="add-participants-count" style="font-size:13px;color:#64748b;">0 selected</span>
         <div style="display:flex;gap:10px;">
-          <button id="btn-cancel-add-participants" style="padding:9px 22px;border:1px solid #475569;border-radius:20px;background:none;color:#94a3b8;font-size:13px;cursor:pointer;font-family:inherit;">Cancel</button>
-          <button id="btn-send-call-invites" style="padding:9px 24px;border:none;border-radius:20px;background:#82b834;color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:background 0.2s;opacity:0.5;pointer-events:none;">
+          <button id="btn-cancel-add-participants"
+            style="padding:9px 22px;border:1px solid #475569;border-radius:20px;background:none;color:#94a3b8;font-size:13px;cursor:pointer;font-family:inherit;">Cancel</button>
+          <button id="btn-send-call-invites"
+            style="padding:9px 24px;border:none;border-radius:20px;background:#82b834;color:#fff;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:background 0.2s;opacity:0.5;pointer-events:none;">
             <span id="send-invite-btn-text">Send Invite</span>
           </button>
         </div>
@@ -3101,11 +3343,15 @@
 
     <!-- Info -->
     <div style="flex: 1; min-width: 0;">
-      <div style="font-size: 10px; color: #82b834; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 3px; display:flex; align-items:center; gap:5px;">
-        <span style="width:6px;height:6px;border-radius:50%;background:#82b834;animation:ringPulse 1s infinite;display:inline-block;"></span>
+      <div
+        style="font-size: 10px; color: #82b834; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 3px; display:flex; align-items:center; gap:5px;">
+        <span
+          style="width:6px;height:6px;border-radius:50%;background:#82b834;animation:ringPulse 1s infinite;display:inline-block;"></span>
         Incoming Call
       </div>
-      <div id="incoming-call-name" style="font-size: 14px; font-weight: 700; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom:2px;">Someone</div>
+      <div id="incoming-call-name"
+        style="font-size: 14px; font-weight: 700; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom:2px;">
+        Someone</div>
       <div style="font-size: 11px; color: #64748b;">is calling you to join a meeting</div>
     </div>
 
@@ -3135,5 +3381,5 @@
   </div>
 
 </body>
-</html>
 
+</html>

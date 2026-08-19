@@ -67,7 +67,7 @@ class MockClient {
       if (queryLower.includes('from activities')) tableName = 'activities';
       else if (queryLower.includes('from meetings')) tableName = 'meetings';
       else if (queryLower.includes('from users')) tableName = 'users';
-      
+
       const count = dbData[tableName] ? dbData[tableName].length : 0;
       return { rows: [{ count: count.toString() }] };
     }
@@ -133,9 +133,10 @@ class MockClient {
         gmail: values[8],
         phone: values[9],
         domain: values[10],
-        aadhar: values[11]
+        aadhar: values[11],
+        workEmail: values[12]
       };
-      
+
       const idx = dbData.users.findIndex(x => x.username.toLowerCase() === u.username.toLowerCase());
       if (idx !== -1) {
         dbData.users[idx] = { ...dbData.users[idx], ...u };
@@ -248,7 +249,7 @@ class MockClient {
         markedByName: values[6],
         createdAt: new Date().toISOString()
       };
-      
+
       const idx = dbData.attendance.findIndex(x => x.userId === att.userId && x.date === att.date && x.meetingType === att.meetingType);
       if (idx !== -1) {
         dbData.attendance[idx] = { ...dbData.attendance[idx], ...att };
@@ -296,7 +297,7 @@ class MockClient {
       const userId = values[0];
       const chatId = values[1];
       const val = values[2];
-      
+
       const prefIdx = dbData.user_chat_preferences.findIndex(x => x.userId === userId && x.chatId === chatId);
       let updatedPref = {};
       if (prefIdx !== -1) {
@@ -336,7 +337,17 @@ class MockClient {
     }
 
     if (queryLower.startsWith('update users')) {
-      const id = values[9];
+      // Password-only update (from /api/auth reset-password & change-password)
+      if (queryLower.includes('set "password"')) {
+        const pidx = dbData.users.findIndex(x => x.id === values[1]);
+        if (pidx !== -1) {
+          dbData.users[pidx].password = values[0];
+          saveMockDb(dbData);
+        }
+        return { rows: [] };
+      }
+
+      const id = values[10];
       const idx = dbData.users.findIndex(x => x.id === id);
       if (idx !== -1) {
         dbData.users[idx] = {
@@ -349,7 +360,9 @@ class MockClient {
           gmail: values[5],
           phone: values[6],
           domain: values[7],
-          aadhar: values[8]
+          // Mirror the server's COALESCE guard: null means "keep existing value"
+          aadhar: (values[8] === null || values[8] === undefined) ? dbData.users[idx].aadhar : values[8],
+          workEmail: (values[9] === null || values[9] === undefined) ? dbData.users[idx].workEmail : values[9]
         };
         saveMockDb(dbData);
       }
@@ -445,7 +458,7 @@ class MockClient {
     return { rows: [] };
   }
 
-  release() {}
+  release() { }
 }
 
 class MockPool {
@@ -525,7 +538,7 @@ const pool = {
 async function initDb() {
   try {
     await ensureDatabaseExists();
-    
+
     const client = await pool.connect();
     console.log('[DB] Connected to PostgreSQL medastrax');
 
@@ -541,11 +554,16 @@ async function initDb() {
         "status" VARCHAR(50),
         "availabilityStatus" VARCHAR(50),
         "gmail" VARCHAR(100),
+        "workEmail" VARCHAR(100),
         "phone" VARCHAR(50),
         "domain" VARCHAR(100),
         "aadhar" VARCHAR(50)
       )
     `);
+
+    // Restart-safe: ensure workEmail exists on databases created before this column was added.
+    // Without this, GET /api/users (which selects "workEmail") would crash on a fresh DB.
+    await client.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS "workEmail" VARCHAR(100)`);
 
     // Create tasks table
     await client.query(`
@@ -675,8 +693,8 @@ async function initDb() {
       console.log(`[DB] Seeding ${seedUsers.length} users from seed_data.json...`);
       for (const u of seedUsers) {
         await client.query(
-          `INSERT INTO users (id, username, password, fullname, role, "reportingManagerId", status, "availabilityStatus", gmail, phone, domain, aadhar) 
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+          `INSERT INTO users (id, username, password, fullname, role, "reportingManagerId", status, "availabilityStatus", gmail, phone, domain, aadhar, "workEmail") 
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
            ON CONFLICT (username) DO UPDATE SET
              id = EXCLUDED.id,
              password = EXCLUDED.password,
@@ -688,8 +706,9 @@ async function initDb() {
              gmail = EXCLUDED.gmail,
              phone = EXCLUDED.phone,
              domain = EXCLUDED.domain,
-             aadhar = EXCLUDED.aadhar`,
-          [u.id, u.username, u.password, u.fullname, u.role, u.reportingManagerId || 'none', u.status || 'Active', u.availabilityStatus || 'Active', u.gmail || '', u.phone || '', u.domain || 'General', u.aadhar || '']
+             aadhar = EXCLUDED.aadhar,
+             "workEmail" = COALESCE(EXCLUDED."workEmail", users."workEmail")`,
+          [u.id, u.username, u.password, u.fullname, u.role, u.reportingManagerId || 'none', u.status || 'Active', u.availabilityStatus || 'Active', u.gmail || '', u.phone || '', u.domain || 'General', u.aadhar || '', u.workEmail || (u.username || '').toLowerCase() + '@medastrax.com']
         );
       }
     } else {
@@ -697,14 +716,17 @@ async function initDb() {
       if (parseInt(userCountRes.rows[0].count) === 0) {
         console.log('[DB] No users found. Creating initial workspace Admin...');
         await client.query(
-          `INSERT INTO users (id, username, password, fullname, role, "reportingManagerId", status, "availabilityStatus", gmail, phone, domain, aadhar) 
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+          `INSERT INTO users (id, username, password, fullname, role, "reportingManagerId", status, "availabilityStatus", gmail, phone, domain, aadhar, "workEmail") 
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
            ON CONFLICT (username) DO NOTHING`,
-          ['usr-admin', 'admin', 'admin123', 'Workspace Administrator', 'Admin', 'none', 'Active', 'Active', 'admin@medastrax.com', '9999999999', 'Tech', '']
+          ['usr-admin', 'admin', 'admin123', 'Workspace Administrator', 'Admin', 'none', 'Active', 'Active', 'admin@medastrax.com', '9999999999', 'Tech', '', 'admin@medastrax.com']
         );
       }
     }
 
+
+    // Backfill workEmail for any user missing it (used as OTP / password-email target)
+    await client.query(`UPDATE users SET "workEmail" = LOWER(username) || '@medastrax.com' WHERE "workEmail" IS NULL OR "workEmail" = ''`);
 
     // No default task seeding — tasks are created by real users only
 
@@ -752,7 +774,7 @@ async function initDb() {
       const techTeamParticipants = ["usr-vibha", "usr-rashika", "usr-amit", "usr-naina", "usr-aryan", "usr-tanveer", "usr-saksham"];
       const marketingTeamParticipants = ["usr-prabhroop", "usr-mahakpreet", "usr-rudrakshi", "usr-dakshi", "usr-kiranveer", "usr-mehakdeep", "usr-aditi", "usr-harmandeep"];
       const foundersParticipants = ["usr-shakcham", "usr-sambhav", "usr-shivangi"];
-      
+
       await client.query(
         `INSERT INTO meetings (id, title, "time", participants, "isFixed", "roomCode") VALUES
          ($1, $2, $3, $4, $5, $6),
@@ -814,9 +836,9 @@ app.post('/api/users', async (req, res) => {
   try {
     const u = req.body;
     await pool.query(
-      `INSERT INTO users (id, username, password, fullname, role, "reportingManagerId", status, "availabilityStatus", gmail, phone, domain, aadhar) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
-      [u.id, u.username, u.password, u.fullname, u.role, u.reportingManagerId, u.status || 'Active', u.availabilityStatus || 'Active', u.gmail, u.phone, u.domain, u.aadhar]
+      `INSERT INTO users (id, username, password, fullname, role, "reportingManagerId", status, "availabilityStatus", gmail, phone, domain, aadhar, "workEmail") 
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
+      [u.id, u.username, u.password, u.fullname, u.role, u.reportingManagerId, u.status || 'Active', u.availabilityStatus || 'Active', u.gmail, u.phone, u.domain, u.aadhar, u.workEmail || (u.username || '').toLowerCase() + '@medastrax.com']
     );
     res.status(201).json(u);
   } catch (err) {
@@ -838,9 +860,19 @@ app.put('/api/users/:id', async (req, res) => {
         gmail = $6, 
         phone = $7, 
         domain = $8, 
-        aadhar = $9
-       WHERE id = $10`,
-      [u.fullname, u.role, u.reportingManagerId, u.status, u.availabilityStatus, u.gmail, u.phone, u.domain, u.aadhar, id]
+        aadhar = COALESCE($9, aadhar),
+        "workEmail" = COALESCE($10, "workEmail")
+       WHERE id = $11`,
+      [
+        u.fullname, u.role, u.reportingManagerId, u.status, u.availabilityStatus,
+        u.gmail, u.phone, u.domain,
+        // COALESCE guard: GET /api/users no longer returns aadhar, so callers that
+        // update an unrelated field (e.g. duty status) send it as undefined.
+        // Sending null keeps the stored value instead of wiping it.
+        (u.aadhar === undefined || u.aadhar === null || u.aadhar === '') ? null : u.aadhar,
+        (u.workEmail === undefined || u.workEmail === null || u.workEmail === '') ? null : u.workEmail,
+        id
+      ]
     );
     res.json({ message: 'User updated successfully' });
   } catch (err) {
@@ -1137,19 +1169,19 @@ app.post('/api/video/join', (req, res) => {
   if (client) {
     client.room = room;
     client.username = username;
-    
+
     // Notify all other clients in the same room that a new user joined
     broadcastToRoom(room, userId, {
       type: 'user-joined',
       userId,
       username
     });
-    
+
     // Send the list of existing users currently in the room back to the joiner
     const existingUsers = videoClients
       .filter(c => c.room === room && c.userId !== userId)
       .map(c => ({ userId: c.userId, username: c.username }));
-      
+
     io.emit("employeeStatusChanged", { userId, status: 'in_meeting' });
     res.json({ existingUsers });
   } else {
@@ -1193,7 +1225,7 @@ app.get('/api/employees/status', async (req, res) => {
   try {
     const usersRes = await pool.query('SELECT id, fullname, username FROM users');
     const users = usersRes.rows;
-    
+
     // Get active video users
     const videoUserIds = new Set(
       videoClients.filter(c => c.room !== null).map(c => c.userId)
@@ -1350,7 +1382,7 @@ app.post("/api/chat/mark-read", async (req, res) => {
   try {
     const { userId, chatId } = req.body;
     if (!userId || !chatId) return res.status(400).json({ error: "userId and chatId are required" });
-    
+
     // Update user preferences
     await pool.query(
       `INSERT INTO user_chat_preferences ("userId", "chatId", "lastReadTimestamp") 
@@ -1425,7 +1457,7 @@ io.on("connection", (socket) => {
     socket.room = data.room;
     socket.userId = data.userId;
     socket.fullname = data.fullname;
-    
+
     // Broadcast status to let others know a new user joined
     io.to(data.room).emit("meeting-status-update", {
       room: data.room,
