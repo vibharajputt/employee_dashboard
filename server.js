@@ -504,32 +504,71 @@ function saveMockDb(data) {
 
 const pgPool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: isCloudDb ? { rejectUnauthorized: false } : false
+  ssl: isCloudDb ? { rejectUnauthorized: false } : false,
+  // Neon closes idle connections; keep the pool small and recycle promptly so a
+  // dropped socket surfaces as a retryable error instead of a hung request.
+  max: 5,
+  idleTimeoutMillis: 20000,
+  connectionTimeoutMillis: 10000,
+  keepAlive: true
 });
+
+// An idle client erroring out (Neon dropping the socket) must NOT crash the process.
+// Without this handler Node treats it as an unhandled 'error' event.
+pgPool.on('error', (err) => {
+  console.warn('[DB] Idle client error (pool will recover):', err.message);
+});
+
+// The Mock DB is a LOCAL DEVELOPMENT convenience only.
+// In production it is actively dangerous: mock_db.json is gitignored, so the mock
+// store is EMPTY on the server. If a single transient Neon error flipped the app
+// over to it, every endpoint would start returning [] — logins fail, lists render
+// blank — while the app still looked healthy. Never enable it against a cloud DB.
+const MOCK_DB_ENABLED = !isCloudDb && process.env.NODE_ENV !== 'production';
+
+function shouldFallback(err) {
+  if (!MOCK_DB_ENABLED) return false;
+  isUsingMockDb = true;
+  console.warn('[DB] PostgreSQL unavailable — using local Mock DB fallback.', err.message);
+  return true;
+}
+
+// Transient network/socket errors are worth one immediate retry: Neon frequently
+// closes pooled connections, and the first query after that always fails.
+function isTransient(err) {
+  const code = err && err.code;
+  return code === 'ECONNRESET' || code === 'EPIPE' || code === 'ETIMEDOUT' ||
+    code === 'ECONNREFUSED' || code === '57P01' || code === '08006' ||
+    code === '08003' || code === 'XX000' ||
+    /terminat|socket|timeout|connection/i.test((err && err.message) || '');
+}
 
 const pool = {
   async connect() {
-    if (isUsingMockDb) {
-      return new MockClient();
-    }
+    if (isUsingMockDb && MOCK_DB_ENABLED) return new MockClient();
     try {
       return await pgPool.connect();
     } catch (err) {
-      console.warn("[DB] PostgreSQL connection failed. Switching to local Mock DB fallback.", err.message);
-      isUsingMockDb = true;
-      return new MockClient();
+      if (isTransient(err)) {
+        try { return await pgPool.connect(); } catch (retryErr) { err = retryErr; }
+      }
+      if (shouldFallback(err)) return new MockClient();
+      console.error('[DB] PostgreSQL connection failed:', err.message);
+      throw err;
     }
   },
   async query(text, values) {
-    if (isUsingMockDb) {
-      return new MockClient().query(text, values);
-    }
+    if (isUsingMockDb && MOCK_DB_ENABLED) return new MockClient().query(text, values);
     try {
       return await pgPool.query(text, values);
     } catch (err) {
-      console.warn("[DB] PostgreSQL query failed. Switching to local Mock DB fallback.", err.message);
-      isUsingMockDb = true;
-      return new MockClient().query(text, values);
+      if (isTransient(err)) {
+        try { return await pgPool.query(text, values); } catch (retryErr) { err = retryErr; }
+      }
+      if (shouldFallback(err)) return new MockClient().query(text, values);
+      // Fail loudly instead of silently serving empty data.
+      console.error('[DB] Query failed:', err.message);
+      throw err;
     }
   }
 };
