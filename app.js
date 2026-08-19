@@ -19,8 +19,8 @@
 
 
  */
-// Ã°Å¸Å¡â‚¬ [MedAstraX] Version 2.5 - PostgreSQL Mode Active
-console.log("Ã°Å¸Å¡â‚¬ [MedAstraX] Version 2.5 - PostgreSQL Mode Active");
+// 🚀 [MedAstraX] Version 2.5 - PostgreSQL Mode Active
+console.log("🚀 [MedAstraX] Version 2.5 - PostgreSQL Mode Active");
 
 
 
@@ -49,7 +49,7 @@ socket.on("connect", () => {
   console.log("SOCKET CONNECTED:", socket.id);
 });
 
-// â”€â”€ GLOBAL: Incoming Call Invite (must be registered at global scope so it fires during meetings) â”€â”€
+// ── GLOBAL: Incoming Call Invite (must be registered at global scope so it fires during meetings) ──
 let _ringAudioCtx = null;
 let _ringInterval = null;
 let _callAutoDismiss = null;
@@ -58,7 +58,7 @@ let _pendingCallerId = null;
 
 function _playRingTone() {
   _stopRingTone();
-  try { _ringAudioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) { return; }
+  try { _ringAudioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { return; }
 
   // Nokia-style classic phone ring: pleasant rising chord pattern
   const notes = [
@@ -72,7 +72,7 @@ function _playRingTone() {
     if (!_ringAudioCtx) return;
     let time = _ringAudioCtx.currentTime;
     notes.forEach(({ freq, dur }) => {
-      const osc  = _ringAudioCtx.createOscillator();
+      const osc = _ringAudioCtx.createOscillator();
       const gain = _ringAudioCtx.createGain();
       osc.connect(gain); gain.connect(_ringAudioCtx.destination);
       osc.type = 'triangle';
@@ -87,7 +87,7 @@ function _playRingTone() {
     // Short pause, then repeat the same 4 notes
     time += 0.08;
     notes.forEach(({ freq, dur }) => {
-      const osc  = _ringAudioCtx.createOscillator();
+      const osc = _ringAudioCtx.createOscillator();
       const gain = _ringAudioCtx.createGain();
       osc.connect(gain); gain.connect(_ringAudioCtx.destination);
       osc.type = 'triangle';
@@ -107,7 +107,7 @@ function _playRingTone() {
 
 function _stopRingTone() {
   if (_ringInterval) { clearInterval(_ringInterval); _ringInterval = null; }
-  if (_ringAudioCtx) { try { _ringAudioCtx.close(); } catch(e) {} _ringAudioCtx = null; }
+  if (_ringAudioCtx) { try { _ringAudioCtx.close(); } catch (e) { } _ringAudioCtx = null; }
 }
 
 function _showIncomingCallBanner(callerName, room) {
@@ -143,8 +143,19 @@ function _dismissIncomingCall() {
   if (_callAutoDismiss) { clearTimeout(_callAutoDismiss); _callAutoDismiss = null; }
 }
 
+let _lastCallKey = null;
+let _lastCallAt = 0;
+
 function _handleIncomingCallInvite(data) {
   if (!currentUser || !data) return;
+
+  // De-dupe: the same invite is broadcast under two event names, and the sender
+  // emits both. Ignore repeats of the same call within 10 seconds.
+  const dedupeKey = `${data.callerId || ""}|${data.room || data.roomCode || ""}`;
+  const now = Date.now();
+  if (_lastCallKey === dedupeKey && (now - _lastCallAt) < 10000) return;
+  _lastCallKey = dedupeKey;
+  _lastCallAt = now;
   const myId = String(currentUser.id || "").toLowerCase().trim();
   const rawTargets = data.targetUserIds || (data.targetUserId ? [data.targetUserId] : []);
   const targetIds = rawTargets.map(id => String(id).toLowerCase().trim());
@@ -158,7 +169,7 @@ function _handleIncomingCallInvite(data) {
   if (typeof addAppNotification === "function") {
     addAppNotification({
       type: "meeting",
-      title: `ðŸ“ž Incoming Call from ${caller}`,
+      title: `📞 Incoming Call from ${caller}`,
       message: `${caller} is calling you to join meeting room: ${room}`,
       sender: caller,
       actionTab: "meetings"
@@ -167,6 +178,8 @@ function _handleIncomingCallInvite(data) {
   _showIncomingCallBanner(caller, room);
 }
 
+// Both event names are emitted for backwards compatibility, so the same call can
+// arrive 2-3 times. _handleIncomingCallInvite de-dupes on (callerId|room).
 socket.on("instant-call-invite", _handleIncomingCallInvite);
 socket.on("incoming-call", _handleIncomingCallInvite);
 
@@ -182,7 +195,7 @@ socket.on("call-declined", (data) => {
     const videoTile = document.getElementById(`video-container-${declinerId}`);
     if (videoTile) videoTile.remove();
     if (typeof peerConnections !== "undefined" && peerConnections[declinerId]) {
-      try { peerConnections[declinerId].close(); } catch(e){}
+      try { peerConnections[declinerId].close(); } catch (e) { }
       delete peerConnections[declinerId];
     }
     if (typeof renderParticipantsList === "function") renderParticipantsList();
@@ -194,7 +207,7 @@ socket.on("call-declined", (data) => {
 });
 
 function _initCallBannerButtons() {
-  const btnAccept  = document.getElementById('btn-accept-call');
+  const btnAccept = document.getElementById('btn-accept-call');
   const btnDecline = document.getElementById('btn-decline-call');
   if (btnAccept) {
     btnAccept.onclick = () => {
@@ -276,10 +289,10 @@ const DEFAULT_USERS = [];
 
 
 
-// No default tasks Ã¢â‚¬â€ all tasks are created by real team members via the portal
+// No default tasks â€â€ all tasks are created by real team members via the portal
 const DEFAULT_TASKS = [];
 
-// Default activity log Ã¢â‚¬â€ only the system init message is kept
+// Default activity log â€â€ only the system init message is kept
 const DEFAULT_ACTIVITIES = [
   {
     id: "act-1",
@@ -398,7 +411,7 @@ function initDatabase() {
 
 
 
-      
+
 
 
 
@@ -456,10 +469,10 @@ function initDatabase() {
     localStorage.setItem("medastrax_leaves", JSON.stringify([]));
   }
 }
-  if (!localStorage.getItem("medastrax_activities")) {
-    localStorage.setItem("medastrax_activities", JSON.stringify(DEFAULT_ACTIVITIES));
-  }
-  if (!localStorage.getItem("medastrax_leaves")) {
+if (!localStorage.getItem("medastrax_activities")) {
+  localStorage.setItem("medastrax_activities", JSON.stringify(DEFAULT_ACTIVITIES));
+}
+if (!localStorage.getItem("medastrax_leaves")) {
 }
 
 
@@ -502,7 +515,7 @@ let isSyncing = false;
 async function startRealtimeSync() {
   if (isSyncing) return;
   isSyncing = true;
-  
+
   try {
     const ts = Date.now();
     const [usersRes, tasksRes, leavesRes, activitiesRes, attendanceRes, meetingsRes] = await Promise.all([
@@ -515,7 +528,7 @@ async function startRealtimeSync() {
     ]);
 
     let changed = false;
-    
+
     if (JSON.stringify(cachedUsers) !== JSON.stringify(usersRes)) {
       cachedUsers = usersRes;
       changed = true;
@@ -567,7 +580,7 @@ setInterval(startRealtimeSync, 5000);
 
 const db = {
   getUsers: () => JSON.parse(JSON.stringify(cachedUsers || [])),
-  
+
   saveUsers: async (users) => {
     const oldUsers = [...cachedUsers];
     cachedUsers = [...users];
@@ -703,7 +716,7 @@ const db = {
       userId: (typeof currentUser !== 'undefined' && currentUser) ? currentUser.id : "system"
     };
     cachedActivities.unshift(newAct);
-    
+
     fetch('/api/activities', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -844,7 +857,7 @@ function checkAuth() {
 
 
 
-window.selectPortal = function(type) {
+window.selectPortal = function (type) {
 
 
 
@@ -964,7 +977,7 @@ window.selectPortal = function(type) {
 
 
 
-  
+
 
 
 
@@ -992,7 +1005,7 @@ window.selectPortal = function(type) {
 
 
 
-    
+
 
 
 
@@ -1004,7 +1017,7 @@ window.selectPortal = function(type) {
 
 
 
-    
+
 
 
 
@@ -1056,8 +1069,8 @@ async function handleLogin(username, password) {
   // This legacy stub is intentionally minimal.
   // auth-ui.js (loaded after app.js) overrides window.handleLogin with mxHandleLogin,
   // which uses server-side OTP auth via /api/auth/login.
-  // If this function is ever called it means auth-ui.js failed to load â€” fail loudly.
-  console.error("[Auth] Legacy client-side handleLogin called â€” auth-ui.js did not load or override was lost.");
+  // If this function is ever called it means auth-ui.js failed to load — fail loudly.
+  console.error("[Auth] Legacy client-side handleLogin called — auth-ui.js did not load or override was lost.");
   if (typeof showToast === "function") {
     showToast("Login system not loaded. Please hard-refresh the page (Ctrl+Shift+R).", "error");
   }
@@ -1146,7 +1159,7 @@ function showLoginScreen() {
 
 
 
-  
+
 
 
 
@@ -1243,7 +1256,7 @@ function setupWorkspace() {
 
 
 
-  
+
 
 
 
@@ -1263,7 +1276,7 @@ function setupWorkspace() {
 
 
 
-  
+
 
 
 
@@ -1299,7 +1312,7 @@ function setupWorkspace() {
 
 
 
-  
+
 
 
 
@@ -1314,7 +1327,7 @@ function setupWorkspace() {
 
 
 
-  
+
 
 
 
@@ -1442,12 +1455,12 @@ function syncMeetingPipWidget(activeTab) {
   const pipWidget = document.getElementById("meeting-pip-widget");
   const pipVideoArea = document.getElementById("meeting-pip-video-container");
   const mainVideoGrid = document.getElementById("video-grid");
-  
+
   if (!pipWidget || !pipVideoArea || !mainVideoGrid) return;
 
   if (currentRoom && activeTab !== "meetings") {
     pipWidget.classList.remove("hidden");
-    
+
     // Move video containers to PiP widget
     const videoContainers = mainVideoGrid.querySelectorAll("[id^='video-container-']");
     videoContainers.forEach(container => {
@@ -1457,7 +1470,7 @@ function syncMeetingPipWidget(activeTab) {
 
     const pipMinimizeBtn = document.getElementById("btn-pip-minimize");
     const pipExpandBtn = document.getElementById("btn-pip-expand");
-    
+
     if (pipMinimizeBtn) {
       pipMinimizeBtn.onclick = (e) => {
         e.stopPropagation();
@@ -1476,7 +1489,7 @@ function syncMeetingPipWidget(activeTab) {
         lucide.createIcons();
       };
     }
-    
+
     if (pipExpandBtn) {
       pipExpandBtn.onclick = (e) => {
         e.stopPropagation();
@@ -1485,7 +1498,7 @@ function syncMeetingPipWidget(activeTab) {
     }
   } else {
     pipWidget.classList.add("hidden");
-    
+
     // Move video containers back to main grid
     const videoContainers = pipVideoArea.querySelectorAll("[id^='video-container-']");
     videoContainers.forEach(container => {
@@ -1649,7 +1662,7 @@ function getVisibleActivities(currentUser, users, activities) {
 
 
 
-  
+
 
 
 
@@ -1665,7 +1678,7 @@ function getVisibleActivities(currentUser, users, activities) {
 
 
 
-  
+
 
 
 
@@ -1705,7 +1718,7 @@ function getVisibleActivities(currentUser, users, activities) {
 
 
 
-    
+
 
 
 
@@ -1721,24 +1734,24 @@ function getVisibleActivities(currentUser, users, activities) {
 function renderActivitiesTimeline() {
   const timeline = document.getElementById("activity-timeline-container");
   if (!timeline) return;
-  
+
   timeline.innerHTML = "";
   const users = db.getUsers() || [];
   const activities = db.getActivities() || [];
   const visibleActivities = getVisibleActivities(currentUser, users, activities);
-  
+
   if (visibleActivities.length === 0) {
     timeline.innerHTML = `<span class="text-muted" style="font-size:0.85rem; text-align:center; display:block; padding:16px;">No recent activities logged</span>`;
   } else {
     visibleActivities.forEach(act => {
       const actTime = new Date(act.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       const actDate = new Date(act.timestamp).toLocaleDateString([], { month: 'short', day: 'numeric' });
-      
+
       let iconName = "bell";
       let iconColor = "var(--color-primary)";
       let bgColor = "rgba(5, 47, 95, 0.04)";
       let borderLeftColor = "var(--color-primary)";
-      
+
       if (act.type === "success") {
         iconName = "check-circle";
         iconColor = "var(--color-success)";
@@ -1765,7 +1778,7 @@ function renderActivitiesTimeline() {
         bgColor = "rgba(5, 47, 95, 0.04)";
         borderLeftColor = "var(--color-primary)";
       }
-      
+
       const div = document.createElement("div");
       div.className = `activity-item ${act.type}-activity`;
       div.innerHTML = `
@@ -1887,7 +1900,7 @@ function renderOverviewTab() {
 
 
   const activities = db.getActivities();
-  
+
   // Hide team attendance
   let isHead = currentUser.role === "Admin" || currentUser.role === "Manager" || currentUser.role === "Technical Lead" || currentUser.role === "Team Lead";
 
@@ -2396,12 +2409,12 @@ function renderOverviewTab() {
   statsContainer.innerHTML = statsHTML;
   // Render recent activities
   renderActivitiesTimeline();
-  
+
   // Render Attendance Graph
   if (typeof renderTeamAttendanceChart === 'function') {
     renderTeamAttendanceChart();
   }
-  
+
   // Space helper
   // Render security card details
 
@@ -2435,7 +2448,7 @@ function renderOverviewTab() {
   (async () => {
     const aadharEl = document.getElementById("profile-aadhar");
     if (!aadharEl) return;
-    aadharEl.textContent = "Loadingâ€¦";
+    aadharEl.textContent = "Loading…";
     try {
       const sr = await fetch(`/api/users/${currentUser.id}/sensitive`);
       if (sr.ok) { const sd = await sr.json(); aadharEl.textContent = sd.aadhar || "N/A"; }
@@ -2445,7 +2458,7 @@ function renderOverviewTab() {
 
 
 
-  
+
 
 
 
@@ -3169,7 +3182,7 @@ function renderPerformanceTab() {
 
 
 
-            label: function(context) {
+            label: function (context) {
 
 
 
@@ -3253,7 +3266,7 @@ function renderPerformanceTab() {
 
 
 
-            callback: function(value) {
+            callback: function (value) {
 
 
 
@@ -3448,7 +3461,7 @@ function renderHierarchyTab() {
 
 
 
-  
+
 
 
 
@@ -3545,7 +3558,7 @@ function renderHierarchyTab() {
 
       ul.appendChild(topLi);
     } else {
-      // For Manager / Team Lead Ã¢â‚¬â€ construct the complete downwards tree
+      // For Manager / Team Lead â€â€ construct the complete downwards tree
       ul.appendChild(buildTreeHTML(rootNode, users));
     }
   }
@@ -3599,21 +3612,21 @@ function buildTreeHTML(node, usersList) {
   if (node.isDual) {
     const dualContainer = document.createElement("div");
     dualContainer.className = "dual-node-container";
-    
+
     const card1 = createNodeCard(node.parent1, usersList, false);
     const card2 = createNodeCard(node.parent2, usersList, hasChildren);
-    
+
     dualContainer.appendChild(card1);
     dualContainer.appendChild(card2);
     li.appendChild(dualContainer);
-    
+
     if (hasChildren) {
       const ul = document.createElement("ul");
       children.forEach(child => {
         ul.appendChild(buildTreeHTML(child, usersList));
       });
       li.appendChild(ul);
-      
+
       card2.addEventListener("click", () => {
         ul.classList.toggle("collapsed");
         card2.classList.toggle("node-collapsed");
@@ -3644,21 +3657,21 @@ function buildTreeHTML(node, usersList) {
 
 function getNodeDisplayDomain(node) {
   if (!node) return "N/A";
-  
+
   if (node.id === "usr-rashika") {
     return "Head of technology";
   }
   if (node.id === "usr-tanveer") {
     return "AI & Full stack Executive";
   }
-  
+
   if (node.fullname) {
     const match = node.fullname.match(/\(([^)]+)\)/);
     if (match && match[1]) {
       return match[1].trim();
     }
   }
-  
+
   return node.domain || "N/A";
 }
 
@@ -3695,7 +3708,7 @@ function createNodeCard(node, usersList, hasChildren = false) {
 
 
 
-  
+
 
 
 
@@ -3731,7 +3744,7 @@ function createNodeCard(node, usersList, hasChildren = false) {
 
 
 
-  
+
 
 
 
@@ -3796,7 +3809,7 @@ function createNodeCard(node, usersList, hasChildren = false) {
 
 
 
-  
+
 
 
 
@@ -3868,27 +3881,27 @@ function renderEmployeesTab() {
 
 
 
-    const matchesSearch = u.fullname.toLowerCase().includes(searchVal) || 
+    const matchesSearch = u.fullname.toLowerCase().includes(searchVal) ||
 
 
 
-                          u.username.toLowerCase().includes(searchVal) || 
+      u.username.toLowerCase().includes(searchVal) ||
 
 
 
-                          u.id.toLowerCase().includes(searchVal) ||
+      u.id.toLowerCase().includes(searchVal) ||
 
 
 
-                          (u.gmail && u.gmail.toLowerCase().includes(searchVal)) ||
+      (u.gmail && u.gmail.toLowerCase().includes(searchVal)) ||
 
 
 
-                          (u.phone && u.phone.includes(searchVal)) ||
+      (u.phone && u.phone.includes(searchVal)) ||
 
 
 
-                          (u.domain && u.domain.toLowerCase().includes(searchVal));
+      (u.domain && u.domain.toLowerCase().includes(searchVal));
 
 
 
@@ -3915,7 +3928,7 @@ function renderEmployeesTab() {
 
 
 
-    
+
 
 
 
@@ -3931,7 +3944,7 @@ function renderEmployeesTab() {
 
 
 
-    
+
 
 
 
@@ -3947,11 +3960,11 @@ function renderEmployeesTab() {
 
 
 
-      const deleteBtn = isRootAdmin 
+      const deleteBtn = isRootAdmin
 
 
 
-        ? `<span class="text-muted" style="font-size: 0.85rem;">Protected</span>` 
+        ? `<span class="text-muted" style="font-size: 0.85rem;">Protected</span>`
 
 
 
@@ -4029,7 +4042,7 @@ function renderEmployeesTab() {
 
 
 
-  
+
 
 
 
@@ -4045,7 +4058,7 @@ function renderEmployeesTab() {
 
 
 
-window.deleteEmployee = function(userId) {
+window.deleteEmployee = function (userId) {
 
 
 
@@ -4253,11 +4266,11 @@ function renderTasksTab() {
 
 
 
-    processedTasks = processedTasks.filter(t => 
+    processedTasks = processedTasks.filter(t =>
 
 
 
-      t.title.toLowerCase().includes(searchVal) || 
+      t.title.toLowerCase().includes(searchVal) ||
 
 
 
@@ -4401,7 +4414,7 @@ function renderTasksTab() {
 
 
 
-    
+
 
 
 
@@ -4433,7 +4446,7 @@ function renderTasksTab() {
 
 
 
-    
+
 
 
 
@@ -4473,7 +4486,7 @@ function renderTeamTasksTable(users, tasks) {
 
 
 
-  
+
 
 
 
@@ -4665,7 +4678,7 @@ function renderTeamTasksTable(users, tasks) {
 
 
 
-    
+
 
 
 
@@ -4673,7 +4686,7 @@ function renderTeamTasksTable(users, tasks) {
 
 
 
-    
+
 
 
 
@@ -4817,7 +4830,7 @@ function renderTeamTasksTable(users, tasks) {
 
 
 
-window.deleteTask = function(taskId) {
+window.deleteTask = function (taskId) {
 
 
 
@@ -4849,7 +4862,7 @@ window.deleteTask = function(taskId) {
 
 
 
-    
+
 
 
 
@@ -4921,7 +4934,7 @@ function renderKanbanBoard(tasks) {
 
 
 
-  
+
 
 
 
@@ -4981,7 +4994,7 @@ function renderKanbanBoard(tasks) {
 
 
 
-    
+
 
 
 
@@ -5089,7 +5102,7 @@ function renderKanbanBoard(tasks) {
 
 
 
-    
+
 
 
 
@@ -5125,7 +5138,7 @@ function renderKanbanBoard(tasks) {
 
 
 
-  
+
 
 
 
@@ -5141,7 +5154,7 @@ function renderKanbanBoard(tasks) {
 
 
 
-window.updateTaskStatus = function(taskId, newStatus) {
+window.updateTaskStatus = function (taskId, newStatus) {
 
 
 
@@ -5153,7 +5166,7 @@ window.updateTaskStatus = function(taskId, newStatus) {
 
 
 
-  
+
 
 
 
@@ -5309,7 +5322,7 @@ function openEmployeeModal() {
 
 
 
-  
+
 
 
 
@@ -5469,7 +5482,7 @@ function handleAddEmployee(e) {
 
 
 
-  
+
 
 
 
@@ -5493,7 +5506,7 @@ function handleAddEmployee(e) {
 
 
 
-  
+
 
 
 
@@ -5617,7 +5630,7 @@ function handleAddEmployee(e) {
 
 
 
-  
+
 
 
 
@@ -5745,7 +5758,7 @@ function handleAddEmployee(e) {
 
 
 
-window.openEditEmployeeModal = function(userId) {
+window.openEditEmployeeModal = function (userId) {
 
 
 
@@ -5793,7 +5806,7 @@ window.openEditEmployeeModal = function(userId) {
   (async () => {
     const editAadharEl = document.getElementById("edit-aadhar");
     if (!editAadharEl) return;
-    editAadharEl.placeholder = "Loadingâ€¦";
+    editAadharEl.placeholder = "Loading…";
     try {
       const sr = await fetch(`/api/users/${user.id}/sensitive`);
       if (sr.ok) { const sd = await sr.json(); editAadharEl.value = sd.aadhar || ""; }
@@ -5803,7 +5816,7 @@ window.openEditEmployeeModal = function(userId) {
 
 
 
-  
+
 
 
 
@@ -6007,7 +6020,7 @@ window.openEditEmployeeModal = function(userId) {
 
 
 
-window.closeEditEmployeeModal = function() {
+window.closeEditEmployeeModal = function () {
 
 
 
@@ -6055,7 +6068,7 @@ function handleEditEmployee(e) {
 
 
 
-  
+
 
 
 
@@ -6159,7 +6172,7 @@ function handleEditEmployee(e) {
 
 
 
-  
+
 
 
 
@@ -6307,7 +6320,7 @@ function handleEditEmployee(e) {
 
 
 
-    
+
 
 
 
@@ -6703,7 +6716,7 @@ let currentUploadedDeliverables = [];
 
 
 
-window.openTaskDetails = function(taskId) {
+window.openTaskDetails = function (taskId) {
 
 
 
@@ -6955,7 +6968,7 @@ window.openTaskDetails = function(taskId) {
 
 
 
-                Ã°Å¸â€œÂ· ${item.name} ${item.size ? `(${item.size})` : ''}
+                📷 ${item.name} ${item.size ? `(${item.size})` : ''}
 
 
 
@@ -6991,7 +7004,7 @@ window.openTaskDetails = function(taskId) {
 
 
 
-                Ã°Å¸Å½Â¥ ${item.name} ${item.size ? `(${item.size})` : ''}
+                🎥 ${item.name} ${item.size ? `(${item.size})` : ''}
 
 
 
@@ -7295,7 +7308,7 @@ window.openTaskDetails = function(taskId) {
 
 
 
-    
+
 
 
 
@@ -7547,7 +7560,7 @@ window.openTaskDetails = function(taskId) {
 
 
 
-window.closeTaskDetailsModal = function() {
+window.closeTaskDetailsModal = function () {
 
 
 
@@ -7571,7 +7584,7 @@ window.closeTaskDetailsModal = function() {
 
 
 
-window.updateTaskStatusInModal = function(taskId, newStatus) {
+window.updateTaskStatusInModal = function (taskId, newStatus) {
 
 
 
@@ -7607,7 +7620,7 @@ window.updateTaskStatusInModal = function(taskId, newStatus) {
 
 
 
-    
+
 
 
 
@@ -7643,7 +7656,7 @@ window.updateTaskStatusInModal = function(taskId, newStatus) {
 
 
 
-window.submitTaskForReviewInModal = function(taskId) {
+window.submitTaskForReviewInModal = function (taskId) {
 
 
 
@@ -7687,7 +7700,7 @@ window.submitTaskForReviewInModal = function(taskId) {
 
 
 
-    
+
 
 
 
@@ -7719,7 +7732,7 @@ window.submitTaskForReviewInModal = function(taskId) {
 
 
 
-    
+
 
 
 
@@ -7727,7 +7740,7 @@ window.submitTaskForReviewInModal = function(taskId) {
 
 
 
-    
+
 
 
 
@@ -7787,7 +7800,7 @@ window.submitTaskForReviewInModal = function(taskId) {
 
 
 
-window.approveTaskInModal = function(taskId) {
+window.approveTaskInModal = function (taskId) {
 
 
 
@@ -7859,7 +7872,7 @@ window.approveTaskInModal = function(taskId) {
 
 
 
-window.showRejectFeedbackInput = function() {
+window.showRejectFeedbackInput = function () {
 
 
 
@@ -7903,7 +7916,7 @@ window.showRejectFeedbackInput = function() {
 
 
 
-window.cancelRejectFeedback = function() {
+window.cancelRejectFeedback = function () {
 
 
 
@@ -7923,7 +7936,7 @@ window.cancelRejectFeedback = function() {
 
 
 
-window.submitRejectTask = function(taskId) {
+window.submitRejectTask = function (taskId) {
 
 
 
@@ -8047,7 +8060,7 @@ function renderSettingsTab() {
 
 
 
-  
+
 
 
 
@@ -8063,7 +8076,7 @@ function renderSettingsTab() {
 
 
 
-  
+
 
 
 
@@ -8091,7 +8104,7 @@ function renderSettingsTab() {
 
 
 
-  
+
 
 
 
@@ -8203,7 +8216,7 @@ function showToast(message, type = "success") {
 
 
 
-  
+
 
 
 
@@ -8312,7 +8325,7 @@ function toggleTheme() {
 
 
 
-  
+
 
 
 
@@ -8324,7 +8337,7 @@ function toggleTheme() {
 
 
 
-  
+
 
 
 
@@ -8388,7 +8401,7 @@ function updateThemeIcons(theme) {
 
 
 
-  
+
 
 
 
@@ -8452,7 +8465,7 @@ function initECG() {
 
 
 
-  
+
 
 
 
@@ -8464,7 +8477,7 @@ function initECG() {
 
 
 
-  
+
 
 
 
@@ -8500,7 +8513,7 @@ function initECG() {
 
 
 
-  
+
 
 
 
@@ -8548,7 +8561,7 @@ function initECG() {
 
 
 
-  
+
 
 
 
@@ -8728,7 +8741,7 @@ function initECG() {
 
 
 
-      
+
 
 
 
@@ -8772,7 +8785,7 @@ function initECG() {
 
 
 
-      
+
 
 
 
@@ -8816,7 +8829,7 @@ function initECG() {
 
 
 
-  
+
 
 
 
@@ -8845,17 +8858,17 @@ function initECG() {
 
 
 }
-// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€
 // 10.5. Leave Management Core Functionality
-// Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€
 function buildApprovalChain(user, usersList) {
   const chain = [];
   if (!user) return chain;
 
   const list = Array.isArray(usersList) ? usersList : [];
 
-  // Co-founder IDs Ã¢â‚¬â€ appear in the chain as record-only (leave auto-approves when it reaches them)
-  // Dynamically derive top-level heads: Admin role with no reporting manager â€” they appear as record-only
+  // Co-founder IDs â€â€ appear in the chain as record-only (leave auto-approves when it reaches them)
+  // Dynamically derive top-level heads: Admin role with no reporting manager — they appear as record-only
   const coFounderIds = list
     .filter(u => u.role === "Admin" && (!u.reportingManagerId || u.reportingManagerId === "none"))
     .map(u => u.id);
@@ -8900,15 +8913,15 @@ function buildApprovalChain(user, usersList) {
     }
   }
 
-  // No extra admin appended Ã¢â‚¬â€ chain naturally ends at co-founder level
+  // No extra admin appended â€â€ chain naturally ends at co-founder level
   return chain;
 }
 function getWeekRange(dateString) {
   const parts = dateString.split('-');
-  const date = parts.length === 3 
+  const date = parts.length === 3
     ? new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]))
     : new Date(dateString);
-  
+
   const day = date.getDay();
   const diff = date.getDate() - day + (day === 0 ? -6 : 1);
   const monday = new Date(date.setDate(diff));
@@ -8925,13 +8938,13 @@ function validateLeaveDates(fromDateStr, toDateStr, userId) {
   console.log("Current Leaves in Cache:", db.getLeaves());
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  
+
   const fParts = fromDateStr.split('-');
   const fromDate = fParts.length === 3
     ? new Date(Number(fParts[0]), Number(fParts[1]) - 1, Number(fParts[2]))
     : new Date(fromDateStr);
   fromDate.setHours(0, 0, 0, 0);
-  
+
   const tParts = toDateStr.split('-');
   const toDate = tParts.length === 3
     ? new Date(Number(tParts[0]), Number(tParts[1]) - 1, Number(tParts[2]))
@@ -8964,7 +8977,7 @@ function validateLeaveDates(fromDateStr, toDateStr, userId) {
       const lvFrom = lvParts.length === 3
         ? new Date(Number(lvParts[0]), Number(lvParts[1]) - 1, Number(lvParts[2]))
         : new Date(lv.fromDate);
-      
+
       if (lvFrom >= start && lvFrom <= end) {
         totalWeekDays += lv.totalDays;
       }
@@ -8985,12 +8998,12 @@ async function openLeaveModal() {
     document.getElementById("leave-emp-name").value = currentUser.fullname.replace(/\s*\(.*\)\s*/g, "");
     document.getElementById("leave-emp-role").value = currentUser.role;
     document.getElementById("leave-emp-phone").value = currentUser.phone || "N/A";
-    
+
     document.getElementById("leave-from-date").value = "";
     document.getElementById("leave-to-date").value = "";
     document.getElementById("leave-total-days").value = "";
     document.getElementById("leave-reason").value = "";
-    
+
     modal.classList.remove("hidden");
   }
 }
@@ -9038,13 +9051,13 @@ function handleLeaveSubmit(e) {
 
   const users = db.getUsers();
   const chain = buildApprovalChain(currentUser, users);
-  
+
   let status = "Pending";
   let currentApproverId = null;
 
   if (chain.length > 0) {
     if (chain[0].isRecord === true) {
-      // First step is co-founder record-only Ã¢â‚¬â€ auto-approve immediately
+      // First step is co-founder record-only â€â€ auto-approve immediately
       chain[0].status = "Approved";
       chain[0].actionDate = new Date().toISOString();
       currentApproverId = null;
@@ -9083,7 +9096,7 @@ function handleLeaveSubmit(e) {
   );
 
   showToast("Leave application submitted successfully!", "success");
-  
+
   document.getElementById("apply-leave-modal").classList.add("hidden");
   document.getElementById("leave-application-form").reset();
 
@@ -9109,7 +9122,7 @@ function approveLeaveRequest(leaveId) {
   const nextStepIndex = leave.approvalChain.findIndex(step => step.status === "Pending");
   if (nextStepIndex !== -1) {
     if (leave.approvalChain[nextStepIndex].isRecord === true) {
-      // Next step is co-founder record-only Ã¢â‚¬â€ auto-approve and finalize leave as Approved
+      // Next step is co-founder record-only â€â€ auto-approve and finalize leave as Approved
       leave.approvalChain[nextStepIndex].status = "Approved";
       leave.approvalChain[nextStepIndex].actionDate = new Date().toISOString();
       leave.currentApproverId = null;
@@ -9169,12 +9182,12 @@ let currentLeavesSubtab = "my-leaves";
 function renderLeavesTab() {
   const leaves = db.getLeaves() || [];
   const users = db.getUsers() || [];
-  
+
   // 1. My Leave Applications
   const myLeavesCard = document.getElementById("my-leaves-card");
   const openApplyLeaveModalBtn = document.getElementById("open-apply-leave-modal");
   const teamHistoryCard = document.getElementById("team-leaves-history-card");
-  
+
   const subtabsNav = document.getElementById("leaves-subtabs-nav");
   const subtabMyLeavesBtn = document.getElementById("subtab-my-leaves");
   const subtabTeamHistoryBtn = document.getElementById("subtab-team-history");
@@ -9183,7 +9196,7 @@ function renderLeavesTab() {
 
   // Dynamic Subtab Button Texts
   if (subtabMyLeavesBtn) {
-    subtabMyLeavesBtn.innerHTML = isManagerOrAdmin 
+    subtabMyLeavesBtn.innerHTML = isManagerOrAdmin
       ? `<i data-lucide="user" style="width: 14px; height: 14px; display: inline-block; vertical-align: middle; margin-right: 6px;"></i>My Leaves`
       : `<i data-lucide="calendar" style="width: 14px; height: 14px; display: inline-block; vertical-align: middle; margin-right: 6px;"></i>Leave Application`;
   }
@@ -9281,7 +9294,7 @@ function renderLeavesTab() {
       if (myLeaves.length === 0) {
         myTableBody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--text-muted);">No leave applications found.</td></tr>`;
       } else {
-        myLeaves.sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
+        myLeaves.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
         myLeaves.forEach(lv => {
           let approverText = lv.status === "Pending" ? "Pending Approval" : lv.status;
 
@@ -9308,24 +9321,24 @@ function renderLeavesTab() {
   // 2. Pending Team Leaves (shown ONLY to current level approver in hierarchy sequence)
   const pendingApprovalsCard = document.getElementById("pending-approvals-card");
   const pendingTableBody = document.getElementById("pending-leaves-table-body");
-  
+
   if (pendingApprovalsCard && pendingTableBody) {
     const pendingLeaves = leaves.filter(lv => {
       if (lv.status !== "Pending") return false;
       // Strict hierarchy: Only show leave to the current active stage approver
       return lv.currentApproverId === currentUser.id;
     });
-    
+
     if (pendingLeaves.length > 0) {
       pendingApprovalsCard.classList.remove("hidden");
       pendingTableBody.innerHTML = "";
-      
-      pendingLeaves.sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+      pendingLeaves.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
       pendingLeaves.forEach(lv => {
         const chain = lv.approvalChain || [];
         const currentStepIndex = chain.findIndex(step => step.status === "Pending");
         const stageText = currentStepIndex !== -1 ? `Level ${currentStepIndex + 1} of ${chain.length}` : "Pending";
-        
+
         pendingTableBody.innerHTML += `
           <tr>
             <td><strong>${lv.employeeName}</strong></td>
@@ -9350,7 +9363,7 @@ function renderLeavesTab() {
       document.querySelectorAll(".reject-leave-btn").forEach(btn => {
         btn.onclick = () => rejectLeaveRequest(btn.getAttribute("data-id"));
       });
-      
+
       lucide.createIcons();
     } else {
       pendingApprovalsCard.classList.add("hidden");
@@ -9381,7 +9394,7 @@ function renderLeavesTab() {
 
       const filteredLeaves = leaves.filter(lv => {
         if (lv.userId === currentUser.id) return false;
-        
+
         let hasAccess = false;
         const myStep = (lv.approvalChain || []).find(step => step.approverId === currentUser.id);
 
@@ -9389,7 +9402,7 @@ function renderLeavesTab() {
           hasAccess = (lv.status === "Approved" || lv.status === "Rejected");
         } else {
           hasAccess = (myStep && (myStep.status === "Approved" || myStep.status === "Rejected")) ||
-                      (lv.status === "Approved" || lv.status === "Rejected");
+            (lv.status === "Approved" || lv.status === "Rejected");
         }
 
         if (!hasAccess) return false;
@@ -9405,17 +9418,17 @@ function renderLeavesTab() {
       if (filteredLeaves.length === 0) {
         teamHistoryBody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--text-muted);">No matching leave history records found.</td></tr>`;
       } else {
-        filteredLeaves.sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
+        filteredLeaves.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
         filteredLeaves.forEach(lv => {
           const chain = lv.approvalChain || [];
           const currentStepIndex = chain.findIndex(s => s.status === "Pending");
-          
+
           let stageText = "";
           let cellHtml = "";
 
           if (currentUser.role === "Admin") {
             stageText = currentStepIndex !== -1 ? `Level ${currentStepIndex + 1}/${chain.length} Pending` : "All Levels Approved";
-            
+
             // Derive top-level heads dynamically
             const topHeadIds = users
               .filter(u => u.role === "Admin" && (!u.reportingManagerId || u.reportingManagerId === "none"))
@@ -9423,8 +9436,8 @@ function renderLeavesTab() {
             const viewerIsHead = topHeadIds.includes(currentUser.id);
             const viewerDisplayName = (currentUser.fullname || currentUser.username).replace(/\s*\(.*\)\s*/g, "");
             const viewerDisplayRole = (currentUser.fullname && currentUser.fullname.match(/\(([^)]+)\)/))
-                ? currentUser.fullname.match(/\(([^)]+)\)/)[1]
-                : currentUser.role;
+              ? currentUser.fullname.match(/\(([^)]+)\)/)[1]
+              : currentUser.role;
 
             if (lv.status === "Approved") {
               const approvedSteps = chain.filter(s => s.status === "Approved");
@@ -9433,7 +9446,7 @@ function renderLeavesTab() {
                   // For record-only steps: show current viewer's name if they are a top-level head
                   if (s.isRecord && viewerIsHead) return viewerDisplayName;
                   return s.approverName;
-                }).join(" â†’ ");
+                }).join(" → ");
                 stageText = `Approved by: ${names}`;
               } else {
                 stageText = "Approved";
@@ -9448,8 +9461,8 @@ function renderLeavesTab() {
               let displayName = step.approverName;
               let displayRole = step.approverRole;
               if (step.isRecord && viewerIsHead) {
-                  displayName = viewerDisplayName;
-                  displayRole = viewerDisplayRole;
+                displayName = viewerDisplayName;
+                displayRole = viewerDisplayRole;
               }
               return `${displayName} (${displayRole}): ${step.status} on ${dateStr}`;
             }).join("\n");
@@ -9482,7 +9495,7 @@ function renderLeavesTab() {
           let statusClass = "badge-team-lead"; // Pending
           if (lv.status === "Approved") statusClass = "badge-technical-lead";
           else if (lv.status === "Rejected") statusClass = "badge-admin";
-          
+
           teamHistoryBody.innerHTML += `
             <tr>
               <td><strong>${lv.employeeName}</strong></td>
@@ -9495,7 +9508,7 @@ function renderLeavesTab() {
             </tr>
           `;
         });
-        
+
         lucide.createIcons();
       }
     } else {
@@ -9532,7 +9545,7 @@ function showLeaveChainModal(leaveId) {
   const chain = leave.approvalChain || [];
   const users = db.getUsers() || [];
 
-  // Top-level heads (no reporting manager, Admin role) â€” dynamically derived
+  // Top-level heads (no reporting manager, Admin role) — dynamically derived
   const topLevelHeadIds = users
     .filter(u => u.role === "Admin" && (!u.reportingManagerId || u.reportingManagerId === "none"))
     .map(u => u.id);
@@ -9594,7 +9607,7 @@ window.showLeaveChainModal = showLeaveChainModal;
 
 function renderAttendanceTab() {
   let isHead = currentUser.role === "Admin" || currentUser.role === "Manager" || currentUser.role === "Technical Lead" || currentUser.role === "Team Lead";
-  
+
   if (currentUser.domain === "Marketing") {
     if (!["usr-parneet", "usr-prabhroop", "usr-mahakpreet"].includes(currentUser.id)) {
       isHead = false;
@@ -9608,7 +9621,7 @@ function renderAttendanceTab() {
   // Always show the employee's own attendance dashboard initially
   document.getElementById("attendance-employee-view").classList.remove("hidden");
   document.getElementById("attendance-manager-view").classList.add("hidden");
-  
+
   if (toggleWrapper) {
     toggleWrapper.classList.add("hidden");
     toggleWrapper.style.display = "none";
@@ -9620,7 +9633,7 @@ function renderAttendanceTab() {
     if (toggleWrapper) {
       toggleWrapper.classList.remove("hidden");
       toggleWrapper.style.display = "flex";
-      
+
       // Default state for Managers: Team Attendance
       document.getElementById("attendance-manager-view").classList.remove("hidden");
       document.getElementById("attendance-employee-view").classList.add("hidden");
@@ -9645,7 +9658,7 @@ function renderAttendanceTab() {
         };
       }
     }
-    
+
     const dateInput = document.getElementById("attendance-date");
     if (!dateInput.value) {
       const todayStr = new Date().toISOString().split("T")[0];
@@ -9755,7 +9768,7 @@ function renderManagerAttendanceSheet() {
   subordinates.forEach(sub => {
     const subRoleInfo = getUserRoleInfo(sub);
     const record = attendance.find(a => a.userId === sub.id && a.date === selectedDate && a.meetingType === selectedMeetingType);
-    
+
     // If database has record, load its status; otherwise default to Absent.
     const status = record ? record.status : "Absent";
     attendanceDrafts[sub.id] = status;
@@ -9814,13 +9827,13 @@ function renderManagerAttendanceSheet() {
 async function submitManagerAttendance() {
   const selectedDate = document.getElementById("attendance-date").value;
   const selectedMeetingType = document.getElementById("attendance-meeting-type").value;
-  
+
   const dateValidation = validateAttendanceDate(selectedDate);
   if (!dateValidation.valid) {
     showToast(dateValidation.message, "error");
     return;
   }
-  
+
   const users = db.getUsers() || [];
   const subordinates = users.filter(u => {
     if (u.id === currentUser.id) return false;
@@ -9846,7 +9859,7 @@ async function submitManagerAttendance() {
   }
 
   showToast(`Attendance successfully submitted for ${selectedMeetingType} on ${selectedDate}!`, "success");
-  
+
   // Refresh view
   renderManagerAttendanceSheet();
 }
@@ -9855,7 +9868,7 @@ function downloadAttendancePDF() {
   const selectedDate = document.getElementById("attendance-date").value;
   const selectedMeetingType = document.getElementById("attendance-meeting-type").value;
   const users = db.getUsers() || [];
-  
+
   const subordinates = users.filter(u => {
     if (u.id === currentUser.id) return false;
     if (currentUser.role === "Admin") return true;
@@ -10028,7 +10041,7 @@ function renderEmployeeAttendanceDashboard() {
           legend: { display: false },
           tooltip: {
             callbacks: {
-              label: function(context) {
+              label: function (context) {
                 return context.parsed.y + '%';
               }
             }
@@ -10132,13 +10145,13 @@ function initMeetingsPortal() {
   // Actions click bindings
   const btnMeetNow = document.getElementById("card-meet-now");
   const menuMeetNow = document.getElementById("menu-meet-now");
-  
+
   let lobbyLocalStream = null;
   let lobbyIsCamOn = true;
   let lobbyIsMicOn = true;
 
   const lobbyModal = document.getElementById("meeting-lobby-modal");
-  
+
   const closeLobby = () => {
     if (lobbyLocalStream) {
       lobbyLocalStream.getTracks().forEach(track => track.stop());
@@ -10153,7 +10166,7 @@ function initMeetingsPortal() {
     const container = document.getElementById("lobby-invite-list");
     if (!container) return;
     container.innerHTML = "";
-    
+
     const users = db.getUsers() || [];
     users.forEach(user => {
       if (user.id === currentUser.id) return;
@@ -10165,7 +10178,7 @@ function initMeetingsPortal() {
       label.style.cursor = "pointer";
       label.style.color = "var(--text-primary)";
       label.style.marginBottom = "4px";
-      
+
       label.innerHTML = `
         <input type="checkbox" class="lobby-invite-chk" value="${user.id}" style="cursor:pointer;">
         <span>${user.fullname.replace(/\s*\(.*\)\s*/g, "")} (${user.role})</span>
@@ -10240,7 +10253,7 @@ function initMeetingsPortal() {
       try {
         const vId = videoSelect && videoSelect.value;
         const aId = audioSelect && audioSelect.value;
-        
+
         lobbyLocalStream = await navigator.mediaDevices.getUserMedia({
           video: vId ? { deviceId: { exact: vId } } : true,
           audio: aId ? { deviceId: { exact: aId } } : true
@@ -10361,7 +10374,7 @@ function initMeetingsPortal() {
     btnLobbyJoin.onclick = () => {
       const roomCodeDisplay = document.getElementById("lobby-room-code");
       const room = roomCodeDisplay ? roomCodeDisplay.textContent : "";
-      
+
       // Save display name overrides
       const displayNameInput = document.getElementById("lobby-display-name");
       if (displayNameInput && displayNameInput.value.trim()) {
@@ -10393,7 +10406,7 @@ function initMeetingsPortal() {
         localStream.getVideoTracks().forEach(track => track.enabled = isCamOn);
         localStream.getAudioTracks().forEach(track => track.enabled = isMicOn);
       }
-      
+
       const previewVideo = document.getElementById("lobby-camera-preview");
       if (previewVideo) previewVideo.srcObject = null;
       if (lobbyModal) lobbyModal.classList.add("hidden");
@@ -10401,7 +10414,7 @@ function initMeetingsPortal() {
       // Set input code and start call join
       document.getElementById("meeting-room-input").value = room;
       document.getElementById("btn-join-meeting").click();
-      
+
       // Show Welcome Invite Overlay modal inside the call
       setTimeout(() => {
         const inviteOverlay = document.getElementById("meeting-invite-overlay-modal");
@@ -10417,7 +10430,7 @@ function initMeetingsPortal() {
   if (btnMeetNow) btnMeetNow.onclick = startMeetNow;
   if (menuMeetNow) menuMeetNow.onclick = startMeetNow;
 
-  // â”€â”€ INVITE OVERLAY: Close â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── INVITE OVERLAY: Close ─────────────────────────────────────────────────
   const closeInviteOverlay = document.getElementById("close-invite-overlay-btn");
   if (closeInviteOverlay) {
     closeInviteOverlay.onclick = () => {
@@ -10425,7 +10438,7 @@ function initMeetingsPortal() {
     };
   }
 
-  // â”€â”€ COPY INVITATION â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── COPY INVITATION ───────────────────────────────────────────────────────
   const inviteCopy = document.getElementById("btn-invite-copy-invitation");
   if (inviteCopy) {
     inviteCopy.onclick = () => {
@@ -10433,8 +10446,8 @@ function initMeetingsPortal() {
       const host = window.location.origin;
       const text =
         `You're invited to a MedAstraX video meeting!\n\n` +
-        `ðŸ“‹ Room Code : ${room}\n` +
-        `ðŸ”— Join Link : ${host}/?join=${room}\n\n` +
+        `📋 Room Code : ${room}\n` +
+        `🔗 Join Link : ${host}/?join=${room}\n\n` +
         `Click the link above or paste the room code in the Meetings tab to join.`;
       navigator.clipboard.writeText(text).then(() => {
         const orig = inviteCopy.innerHTML;
@@ -10442,11 +10455,11 @@ function initMeetingsPortal() {
         inviteCopy.style.borderColor = "#82b834";
         lucide.createIcons();
         setTimeout(() => { inviteCopy.innerHTML = orig; inviteCopy.style.borderColor = ""; lucide.createIcons(); }, 2000);
-      }).catch(() => showToast("Could not copy â€” please copy manually.", "error"));
+      }).catch(() => showToast("Could not copy — please copy manually.", "error"));
     };
   }
 
-  // â”€â”€ COPY LINK â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── COPY LINK ─────────────────────────────────────────────────────────────
   const inviteCopyLink = document.getElementById("btn-invite-copy-link");
   if (inviteCopyLink) {
     inviteCopyLink.onclick = () => {
@@ -10458,11 +10471,11 @@ function initMeetingsPortal() {
         inviteCopyLink.style.borderColor = "#82b834";
         lucide.createIcons();
         setTimeout(() => { inviteCopyLink.innerHTML = orig; inviteCopyLink.style.borderColor = ""; lucide.createIcons(); }, 2000);
-      }).catch(() => showToast("Could not copy â€” please copy manually.", "error"));
+      }).catch(() => showToast("Could not copy — please copy manually.", "error"));
     };
   }
 
-  // â”€â”€ ADD PARTICIPANTS: Pre-loaded user cache â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── ADD PARTICIPANTS: Pre-loaded user cache ─────────────────────────────────
   let _apUserCache = [];
 
   // Pre-fetch users so list is instant when modal opens
@@ -10472,7 +10485,7 @@ function initMeetingsPortal() {
       try {
         const res = await fetch('/api/users');
         if (res.ok) users = await res.json();
-      } catch(e) {}
+      } catch (e) { }
     }
     if (!users || users.length === 0) users = waAllEmployees || [];
     _apUserCache = users;
@@ -10481,14 +10494,14 @@ function initMeetingsPortal() {
   // Helper: get avatar gradient based on name
   function apAvatarGradient(name) {
     const colors = [
-      ["#0ea5e9","#6366f1"],["#f59e0b","#ef4444"],["#10b981","#06b6d4"],
-      ["#8b5cf6","#ec4899"],["#82b834","#059669"],["#f97316","#eab308"]
+      ["#0ea5e9", "#6366f1"], ["#f59e0b", "#ef4444"], ["#10b981", "#06b6d4"],
+      ["#8b5cf6", "#ec4899"], ["#82b834", "#059669"], ["#f97316", "#eab308"]
     ];
     const idx = (name || "?").charCodeAt(0) % colors.length;
     return `linear-gradient(135deg, ${colors[idx][0]}, ${colors[idx][1]})`;
   }
 
-  // Synchronous render from cache â€” no async, no waiting
+  // Synchronous render from cache — no async, no waiting
   function populateAddParticipantsList(query) {
     const container = document.getElementById("add-participants-list");
     if (!container) return;
@@ -10687,10 +10700,10 @@ function initMeetingsPortal() {
 
   // Render scheduled meetings on portal initialization
   renderScheduledMeetings();
-  
+
   // Trigger upcoming meeting check immediately
   checkUpcomingMeetings();
-  
+
   // Open Schedule Modal
   const btnOpenSched = document.getElementById("btn-open-sched-modal");
   if (btnOpenSched) {
@@ -10700,7 +10713,7 @@ function initMeetingsPortal() {
       if (container) {
         container.innerHTML = "";
         const users = db.getUsers() || [];
-        
+
         // Sort users by name, exclude current user
         users.forEach(u => {
           if (u.id === currentUser.id) return;
@@ -10716,7 +10729,7 @@ function initMeetingsPortal() {
           container.appendChild(div);
         });
       }
-      
+
       document.getElementById("sched-title").value = "";
       document.getElementById("sched-time").value = "";
       document.getElementById("sched-desc").value = "";
@@ -10748,7 +10761,7 @@ function initMeetingsPortal() {
     }
     const type = selectRecurrenceType ? selectRecurrenceType.value : "Daily";
     const num = Math.max(1, parseInt(inputRepeatInterval ? inputRepeatInterval.value : 1) || 1);
-    
+
     let unit = "day";
     let summaryStr = "";
 
@@ -10799,7 +10812,7 @@ function initMeetingsPortal() {
       const time = document.getElementById("sched-time").value;
       const roomCode = document.getElementById("sched-room").value.trim();
       const description = document.getElementById("sched-desc").value.trim();
-      
+
       // Get checked participants
       const participants = [currentUser.id];
       const checkboxes = document.querySelectorAll("#sched-participants-list input[type='checkbox']");
@@ -10862,7 +10875,7 @@ function initMeetingsPortal() {
       const id = document.getElementById("edit-mtg-id").value;
       const time = document.getElementById("edit-mtg-time").value;
       const description = document.getElementById("edit-mtg-desc").value.trim();
-      
+
       const meetings = db.getMeetings() || [];
       const mtg = meetings.find(m => m.id === id);
       if (mtg) {
@@ -10883,7 +10896,7 @@ function getTechTeamParticipants() {
   return users.map(u => u.id);
 }
 
-// â”€â”€ MEETING HISTORY SYSTEM (Persistent across refreshes & logouts) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── MEETING HISTORY SYSTEM (Persistent across refreshes & logouts) ────────────
 let globalMeetingHistory = [];
 let activeCallStartTime = null;
 let currentMeetingTitle = "Instant Meeting";
@@ -10931,7 +10944,7 @@ async function loadMeetingHistory() {
     if (res.ok) {
       loaded = await res.json();
     }
-  } catch (e) {}
+  } catch (e) { }
 
   const localSaved = localStorage.getItem("medastrax_meeting_history");
   if (localSaved) {
@@ -10946,7 +10959,7 @@ async function loadMeetingHistory() {
           }
         });
       }
-    } catch(e) {}
+    } catch (e) { }
   }
 
   // Filter out any legacy sample entries
@@ -10971,7 +10984,7 @@ async function addMeetingHistoryRecord(record) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(record)
     });
-  } catch(e) {}
+  } catch (e) { }
 
   if (typeof renderScheduledMeetings === 'function') {
     renderScheduledMeetings();
@@ -10982,7 +10995,7 @@ function updateMeetingsWelcomeUser() {
   if (!currentUser) return;
   const fullNameClean = (currentUser.fullname || currentUser.username || "User").replace(/\s*\(.*\)\s*/g, "").trim();
   const firstName = fullNameClean.split(' ')[0] || "User";
-  
+
   const welcomeText = document.getElementById("meetings-welcome-text");
   if (welcomeText) {
     welcomeText.textContent = `Hello, ${fullNameClean}`;
@@ -11009,7 +11022,7 @@ function renderScheduledMeetings() {
   const searchInput = document.getElementById("meetings-search-input");
   const searchQuery = searchInput ? searchInput.value.toLowerCase().trim() : "";
 
-  // â”€â”€ TAB: PREVIOUS (Date-wise History Timeline View) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── TAB: PREVIOUS (Date-wise History Timeline View) ──────────────────────────
   if (activeMeetingFilterTab === "previous") {
     let historyItems = globalMeetingHistory;
     if (searchQuery) {
@@ -11079,7 +11092,7 @@ function renderScheduledMeetings() {
     return;
   }
 
-  // â”€â”€ TAB: RECORDINGS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── TAB: RECORDINGS ─────────────────────────────────────────────────────────
   if (activeMeetingFilterTab === "recordings") {
     listContainer.innerHTML = `
       <div class="meetings-empty-sidebar">
@@ -11092,7 +11105,7 @@ function renderScheduledMeetings() {
     return;
   }
 
-  // â”€â”€ TAB: UPCOMING â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── TAB: UPCOMING ───────────────────────────────────────────────────────────
   const meetings = db.getMeetings() || [];
   const myMeetings = meetings.filter(m => {
     const participants = m.isFixed ? getTechTeamParticipants() : (m.participants || []);
@@ -11107,7 +11120,7 @@ function renderScheduledMeetings() {
     const mtgTotalMins = hrs * 60 + mins;
     const isUpcoming = mtgTotalMins >= currentTotalMins;
 
-    const matchesSearch = !searchQuery || 
+    const matchesSearch = !searchQuery ||
       m.title.toLowerCase().includes(searchQuery) ||
       (m.description && m.description.toLowerCase().includes(searchQuery)) ||
       m.roomCode.toLowerCase().includes(searchQuery);
@@ -11199,16 +11212,16 @@ function renderScheduledMeetings() {
         const id = btn.getAttribute("data-id");
         const title = btn.getAttribute("data-title");
         const time = btn.getAttribute("data-time");
-        
+
         const meetings = db.getMeetings() || [];
         const mtg = meetings.find(x => x.id === id);
         const desc = mtg ? (mtg.description || "") : "";
-        
+
         document.getElementById("edit-mtg-id").value = id;
         document.getElementById("edit-mtg-title").value = title;
         document.getElementById("edit-mtg-time").value = time;
         document.getElementById("edit-mtg-desc").value = desc;
-        
+
         document.getElementById("edit-meeting-modal").classList.remove("hidden");
       };
     });
@@ -11240,7 +11253,7 @@ function checkUpcomingMeetings() {
   const now = new Date();
   const todayStr = now.toDateString();
   const meetings = db.getMeetings() || [];
-  
+
   meetings.forEach(m => {
     const participants = m.isFixed ? getTechTeamParticipants() : (m.participants || []);
     if (participants.includes(currentUser.id)) {
@@ -11248,19 +11261,19 @@ function checkUpcomingMeetings() {
       const targetTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hrs, mins, 0, 0);
       const diffMs = targetTime - now;
       const diffMins = Math.floor(diffMs / 60000);
-      
+
       const key = `${m.id}-${m.time}-${todayStr}`;
       // Trigger when remaining time is 10 minutes or less, but meeting has not started
       if (diffMins <= 10 && diffMins >= 0 && !notifiedMeetings[key]) {
         notifiedMeetings[key] = true;
-        
+
         const ampm = hrs >= 12 ? 'PM' : 'AM';
         const dispHrs = hrs % 12 || 12;
         const dispMins = mins < 10 ? '0' + mins : mins;
         const timeStr = `${dispHrs}:${dispMins} ${ampm}`;
-        
+
         const msg = diffMins === 0 ? `Your "${m.title}" is starting now!` : `Your "${m.title}" is starting in ${diffMins} minutes (at ${timeStr})!`;
-        
+
         // Show clickable Toast Notification to switch to Meetings tab
         const toastEl = showToast(`${msg} Click to join.`, "info");
         if (toastEl) {
@@ -11269,7 +11282,7 @@ function checkUpcomingMeetings() {
             switchTab("meetings");
           };
         }
-        
+
         // Play notification sound
         playNotificationBeep();
 
@@ -11294,7 +11307,7 @@ function playNotificationBeep() {
     gain1.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
     osc1.start();
     osc1.stop(audioCtx.currentTime + 0.15);
-    
+
     // Beep 2 (slightly delayed)
     setTimeout(() => {
       const osc2 = audioCtx.createOscillator();
@@ -11340,7 +11353,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     banner.style.fontFamily = "system-ui, sans-serif";
     banner.style.boxShadow = "0 4px 6px -1px rgba(0,0,0,0.2)";
     banner.innerHTML = `
-      Ã¢Å¡Â Ã¯Â¸Â Running directly from files. Database APIs are disabled. 
+      ⚠️ Running directly from files. Database APIs are disabled. 
       Please open <a href="http://localhost:8000" target="_blank" style="color: #fff; text-decoration: underline; margin-left: 8px; font-weight: 700;">http://localhost:8000</a> in your browser.
     `;
     document.body.prepend(banner);
@@ -11518,7 +11531,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 
 
-      
+
 
 
 
@@ -11618,7 +11631,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 
 
-  
+
 
 
 
@@ -12194,7 +12207,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 
 
-      
+
 
 
 
@@ -12238,7 +12251,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 
 
-    
+
 
 
 
@@ -12262,7 +12275,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 
 
-      
+
 
 
 
@@ -12286,9 +12299,16 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 
 
-      
 
 
+
+
+      // Tell everyone (and this tab) to re-pull /api/employees/status so the chat
+      // badges update without waiting for a reload.
+      if (typeof socket !== 'undefined' && socket) {
+        socket.emit("employeeStatusChanged", { userId: currentUser.id, status: newStatus });
+      }
+      if (typeof refreshWaChatData === 'function') refreshWaChatData();
 
       showToast(`Duty status updated to ${newStatus}!`, "success");
 
@@ -12298,7 +12318,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 
 
-      
+
 
 
 
@@ -12615,11 +12635,11 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 
 
-// Ã¢â€â‚¬Ã¢â€â‚¬ Deliverable Selector Helpers (Photo / Video / Link) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+// ââ€€ââ€€ Deliverable Selector Helpers (Photo / Video / Link) ââ€€ââ€€ââ€€ââ€€ââ€€ââ€€
 
 
 
-window.renderDeliverableInputs = function(activeTab = 'photo') {
+window.renderDeliverableInputs = function (activeTab = 'photo') {
 
 
 
@@ -12643,15 +12663,15 @@ window.renderDeliverableInputs = function(activeTab = 'photo') {
 
 
 
-      <button type="button" class="del-tab-btn" id="btn-tab-photo" onclick="renderDeliverableInputs('photo')" style="flex: 1; padding: 6px; font-size: 0.72rem; border: none; border-radius: 4px; background: ${activeTab === 'photo' ? '#fff' : 'transparent'}; font-weight: 600; cursor: pointer; color: ${activeTab === 'photo' ? 'var(--color-primary)' : 'var(--text-secondary)'}; box-shadow: ${activeTab === 'photo' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'};">Ã°Å¸â€œÂ· Image</button>
+      <button type="button" class="del-tab-btn" id="btn-tab-photo" onclick="renderDeliverableInputs('photo')" style="flex: 1; padding: 6px; font-size: 0.72rem; border: none; border-radius: 4px; background: ${activeTab === 'photo' ? '#fff' : 'transparent'}; font-weight: 600; cursor: pointer; color: ${activeTab === 'photo' ? 'var(--color-primary)' : 'var(--text-secondary)'}; box-shadow: ${activeTab === 'photo' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'};">📷 Image</button>
 
 
 
-      <button type="button" class="del-tab-btn" id="btn-tab-video" onclick="renderDeliverableInputs('video')" style="flex: 1; padding: 6px; font-size: 0.72rem; border: none; border-radius: 4px; background: ${activeTab === 'video' ? '#fff' : 'transparent'}; font-weight: 600; cursor: pointer; color: ${activeTab === 'video' ? 'var(--color-primary)' : 'var(--text-secondary)'}; box-shadow: ${activeTab === 'video' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'};">Ã°Å¸Å½Â¥ Video</button>
+      <button type="button" class="del-tab-btn" id="btn-tab-video" onclick="renderDeliverableInputs('video')" style="flex: 1; padding: 6px; font-size: 0.72rem; border: none; border-radius: 4px; background: ${activeTab === 'video' ? '#fff' : 'transparent'}; font-weight: 600; cursor: pointer; color: ${activeTab === 'video' ? 'var(--color-primary)' : 'var(--text-secondary)'}; box-shadow: ${activeTab === 'video' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'};">🎥 Video</button>
 
 
 
-      <button type="button" class="del-tab-btn" id="btn-tab-link" onclick="renderDeliverableInputs('link')" style="flex: 1; padding: 6px; font-size: 0.72rem; border: none; border-radius: 4px; background: ${activeTab === 'link' ? '#fff' : 'transparent'}; font-weight: 600; cursor: pointer; color: ${activeTab === 'link' ? 'var(--color-primary)' : 'var(--text-secondary)'}; box-shadow: ${activeTab === 'link' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'};">Ã°Å¸â€â€” Link</button>
+      <button type="button" class="del-tab-btn" id="btn-tab-link" onclick="renderDeliverableInputs('link')" style="flex: 1; padding: 6px; font-size: 0.72rem; border: none; border-radius: 4px; background: ${activeTab === 'link' ? '#fff' : 'transparent'}; font-weight: 600; cursor: pointer; color: ${activeTab === 'link' ? 'var(--color-primary)' : 'var(--text-secondary)'}; box-shadow: ${activeTab === 'link' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none'};">ðŸâ€— Link</button>
 
 
 
@@ -12827,7 +12847,7 @@ window.renderDeliverableInputs = function(activeTab = 'photo') {
 
 
 
-window.handleDeliverableFileSelect = function(event, tabType) {
+window.handleDeliverableFileSelect = function (event, tabType) {
 
 
 
@@ -12859,7 +12879,7 @@ window.handleDeliverableFileSelect = function(event, tabType) {
 
 
 
-    reader.onload = function(e) {
+    reader.onload = function (e) {
 
 
 
@@ -12943,7 +12963,7 @@ window.handleDeliverableFileSelect = function(event, tabType) {
 
 
 
-window.addDeliverableLink = function() {
+window.addDeliverableLink = function () {
 
 
 
@@ -13019,7 +13039,7 @@ window.addDeliverableLink = function() {
 
 
 
-window.renderDeliverablePreviewList = function(activeTab) {
+window.renderDeliverablePreviewList = function (activeTab) {
 
 
 
@@ -13171,7 +13191,7 @@ window.renderDeliverablePreviewList = function(activeTab) {
 
 
 
-window.removeDeliverableItem = function(itemId, activeTab) {
+window.removeDeliverableItem = function (itemId, activeTab) {
 
 
 
@@ -13191,7 +13211,7 @@ window.removeDeliverableItem = function(itemId, activeTab) {
 
 
 
-window.openDeliverableImageLightbox = function(src) {
+window.openDeliverableImageLightbox = function (src) {
 
 
 
@@ -13398,7 +13418,7 @@ function renderParticipantsList() {
   meItem.style.padding = "6px 8px";
   meItem.style.backgroundColor = "rgba(0, 168, 150, 0.05)";
   meItem.style.borderRadius = "6px";
-  
+
   meItem.innerHTML = `
     <span style="font-size: 13px; color: var(--text-primary); font-weight: 600;">You</span>
     <div style="display:flex; gap: 8px; align-items:center;">
@@ -13418,7 +13438,7 @@ function renderParticipantsList() {
     pItem.style.justifyContent = "space-between";
     pItem.style.padding = "6px 8px";
     pItem.style.borderBottom = "1px solid var(--border-color)";
-    
+
     // Build host buttons HTML if we are host
     const hostControlsHtml = isCurrentUserHost ? `
       <div style="display:flex; gap: 6px; align-items:center; margin-left: 8px;">
@@ -13506,13 +13526,13 @@ function showFloatingReaction(emoji) {
   el.style.transition = "all 1.5s ease-out";
   el.style.pointerEvents = "none";
   grid.appendChild(el);
-  
+
   // Force reflow and animate
   setTimeout(() => {
     el.style.transform = "translateY(-240px) scale(1.5)";
     el.style.opacity = "0";
   }, 50);
-  
+
   // Clean up
   setTimeout(() => {
     if (el.parentNode) el.parentNode.removeChild(el);
@@ -13557,16 +13577,16 @@ function renderMeetingsTab() {
     const activeView = document.getElementById("active-meeting-view");
     if (dashboardView) dashboardView.classList.add("hidden");
     if (activeView) activeView.classList.remove("hidden");
-    
+
     // Find if it's a scheduled meeting to display its title
     const meetings = db.getMeetings() || [];
     const mtg = meetings.find(m => m.roomCode === room);
     const activeMtgTitle = document.getElementById("active-meeting-title");
     if (activeMtgTitle) activeMtgTitle.textContent = mtg ? mtg.title : "Instant Meeting";
-    
+
     const activeMtgRoomBadge = document.getElementById("active-meeting-room-badge");
     if (activeMtgRoomBadge) activeMtgRoomBadge.textContent = room;
-    
+
     const activeMtgStatus = document.getElementById("active-meeting-status");
     if (activeMtgStatus) {
       activeMtgStatus.textContent = "Connecting...";
@@ -13589,7 +13609,7 @@ function renderMeetingsTab() {
       btnActiveShare.style.backgroundColor = "var(--bg-primary)";
       btnActiveShare.style.color = "var(--text-primary)";
     }
-    
+
     const btnActiveRaise = document.getElementById("btn-active-raise-hand");
     if (btnActiveRaise) {
       btnActiveRaise.style.backgroundColor = "var(--bg-primary)";
@@ -13600,7 +13620,7 @@ function renderMeetingsTab() {
     // Determine host: Admins, Managers, or the meeting creator / instant meeting generator
     const isHost = currentUser.role === "Admin" || currentUser.role === "Manager" || (mtg && mtg.participants && mtg.participants[0] === currentUser.id) || room.startsWith("meet-");
     isCurrentUserHost = isHost;
-    
+
     const hostToggle = document.getElementById("btn-active-toggle-host-controls");
     const hostTabBtn = document.getElementById("tab-btn-host");
     if (isHost) {
@@ -13616,7 +13636,7 @@ function renderMeetingsTab() {
     if (chatMsgBox) chatMsgBox.innerHTML = "";
 
     await joinMeetingRoom(room);
-    
+
     // Update active status once joined
     if (activeMtgStatus) {
       activeMtgStatus.textContent = "Connected";
@@ -13626,7 +13646,7 @@ function renderMeetingsTab() {
 
   btnLeave.onclick = async () => {
     await leaveMeetingRoom();
-    
+
     btnJoin.classList.remove("hidden");
     btnLeave.classList.add("hidden");
     mediaControls.classList.add("hidden");
@@ -13648,7 +13668,7 @@ function renderMeetingsTab() {
       btnCam.style.backgroundColor = isCamOn ? "var(--bg-secondary)" : "#ef4444";
       btnCam.style.color = isCamOn ? "var(--text-primary)" : "#fff";
       showToast(isCamOn ? "Webcam enabled" : "Webcam disabled", "info");
-      
+
       // Toggle local avatar overlay container
       const localAvatar = document.getElementById("video-avatar-local");
       if (localAvatar) {
@@ -13678,7 +13698,7 @@ function renderMeetingsTab() {
       btnMic.style.backgroundColor = isMicOn ? "var(--bg-secondary)" : "#ef4444";
       btnMic.style.color = isMicOn ? "var(--text-primary)" : "#fff";
       showToast(isMicOn ? "Microphone unmuted" : "Microphone muted", "info");
-      
+
       // Emit status update to other users
       if (socket && currentRoom) {
         socket.emit("meeting-status-update", {
@@ -13700,7 +13720,7 @@ function renderMeetingsTab() {
       if (!isScreenSharing) {
         const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
         const screenTrack = screenStream.getVideoTracks()[0];
-        
+
         // Replace track in all peer connections
         for (const pc of Object.values(peerConnections)) {
           const senders = pc.getSenders();
@@ -13778,7 +13798,7 @@ function renderMeetingsTab() {
       isHandRaised = !isHandRaised;
       btnActiveRaise.style.backgroundColor = isHandRaised ? "#eab308" : "var(--bg-primary)";
       btnActiveRaise.style.color = isHandRaised ? "#fff" : "var(--text-primary)";
-      
+
       // Update local hand raised display on video container
       const localHand = document.getElementById("video-hand-local");
       if (localHand) {
@@ -13810,7 +13830,7 @@ function renderMeetingsTab() {
       e.stopPropagation();
       activeReactionBar.classList.toggle("hidden");
     };
-    
+
     document.addEventListener("click", () => {
       if (activeReactionBar) activeReactionBar.classList.add("hidden");
     });
@@ -13835,15 +13855,15 @@ function renderMeetingsTab() {
   const callSidebar = document.getElementById("active-meeting-sidebar");
   const togglePanel = (panelId, activeTabBtnId) => {
     if (!callSidebar) return;
-    
+
     const panels = ["panel-people", "panel-chat", "panel-host"];
     const tabBtns = ["tab-btn-people", "tab-btn-chat", "tab-btn-host"];
-    
+
     panels.forEach(id => {
       const el = document.getElementById(id);
       if (el) el.classList.toggle("hidden", id !== panelId);
     });
-    
+
     tabBtns.forEach(id => {
       const el = document.getElementById(id);
       if (el) {
@@ -13858,7 +13878,7 @@ function renderMeetingsTab() {
 
   const toggleSidebarVisibility = (panelId, activeTabBtnId) => {
     if (!callSidebar) return;
-    
+
     const isCurrentlyOpen = !callSidebar.classList.contains("hidden");
     const activeTabEl = document.getElementById(activeTabBtnId);
     const isTargetTabOpen = activeTabEl && activeTabEl.classList.contains("active");
@@ -14060,10 +14080,10 @@ function renderMeetingsTab() {
     const videoSelect = document.getElementById("select-video-input");
     const audioSelect = document.getElementById("select-audio-input");
     if (!videoSelect || !audioSelect) return;
-    
+
     videoSelect.innerHTML = "";
     audioSelect.innerHTML = "";
-    
+
     try {
       const devices = await navigator.mediaDevices.enumerateDevices();
       devices.forEach(device => {
@@ -14087,21 +14107,21 @@ function renderMeetingsTab() {
       e.preventDefault();
       const videoId = document.getElementById("select-video-input").value;
       const audioId = document.getElementById("select-audio-input").value;
-      
+
       try {
         if (localStream) {
           localStream.getTracks().forEach(track => track.stop());
         }
-        
+
         localStream = await navigator.mediaDevices.getUserMedia({
           video: videoId ? { deviceId: { exact: videoId } } : true,
           audio: audioId ? { deviceId: { exact: audioId } } : true
         });
-        
+
         // Update local video element src
         const localVideo = document.getElementById("local-video-element");
         if (localVideo) localVideo.srcObject = localStream;
-        
+
         // Replace track in peer connections
         const newVideoTrack = localStream.getVideoTracks()[0];
         const newAudioTrack = localStream.getAudioTracks()[0];
@@ -14110,11 +14130,11 @@ function renderMeetingsTab() {
           const senders = pc.getSenders();
           const videoSender = senders.find(s => s.track.kind === "video");
           const audioSender = senders.find(s => s.track.kind === "audio");
-          
+
           if (videoSender && newVideoTrack) videoSender.replaceTrack(newVideoTrack);
           if (audioSender && newAudioTrack) audioSender.replaceTrack(newAudioTrack);
         }
-        
+
         deviceModal.classList.add("hidden");
         showToast("Audio/Video settings saved successfully!", "success");
       } catch (err) {
@@ -14137,7 +14157,7 @@ function renderMeetingsTab() {
           c.style.gridRow = "";
           c.style.height = "240px";
         });
-        
+
         if (!isPinned) {
           container.style.gridColumn = "1 / -1";
           container.style.gridRow = "span 2";
@@ -14187,10 +14207,10 @@ function renderMeetingsTab() {
       if (data.room === currentRoom) {
         const hostTabBtn = document.getElementById("tab-btn-host");
         const isUserHost = hostTabBtn && !hostTabBtn.classList.contains("hidden");
-        
+
         // Single target checks
         const isTargeted = data.targetUserId === currentUser.id;
-        
+
         if (!isUserHost) {
           if ((data.type === "mute-all" || (data.type === "mute-single" && isTargeted)) && isMicOn) {
             btnMic.click();
@@ -14225,7 +14245,7 @@ function renderMeetingsTab() {
         if (data.userId === currentUser.id) return;
         if (meetingParticipantsList[data.userId]) {
           meetingParticipantsList[data.userId].isHandRaised = data.isRaised;
-          
+
           // Update remote hand icon on video container
           const remoteHand = document.getElementById(`video-hand-${data.userId}`);
           if (remoteHand) {
@@ -14247,7 +14267,7 @@ function renderMeetingsTab() {
     socket.on("meeting-status-update", (data) => {
       if (data.room === currentRoom) {
         if (data.userId === currentUser.id) return;
-        
+
         if (data.isLeft) {
           delete meetingParticipantsList[data.userId];
         } else {
@@ -14255,7 +14275,7 @@ function renderMeetingsTab() {
             ...meetingParticipantsList[data.userId],
             ...data
           };
-          
+
           // Update remote avatar overlay based on camera state
           const remoteAvatar = document.getElementById(`video-avatar-${data.userId}`);
           if (remoteAvatar) {
@@ -14322,7 +14342,7 @@ async function joinMeetingRoom(room) {
   } else {
     currentMeetingTitle = `Meeting - ${getFormattedDateStr(new Date())}`;
   }
-  
+
   if (typeof socket !== 'undefined' && socket) {
     socket.emit("join-meeting-socket", {
       room: room,
@@ -14330,7 +14350,7 @@ async function joinMeetingRoom(room) {
       fullname: currentUser.fullname.replace(/\s*\(.*\)\s*/g, "")
     });
   }
-  
+
   // Remove placeholder
   const placeholder = document.getElementById("video-grid-placeholder");
   if (placeholder) placeholder.classList.add("hidden");
@@ -14356,7 +14376,7 @@ async function joinMeetingRoom(room) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ userId: currentUser.id, username: currentUser.fullname, room })
     });
-    
+
     const data = await res.json();
     const statusText = document.getElementById("meeting-status-text");
     statusText.textContent = "Connected";
@@ -14450,7 +14470,7 @@ async function leaveMeetingRoom() {
 function addLocalVideo() {
   const activeTabLink = document.querySelector(".nav-link.active");
   const activeTabId = activeTabLink ? activeTabLink.getAttribute("data-tab") : "meetings";
-  
+
   const grid = (activeTabId !== "meetings") ? document.getElementById("meeting-pip-video-container") : document.getElementById("video-grid");
   if (!grid) return;
 
@@ -14461,6 +14481,8 @@ function addLocalVideo() {
   container.style.borderRadius = activeTabId !== "meetings" ? "4px" : "8px";
   container.style.overflow = "hidden";
   container.style.backgroundColor = "#1e293b";
+  container.style.minHeight = "240px";
+  container.style.aspectRatio = "16 / 9";
   container.style.border = "2px solid #eab308";
   container.style.boxShadow = "0 4px 12px rgba(234, 179, 8, 0.2)";
 
@@ -14551,7 +14573,7 @@ function addLocalVideo() {
   avatar.style.backgroundColor = "#1e293b";
   avatar.style.color = "#fff";
   avatar.style.zIndex = "1";
-  
+
   const char = currentUser.fullname.replace(/\s*\(.*\)\s*/g, "").trim().charAt(0).toUpperCase();
   avatar.innerHTML = `<div style="width: 80px; height: 80px; border-radius: 50%; background: linear-gradient(135deg, var(--accent-secondary), var(--accent-color)); display: flex; align-items: center; justify-content: center; font-size: 2rem; font-weight: 700; box-shadow: 0 4px 12px rgba(0,0,0,0.2);">${char}</div>`;
 
@@ -14561,6 +14583,8 @@ function addLocalVideo() {
   container.appendChild(hand);
   container.appendChild(avatar);
   grid.appendChild(container);
+  // Some browsers block autoplay until the element is in the DOM.
+  video.play().catch(err => console.warn("[Video] local play blocked:", err.message));
   lucide.createIcons();
 }
 
@@ -14580,6 +14604,8 @@ function addRemoteVideo(peerId, stream) {
     container.style.borderRadius = activeTabId !== "meetings" ? "4px" : "8px";
     container.style.overflow = "hidden";
     container.style.backgroundColor = "#1e293b";
+    container.style.minHeight = "240px";
+    container.style.aspectRatio = "16 / 9";
     container.style.border = "2px solid #f59e0b";
     container.style.boxShadow = "0 4px 12px rgba(245, 158, 11, 0.15)";
 
@@ -14672,6 +14698,8 @@ function addRemoteVideo(peerId, stream) {
     container.appendChild(menuBtn);
     container.appendChild(hand);
     grid.appendChild(container);
+    // Remote streams carry audio; play() must be invoked after insertion.
+    video.play().catch(err => console.warn("[Video] remote play blocked:", err.message));
     lucide.createIcons();
   } else {
     const video = container.querySelector("video");
@@ -14732,7 +14760,7 @@ async function sendSignal(targetId, type, data) {
 
 async function handleVideoSseEvent(event) {
   const { type, senderId, data } = event;
-  
+
   switch (type) {
     case 'user-joined':
       createPeerConnection(senderId, true);
@@ -14884,7 +14912,7 @@ function renderWaChatList() {
     const isPinned = !!pref.isPinned;
 
     // Get last message between currentUser and emp
-    const chatMsgs = waAllMessages.filter(m => 
+    const chatMsgs = waAllMessages.filter(m =>
       (m.senderId === currentUserId && m.receiverId === emp.id) ||
       (m.senderId === emp.id && m.receiverId === currentUserId) ||
       (m.sender === currentUserName && (m.receiver === emp.fullname || m.receiver.includes(emp.fullname))) ||
@@ -15036,19 +15064,22 @@ function renderWaChatList() {
   filteredItems.forEach(item => {
     const el = document.createElement('div');
     el.className = `wa-chat-item ${waActiveChat && waActiveChat.id === item.id ? 'active' : ''}`;
-    
+
     let statusDotClass = 'free';
-    let statusText = 'ðŸŸ¢ Free';
+    let statusText = '🟢 Free';
     if (item.type === 'direct') {
       if (item.status === 'in_meeting') {
         statusDotClass = 'in_meeting';
-        statusText = 'ðŸ”´ (in meeting)';
+        statusText = '🔴 (in meeting)';
       } else if (item.status === 'on_leave') {
         statusDotClass = 'on_leave';
-        statusText = 'ðŸ”´ (on leave)';
+        statusText = '🔴 (on leave)';
+      } else if (item.status === 'out_of_office') {
+        statusDotClass = 'out_of_office';
+        statusText = '🟠 (out of office)';
       }
     } else {
-      statusText = 'ðŸ‘¥ Group';
+      statusText = '👥 Group';
     }
 
     el.innerHTML = `
@@ -15088,7 +15119,7 @@ function renderWaChatList() {
 
 function selectWaChat(chatItem) {
   waActiveChat = chatItem;
-  
+
   // Hide empty state & show active chat UI
   const emptyState = document.getElementById('wa-empty-state');
   const activeChatUI = document.getElementById('wa-active-chat');
@@ -15105,7 +15136,7 @@ function selectWaChat(chatItem) {
 
   if (initialsEl) initialsEl.textContent = getInitials(chatItem.name);
   if (titleEl) titleEl.textContent = chatItem.name;
-  if (roleDomainEl) roleDomainEl.textContent = `${chatItem.role} â€¢ ${chatItem.domain}`;
+  if (roleDomainEl) roleDomainEl.textContent = `${chatItem.role} • ${chatItem.domain}`;
 
   if (togglePinBtn) {
     if (chatItem.isPinned) {
@@ -15126,26 +15157,30 @@ function selectWaChat(chatItem) {
       if (chatItem.status === 'in_meeting') {
         statusDotEl.classList.add('in_meeting');
         statusBadgeEl.classList.add('in_meeting');
-        statusBadgeEl.textContent = 'ðŸ”´ (in meeting)';
+        statusBadgeEl.textContent = '🔴 (in meeting)';
       } else if (chatItem.status === 'on_leave') {
         statusDotEl.classList.add('on_leave');
         statusBadgeEl.classList.add('on_leave');
-        statusBadgeEl.textContent = 'ðŸ”´ (on leave)';
+        statusBadgeEl.textContent = '🔴 (on leave)';
+      } else if (chatItem.status === 'out_of_office') {
+        statusDotEl.classList.add('out_of_office');
+        statusBadgeEl.classList.add('out_of_office');
+        statusBadgeEl.textContent = '🟠 (out of office)';
       } else {
         statusDotEl.classList.add('free');
         statusBadgeEl.classList.add('free');
-        statusBadgeEl.textContent = 'ðŸŸ¢ Free';
+        statusBadgeEl.textContent = '🟢 Free';
       }
     } else {
       statusDotEl.classList.add('hidden');
       statusBadgeEl.classList.add('free');
-      statusBadgeEl.textContent = 'ðŸ‘¥ Group Chat';
+      statusBadgeEl.textContent = '👥 Group Chat';
     }
   }
 
   // Mark chat as read locally & on server
   const currentUserId = currentUser ? currentUser.id : '';
-  
+
   if (!waUserPreferences[chatItem.id]) {
     waUserPreferences[chatItem.id] = {};
   }
@@ -15186,7 +15221,7 @@ function loadWaActiveChatMessages() {
   // Filter messages for active chat
   let msgs = [];
   if (waActiveChat.type === 'direct') {
-    msgs = waAllMessages.filter(m => 
+    msgs = waAllMessages.filter(m =>
       (m.senderId === currentUserId && m.receiverId === waActiveChat.id) ||
       (m.senderId === waActiveChat.id && m.receiverId === currentUserId) ||
       (m.sender === currentUserName && (m.receiver === waActiveChat.name || m.receiver.includes(waActiveChat.name))) ||
@@ -15201,7 +15236,7 @@ function loadWaActiveChatMessages() {
   if (msgs.length === 0) {
     container.innerHTML = `
       <div style="margin: auto; text-align: center; color: var(--text-muted); font-size: 0.88rem; background: var(--bg-secondary); padding: 12px 20px; border-radius: 16px; border: 1px solid var(--border-color);">
-         ðŸ‘‹ Start of conversation with <strong>${waActiveChat.name}</strong>. Say hi!
+         👋 Start of conversation with <strong>${waActiveChat.name}</strong>. Say hi!
       </div>
     `;
     return;
@@ -15222,7 +15257,7 @@ function loadWaActiveChatMessages() {
       <div class="wa-msg-text">${escapeHtml(m.message)}</div>
       <div class="wa-msg-meta">
         <span>${formatChatTime(m.createdAt)}</span>
-        ${isOutgoing ? `<span class="wa-msg-ticks">âœ“âœ“</span>` : ''}
+        ${isOutgoing ? `<span class="wa-msg-ticks">✓✓</span>` : ''}
       </div>
     `;
 
@@ -15273,7 +15308,7 @@ async function sendWaMessage() {
 }
 
 function isMsgDuplicate(m, msgList) {
-  return msgList.some(existing => 
+  return msgList.some(existing =>
     (existing.id && m.id && existing.id === m.id) ||
     (existing._id && m._id && existing._id === m._id) ||
     (existing.sender === m.sender && existing.receiver === m.receiver && existing.message === m.message && Math.abs(new Date(existing.createdAt || 0).getTime() - new Date(m.createdAt || 0).getTime()) < 4000)
@@ -15497,8 +15532,8 @@ function initWaChatEvents() {
 
       if (typeof currentUser !== 'undefined' && currentUser) {
         const isSentByMe = msg.senderId === currentUser.id ||
-                           msg.sender === currentUser.fullname ||
-                           msg.sender === currentUser.name;
+          msg.sender === currentUser.fullname ||
+          msg.sender === currentUser.name;
 
         // For direct messages: only the recipient should be notified
         const isDirectToMe = !isSentByMe && (
@@ -15581,7 +15616,7 @@ function initWaChatEvents() {
     socket.on("meeting-scheduled", (data) => {
       const newMtg = data.meeting;
       if (!newMtg || !currentUser) return;
-      
+
       // Check if current user is a participant of this meeting
       const participants = newMtg.participants || [];
       if (participants.includes(currentUser.id) && newMtg.id.startsWith("mtg-")) {
@@ -15602,7 +15637,7 @@ function initWaChatEvents() {
             actionTab: "meetings"
           });
         }
-        
+
         // Refresh scheduled list
         renderScheduledMeetings();
       }
@@ -15785,7 +15820,7 @@ function requestDesktopPermission(callback) {
             body: "You will receive real-time desktop popups even when the app is in the background.",
             icon: "/medastrax_logo.png"
           });
-        } catch(e) {}
+        } catch (e) { }
         if (callback) callback(true);
       } else {
         showToast("Desktop popup permission denied by browser", "error");
@@ -15833,7 +15868,7 @@ function playNotificationSound() {
     gain.connect(ctx.destination);
     osc.start();
     osc.stop(ctx.currentTime + 0.3);
-  } catch(e) {}
+  } catch (e) { }
 }
 
 function sendDesktopNotification(title, message, category, targetTab) {
@@ -15848,7 +15883,7 @@ function sendDesktopNotification(title, message, category, targetTab) {
       tag: "medastrax_" + Date.now(),
       renotify: true
     });
-    notification.onclick = function(e) {
+    notification.onclick = function (e) {
       e.preventDefault();
       window.focus();
       if (targetTab) {
@@ -16076,4 +16111,3 @@ if (document.readyState === "loading") {
 } else {
   initNotificationEventListeners();
 }
-

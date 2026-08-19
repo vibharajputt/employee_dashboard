@@ -160,7 +160,8 @@ class MockClient {
         referenceLink: values[8],
         deliverableLink: values[9],
         feedback: values[10],
-        comments: typeof values[11] === 'string' ? JSON.parse(values[11]) : (values[11] || [])
+        comments: typeof values[11] === 'string' ? JSON.parse(values[11]) : (values[11] || []),
+        submittedDeliverables: typeof values[12] === 'string' ? JSON.parse(values[12]) : (values[12] || [])
       };
       dbData.tasks.push(t);
       saveMockDb(dbData);
@@ -370,7 +371,7 @@ class MockClient {
     }
 
     if (queryLower.startsWith('update tasks')) {
-      const id = values[11];
+      const id = values[12];
       const idx = dbData.tasks.findIndex(x => x.id === id);
       if (idx !== -1) {
         dbData.tasks[idx] = {
@@ -385,7 +386,8 @@ class MockClient {
           referenceLink: values[7],
           deliverableLink: values[8],
           feedback: values[9],
-          comments: typeof values[10] === 'string' ? JSON.parse(values[10]) : (values[10] || [])
+          comments: typeof values[10] === 'string' ? JSON.parse(values[10]) : (values[10] || []),
+          submittedDeliverables: typeof values[11] === 'string' ? JSON.parse(values[11]) : (values[11] || [])
         };
         saveMockDb(dbData);
       }
@@ -618,9 +620,13 @@ async function initDb() {
         "referenceLink" VARCHAR(500),
         "deliverableLink" VARCHAR(500),
         "feedback" TEXT,
-        "comments" JSONB DEFAULT '[]'
+        "comments" JSONB DEFAULT '[]',
+        "submittedDeliverables" JSONB DEFAULT '[]'
       )
     `);
+
+    // Restart-safe for databases created before deliverables were persisted.
+    await client.query(`ALTER TABLE tasks ADD COLUMN IF NOT EXISTS "submittedDeliverables" JSONB DEFAULT '[]'`);
 
     // Create leaves table
     await client.query(`
@@ -943,9 +949,9 @@ app.post('/api/tasks', async (req, res) => {
   try {
     const t = req.body;
     await pool.query(
-      `INSERT INTO tasks (id, title, description, "assigneeId", priority, "dueDate", status, "assignedById", "referenceLink", "deliverableLink", feedback, comments) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
-      [t.id, t.title, t.description, t.assigneeId, t.priority, t.dueDate, t.status, t.assignedById, t.referenceLink, t.deliverableLink, t.feedback, JSON.stringify(t.comments || [])]
+      `INSERT INTO tasks (id, title, description, "assigneeId", priority, "dueDate", status, "assignedById", "referenceLink", "deliverableLink", feedback, comments, "submittedDeliverables") 
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
+      [t.id, t.title, t.description, t.assigneeId, t.priority, t.dueDate, t.status, t.assignedById, t.referenceLink, t.deliverableLink, t.feedback, JSON.stringify(t.comments || []), JSON.stringify(t.submittedDeliverables || [])]
     );
     res.status(201).json(t);
   } catch (err) {
@@ -969,9 +975,10 @@ app.put('/api/tasks/:id', async (req, res) => {
         "referenceLink" = $8, 
         "deliverableLink" = $9, 
         feedback = $10, 
-        comments = $11
-       WHERE id = $12`,
-      [t.title, t.description, t.assigneeId, t.priority, t.dueDate, t.status, t.assignedById, t.referenceLink, t.deliverableLink, t.feedback, JSON.stringify(t.comments || []), id]
+        comments = $11,
+        "submittedDeliverables" = $12
+       WHERE id = $13`,
+      [t.title, t.description, t.assigneeId, t.priority, t.dueDate, t.status, t.assignedById, t.referenceLink, t.deliverableLink, t.feedback, JSON.stringify(t.comments || []), JSON.stringify(t.submittedDeliverables || []), id]
     );
     res.json({ message: 'Task updated successfully' });
   } catch (err) {
@@ -1262,7 +1269,7 @@ app.post('/api/video/signal', (req, res) => {
 // --------------------------------------------------
 app.get('/api/employees/status', async (req, res) => {
   try {
-    const usersRes = await pool.query('SELECT id, fullname, username FROM users');
+    const usersRes = await pool.query('SELECT id, fullname, username, "availabilityStatus" FROM users');
     const users = usersRes.rows;
 
     // Get active video users
@@ -1293,7 +1300,16 @@ app.get('/api/employees/status', async (req, res) => {
         if (onLeave) {
           statusMap[u.id] = { status: 'on_leave', label: 'On Leave' };
         } else {
-          statusMap[u.id] = { status: 'free', label: 'Free' };
+          // Respect the duty status the user picked in Settings; approved leave and
+          // an active meeting still take priority over it.
+          const manual = u.availabilityStatus || 'Active';
+          if (manual === 'On Leave') {
+            statusMap[u.id] = { status: 'on_leave', label: 'On Leave' };
+          } else if (manual === 'Out of Office') {
+            statusMap[u.id] = { status: 'out_of_office', label: 'Out of Office' };
+          } else {
+            statusMap[u.id] = { status: 'free', label: 'Free' };
+          }
         }
       }
     }
@@ -1530,6 +1546,12 @@ io.on("connection", (socket) => {
     if (data.room) {
       io.to(data.room).emit("meeting-status-update", data);
     }
+  });
+
+  // A user changed their duty status in Settings: relay so every client re-pulls
+  // /api/employees/status and updates chat badges immediately.
+  socket.on("employeeStatusChanged", (data) => {
+    io.emit("employeeStatusChanged", data);
   });
 
   socket.on("meeting-scheduled", (data) => {
