@@ -6896,7 +6896,7 @@ window.openTaskDetails = function (taskId) {
 
 
 
-  if (currentUser.role === "Employee" && task.status === "In Progress") {
+  if (currentUser.id === task.assigneeId && task.status === "In Progress") {
 
 
 
@@ -7176,7 +7176,10 @@ window.openTaskDetails = function (taskId) {
 
 
 
-  if (currentUser.role === "Employee") {
+  // The assignee drives the task forward regardless of their job title.
+  // Roles here are "Software Developer", "Team Lead", etc. — not just "Employee" —
+  // so gating on the role string locked most staff out of their own tasks.
+  if (currentUser.id === task.assigneeId) {
 
 
 
@@ -14467,12 +14470,34 @@ async function leaveMeetingRoom() {
   lucide.createIcons();
 }
 
-function addLocalVideo() {
-  const activeTabLink = document.querySelector(".nav-link.active");
-  const activeTabId = activeTabLink ? activeTabLink.getAttribute("data-tab") : "meetings";
+function getActiveVideoGrid() {
+  // Only use the picture-in-picture container when it is genuinely on screen.
+  const pipWidget = document.getElementById("meeting-pip-widget");
+  const pipVisible = pipWidget && !pipWidget.classList.contains("hidden") &&
+    getComputedStyle(pipWidget).display !== "none";
+  const grid = pipVisible
+    ? document.getElementById("meeting-pip-video-container")
+    : document.getElementById("video-grid");
+  return grid || document.getElementById("video-grid");
+}
 
-  const grid = (activeTabId !== "meetings") ? document.getElementById("meeting-pip-video-container") : document.getElementById("video-grid");
-  if (!grid) return;
+function addLocalVideo() {
+  const grid = getActiveVideoGrid();
+  const activeTabId = grid && grid.id === "meeting-pip-video-container" ? "pip" : "meetings";
+  if (!grid) {
+    console.error("[Video] No grid element found — cannot render local video.");
+    return;
+  }
+
+  // Never leave two copies of the local tile behind.
+  const stale = document.getElementById("video-container-local");
+  if (stale) stale.remove();
+
+  const placeholder = document.getElementById("video-grid-placeholder");
+  if (placeholder) placeholder.classList.add("hidden");
+
+  const tracks = localStream ? localStream.getTracks().length : 0;
+  console.log(`[Video] rendering local tile into #${grid.id} (${tracks} track(s))`);
 
   // Create container
   const container = document.createElement("div");
@@ -14589,11 +14614,17 @@ function addLocalVideo() {
 }
 
 function addRemoteVideo(peerId, stream) {
-  const activeTabLink = document.querySelector(".nav-link.active");
-  const activeTabId = activeTabLink ? activeTabLink.getAttribute("data-tab") : "meetings";
+  const grid = getActiveVideoGrid();
+  const activeTabId = grid && grid.id === "meeting-pip-video-container" ? "pip" : "meetings";
+  if (!grid) {
+    console.error("[Video] No grid element found — cannot render remote video.");
+    return;
+  }
 
-  const grid = (activeTabId !== "meetings") ? document.getElementById("meeting-pip-video-container") : document.getElementById("video-grid");
-  if (!grid) return;
+  const placeholder = document.getElementById("video-grid-placeholder");
+  if (placeholder) placeholder.classList.add("hidden");
+
+  console.log(`[Video] remote tile for ${peerId} into #${grid.id} (${stream ? stream.getTracks().length : 0} track(s))`);
 
   // Check if remote video container already exists
   let container = document.getElementById(`video-container-${peerId}`);
@@ -14711,9 +14742,24 @@ function createPeerConnection(peerId, initiator) {
   const pc = new RTCPeerConnection({
     iceServers: [
       { urls: 'stun:stun.l.google.com:19302' },
-      { urls: 'stun:stun1.l.google.com:19302' }
-    ]
+      { urls: 'stun:stun1.l.google.com:19302' },
+      // STUN alone fails whenever both peers sit behind symmetric NAT (common on
+      // home routers and mobile data). A TURN relay is required for those cases.
+      // These are the openrelay.metered.ca free relays — fine for a small team,
+      // but swap in a paid/self-hosted TURN service for anything critical.
+      { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
+      { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
+      { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' }
+    ],
+    iceCandidatePoolSize: 4
   });
+
+  pc.oniceconnectionstatechange = () => {
+    console.log(`[WebRTC] ${peerId} ICE state: ${pc.iceConnectionState}`);
+    if (pc.iceConnectionState === 'failed') {
+      console.warn(`[WebRTC] Connection to ${peerId} failed — no usable network path.`);
+    }
+  };
 
   peerConnections[peerId] = pc;
 
