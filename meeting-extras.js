@@ -854,6 +854,13 @@
         btn.addEventListener("click", function (e) {
             if (confirmed) return;                       // second pass: let it through
             if (window.__mxSkipPrejoin) return;          // lobby already handled setup
+
+            // Never react to a join that fires while nobody is signed in, or while the
+            // login screen is up — that is how the preview used to appear on its own.
+            if (typeof currentUser === "undefined" || !currentUser) return;
+            const loginVisible = el("login-container") && !el("login-container").classList.contains("hidden");
+            if (loginVisible) return;
+
             const roomInput = el("meeting-room-input");
             const room = roomInput ? roomInput.value.trim() : "";
             if (!room) return;                           // app.js will show its own error
@@ -935,9 +942,25 @@
         }
     }
 
+    /** The panel is absolutely positioned over the meetings pane, so it must be
+     *  dismissed on logout or when navigating elsewhere — otherwise it reappears
+     *  the next time the Meetings tab is opened. */
+    function autoDismissPanel() {
+        const panel = el("mx-prejoin");
+        if (!panel || panel.classList.contains("hidden")) return;
+
+        const loggedOut = (typeof currentUser === "undefined" || !currentUser);
+        const loginVisible = el("login-container") && !el("login-container").classList.contains("hidden");
+        const onMeetings = document.querySelector('.nav-link.active[data-tab="meetings"]');
+        const inCall = (typeof currentRoom !== "undefined") && currentRoom;
+
+        if (loggedOut || loginVisible || !onMeetings || inCall) closePanel();
+    }
+
     function init() {
         installInterceptor();
         makePipDraggable();
+        setInterval(autoDismissPanel, 1000);
         const obs = new MutationObserver(() => { installInterceptor(); makePipDraggable(); });
         obs.observe(document.body, { childList: true, subtree: true });
         console.log("%c[MedAstraX] Pre-join preview + draggable PiP ready", "color:#00a896;font-weight:600");

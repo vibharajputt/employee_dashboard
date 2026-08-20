@@ -1083,6 +1083,12 @@ async function handleLogin(username, password) {
 
 
 function handleLogout() {
+  // Never leave a call (and the camera) running behind the login screen.
+  if (typeof currentRoom !== "undefined" && currentRoom) {
+    try { leaveMeetingRoom(); } catch (err) { console.warn("[Video] leave on logout failed:", err.message); }
+  }
+  localStorage.removeItem("activeMeetingRoom");
+
   if (currentUser) {
     db.logActivity(`${currentUser.fullname} logged out of the workspace.`, "system");
   }
@@ -1132,6 +1138,21 @@ function handleLogout() {
 
 
 function showLoginScreen() {
+
+  // Wipe any leftover call state so nothing auto-joins or previews behind the
+  // login screen.
+  try {
+    localStorage.removeItem("activeMeetingRoom");
+    const roomInput = document.getElementById("meeting-room-input");
+    if (roomInput) roomInput.value = "";
+    const prejoin = document.getElementById("mx-prejoin");
+    if (prejoin) prejoin.classList.add("hidden");
+    const banner = document.getElementById("incoming-call-banner");
+    if (banner) { banner.classList.add("hidden"); banner.style.display = "none"; }
+    const pip = document.getElementById("meeting-pip-widget");
+    if (pip) pip.classList.add("hidden");
+  } catch (err) { }
+
 
 
 
@@ -10087,19 +10108,38 @@ function initMeetingsPortal() {
     }
   });
 
-  // Auto-reconnect on refresh
-  const savedRoom = localStorage.getItem("activeMeetingRoom");
-  if (savedRoom) {
-    setTimeout(() => {
-      const roomInput = document.getElementById("meeting-room-input");
-      const btnJoin = document.getElementById("btn-join-meeting");
-      if (roomInput && btnJoin) {
-        roomInput.value = savedRoom;
-        btnJoin.click();
-        showToast("Automatically reconnected to your active call.", "success");
+  // If the page really does go away, tear the call down. beforeunload cannot
+  // await a fetch, so use sendBeacon which the browser delivers after unload.
+  window.addEventListener("pagehide", () => {
+    if (!currentRoom) return;
+    const room = currentRoom;
+
+    try {
+      if (typeof releaseAllMedia === "function") releaseAllMedia();
+    } catch (err) { }
+
+    try {
+      const payload = JSON.stringify({ userId: currentUser ? currentUser.id : "unknown", room: room });
+      if (navigator.sendBeacon) {
+        navigator.sendBeacon("/api/video/leave", new Blob([payload], { type: "application/json" }));
       }
-    }, 1200);
-  }
+      if (typeof socket !== "undefined" && socket) {
+        socket.emit("meeting-status-update", {
+          room: room,
+          userId: currentUser ? currentUser.id : "unknown",
+          isLeft: true
+        });
+      }
+    } catch (err) { }
+
+    localStorage.removeItem("activeMeetingRoom");
+    currentRoom = null;
+  });
+
+  // Closing or reloading the portal ends the call, so there is nothing to
+  // rejoin. The old auto-reconnect fired on every page load — including the
+  // login screen — and silently reopened the camera for a call that was over.
+  localStorage.removeItem("activeMeetingRoom");
 
   // Set up personal details in Meetings Welcome banner
   if (currentUser) {
