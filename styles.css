@@ -4904,60 +4904,76 @@ tr:hover td {
   margin-right: 4px !important;
 }
 
-/* Column widths tuned for: ID, Name, Gmail, Phone, Domain, Aadhar, Role,
-   Reporting Manager, Status, Actions */
+/* Column widths: ID, Name, Gmail, Phone, Domain, Aadhar, Role,
+   Reporting Manager, Status, Actions.
+   The narrow columns hold fixed-size content (badges, two icon buttons), so
+   they get pixel widths. Percentages there rounded down and pushed the Actions
+   buttons past the right edge. The flexible text columns share what is left. */
 #employees-table th:nth-child(1),
 #employees-table td:nth-child(1) {
-  width: 8%;
+  width: 104px;
 }
 
 #employees-table th:nth-child(2),
 #employees-table td:nth-child(2) {
-  width: 16%;
+  width: 17%;
 }
 
 #employees-table th:nth-child(3),
 #employees-table td:nth-child(3) {
-  width: 17%;
+  width: 19%;
 }
 
 #employees-table th:nth-child(4),
 #employees-table td:nth-child(4) {
-  width: 9%;
+  width: 104px;
 }
 
 #employees-table th:nth-child(5),
 #employees-table td:nth-child(5) {
-  width: 9%;
+  width: 11%;
 }
 
 #employees-table th:nth-child(6),
 #employees-table td:nth-child(6) {
-  width: 8%;
+  width: 84px;
   text-align: center;
 }
 
 #employees-table th:nth-child(7),
 #employees-table td:nth-child(7) {
-  width: 9%;
+  width: 118px;
   text-align: center;
 }
 
 #employees-table th:nth-child(8),
 #employees-table td:nth-child(8) {
-  width: 14%;
+  width: 17%;
 }
 
 #employees-table th:nth-child(9),
 #employees-table td:nth-child(9) {
-  width: 6%;
+  width: 82px;
   text-align: center;
 }
 
 #employees-table th:nth-child(10),
 #employees-table td:nth-child(10) {
-  width: 4%;
+  width: 86px;
   text-align: center;
+}
+
+/* Name and reporting-manager may wrap onto a second line rather than overflow */
+#employees-table td:nth-child(2),
+#employees-table td:nth-child(8) {
+  white-space: normal;
+  word-break: break-word;
+}
+
+/* Keep the action buttons on one row and fully inside the cell */
+#employees-table td:nth-child(10)>div {
+  justify-content: center;
+  gap: 4px;
 }
 
 #tab-employees .table-wrapper {
@@ -5057,4 +5073,19 @@ tr:hover td {
 
 #tab-settings .info-row {
   padding-bottom: 8px;
+}
+
+
+/* The directory card must never push past the scroll container */
+#tab-employees .table-card {
+  max-width: 100%;
+  overflow: hidden;
+}
+
+#tab-employees .table-wrapper {
+  max-width: 100%;
+}
+
+.workspace-wrapper .content-wrapper {
+  scrollbar-gutter: stable;
 }
