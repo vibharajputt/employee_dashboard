@@ -933,9 +933,7 @@
             close.innerHTML = `<i data-lucide="phone-off" style="width:13px;height:13px;"></i>`;
             close.onclick = (e) => {
                 e.stopPropagation();
-                if (!confirm("Leave the meeting?")) return;
-                const leave = el("btn-leave-meeting");
-                if (leave) leave.click();
+                endCallNow();
             };
             btnRow.appendChild(close);
             icons();
@@ -1006,6 +1004,46 @@
         wrapped.__mxWrapped = true;
         window.leaveMeetingRoom = wrapped;
         console.log("[MedAstraX] recording will auto-stop when the meeting ends");
+    }
+
+    /**
+     * Hang up from anywhere. The mini window's button used to click the hidden
+     * #btn-leave-meeting, whose handler lives in the main document — if that
+     * handler had not been bound yet (the Meetings tab was never rendered in this
+     * session) nothing happened at all. Fall back to calling the teardown and
+     * resetting the UI directly.
+     */
+    function endCallNow() {
+        if (window.mxDocPip && window.mxDocPip.close) {
+            try { window.mxDocPip.close(); } catch (e) { }
+        }
+
+        const hidden = el("btn-leave-meeting");
+        const bound = hidden && typeof hidden.onclick === "function";
+
+        if (bound) {
+            hidden.click();
+        } else if (typeof window.leaveMeetingRoom === "function") {
+            Promise.resolve(window.leaveMeetingRoom()).catch(() => { });
+            resetCallUi();
+        }
+
+        const pip = el("meeting-pip-widget");
+        if (pip) pip.classList.add("hidden");
+    }
+
+    /** Mirror what app.js does after a normal hang-up. */
+    function resetCallUi() {
+        const show = (id) => { const n = el(id); if (n) n.classList.remove("hidden"); };
+        const hide = (id) => { const n = el(id); if (n) n.classList.add("hidden"); };
+        show("btn-join-meeting");
+        hide("btn-leave-meeting");
+        hide("meeting-media-controls");
+        hide("meeting-active-room-display");
+        hide("active-meeting-view");
+        show("meetings-welcome-dashboard");
+        const status = el("meeting-status-text");
+        if (status) { status.textContent = "Not Connected"; status.className = "badge badge-critical"; }
     }
 
     // ------------------------------------------------------------------------
@@ -1089,11 +1127,7 @@
         };
         // Overridden later by the Document PiP module when the browser supports it.
         window.mxNativePipFallback = () => enterNativePip(true);
-        leave.onclick = () => {
-            if (!confirm("Leave the meeting?")) return;
-            const h = el("btn-leave-meeting");
-            if (h) h.click();
-        };
+        leave.onclick = () => endCallNow();
 
         [mic, cam, share, rec, leave].forEach((b) => bar.appendChild(b));
         pip.appendChild(bar);
@@ -1223,22 +1257,16 @@
         if (document.pictureInPictureElement) return;
 
         const target = pickPipSource();
-        if (!target) {
-            if (fromUserClick && typeof showToast === "function") {
-                showToast("Nothing to show yet — turn on your camera or wait for someone to join.", "info");
-            }
-            return;
-        }
+        if (!target) return;
 
         try {
             await target.requestPictureInPicture();
         } catch (err) {
             // Without a user gesture Chrome rejects this unless the site has the
             // "auto picture-in-picture" permission — expected, not an error.
+            // Chrome refuses picture-in-picture unless the call came from a real user
+            // gesture. On the automatic path that is normal, not an error.
             console.log("[PiP] native window not opened:", err.message);
-            if (fromUserClick && typeof showToast === "function") {
-                showToast("Could not open the floating window: " + err.message, "error");
-            }
         }
     }
 
@@ -1265,7 +1293,7 @@
                     const ok = await window.mxDocPip.open();
                     if (ok) return;
                 }
-                enterNativePip(true);
+                enterNativePip(false);   // automatic: stay quiet if the browser says no
             });
             console.log("[PiP] auto picture-in-picture handler registered");
         } catch (err) {

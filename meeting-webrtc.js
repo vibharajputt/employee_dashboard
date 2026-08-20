@@ -258,20 +258,49 @@
         const buf = new Uint8Array(analyser.frequencyBinCount);
         let speaking = false;
         let quietFrames = 0;
+        let noiseFloor = 0.02;      // adapts to the room's background hum
+        let loudFrames = 0;
+
+        // Speech lives roughly in 85 Hz - 3 kHz. Measuring only that band keeps fan
+        // noise, keyboard clatter and hiss from lighting up the indicator.
+        const nyquist = ctx.sampleRate / 2;
+        const binHz = nyquist / analyser.frequencyBinCount;
+        const lowBin = Math.max(1, Math.floor(85 / binHz));
+        const highBin = Math.min(analyser.frequencyBinCount - 1, Math.ceil(3000 / binHz));
 
         const tick = () => {
+            // A muted or stopped track must never animate, whatever the analyser says.
+            const track = stream.getAudioTracks()[0];
+            const audible = track && track.readyState === "live" && track.enabled &&
+                (id !== "local" || (typeof isMicOn === "undefined" || isMicOn));
+
+            if (!audible) {
+                if (speaking) { speaking = false; paintSpeaking(id, false); }
+                meters[id].raf = requestAnimationFrame(tick);
+                return;
+            }
+
             analyser.getByteFrequencyData(buf);
             let sum = 0;
-            for (let i = 0; i < buf.length; i++) sum += buf[i] * buf[i];
-            const level = Math.sqrt(sum / buf.length) / 255;   // 0..1
+            for (let i = lowBin; i <= highBin; i++) sum += buf[i] * buf[i];
+            const level = Math.sqrt(sum / (highBin - lowBin + 1)) / 255;   // 0..1
 
-            if (level > 0.055) {
+            // Track the quiet baseline slowly so the threshold follows the room.
+            if (!speaking && level < noiseFloor * 1.5) {
+                noiseFloor = noiseFloor * 0.95 + level * 0.05;
+            }
+            const threshold = Math.max(0.075, noiseFloor * 3.2);
+
+            if (level > threshold) {
                 quietFrames = 0;
-                if (!speaking) { speaking = true; paintSpeaking(id, true); }
+                loudFrames++;
+                // Require a few consecutive frames so a single click cannot trigger it.
+                if (!speaking && loudFrames > 3) { speaking = true; paintSpeaking(id, true); }
             } else {
+                loudFrames = 0;
                 quietFrames++;
-                // Small hold-off so ordinary pauses between words do not flicker.
-                if (speaking && quietFrames > 12) { speaking = false; paintSpeaking(id, false); }
+                // Hold briefly so ordinary pauses between words do not flicker.
+                if (speaking && quietFrames > 14) { speaking = false; paintSpeaking(id, false); }
             }
             meters[id].raf = requestAnimationFrame(tick);
         };
@@ -347,7 +376,7 @@
         // a noticeable gap, and there is no privacy light to worry about.
         localStream.getAudioTracks().forEach((t) => { t.enabled = on; });
         if (typeof isMicOn !== "undefined") isMicOn = on;
-        if (!on) paintSpeaking("local", false);
+        paintSpeaking("local", false);   // clear immediately either way
         log("mic", on ? "on" : "muted");
     }
 
