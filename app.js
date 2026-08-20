@@ -172,7 +172,8 @@ function _handleIncomingCallInvite(data) {
       title: `📞 Incoming Call from ${caller}`,
       message: `${caller} is calling you to join meeting room: ${room}`,
       sender: caller,
-      actionTab: "meetings"
+      actionTab: "meetings",
+      actionData: { room: room }
     });
   }
   _showIncomingCallBanner(caller, room);
@@ -11201,10 +11202,16 @@ function renderScheduledMeetings() {
   const now = new Date();
   const currentTotalMins = now.getHours() * 60 + now.getMinutes();
 
+  // A meeting that started five minutes ago is exactly the one people are
+  // trying to join, so keep it listed for a grace period instead of hiding it
+  // the second the clock passes its start time. Recurring meetings always stay.
+  const JOIN_GRACE_MINUTES = 90;
+
   let filteredMeetings = myMeetings.filter(m => {
     const [hrs, mins] = m.time.split(':').map(Number);
     const mtgTotalMins = hrs * 60 + mins;
-    const isUpcoming = mtgTotalMins >= currentTotalMins;
+    const isUpcoming = m.isRecurring || m.isFixed ||
+      (mtgTotalMins + JOIN_GRACE_MINUTES) >= currentTotalMins;
 
     const matchesSearch = !searchQuery ||
       m.title.toLowerCase().includes(searchQuery) ||
@@ -13512,9 +13519,11 @@ function renderParticipantsList() {
   meItem.style.backgroundColor = "rgba(0, 168, 150, 0.05)";
   meItem.style.borderRadius = "6px";
 
+  meItem.setAttribute("data-mx-participant", "local");
   meItem.innerHTML = `
     <span style="font-size: 13px; color: var(--text-primary); font-weight: 600;">You</span>
     <div style="display:flex; gap: 8px; align-items:center;">
+      <span class="mx-mic-bars"><span></span><span></span><span></span></span>
       <i data-lucide="${isMicOn ? 'mic' : 'mic-off'}" style="width: 14px; height: 14px; color:${isMicOn ? 'var(--color-success)' : 'var(--color-danger)'};"></i>
       <i data-lucide="${isCamOn ? 'video' : 'video-off'}" style="width: 14px; height: 14px; color:${isCamOn ? 'var(--color-success)' : 'var(--color-danger)'};"></i>
       ${isHandRaised ? '<i data-lucide="hand" style="width: 14px; height: 14px; color:#eab308;"></i>' : ''}
@@ -13547,9 +13556,11 @@ function renderParticipantsList() {
       </div>
     ` : "";
 
+    pItem.setAttribute("data-mx-participant", p.userId);
     pItem.innerHTML = `
       <span style="font-size: 13px; color: var(--text-primary); flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${p.fullname}</span>
       <div style="display:flex; gap: 8px; align-items:center;">
+        <span class="mx-mic-bars"><span></span><span></span><span></span></span>
         <i data-lucide="${p.isMicOn ? 'mic' : 'mic-off'}" style="width: 14px; height: 14px; color:${p.isMicOn ? 'var(--color-success)' : 'var(--color-danger)'};"></i>
         <i data-lucide="${p.isCamOn ? 'video' : 'video-off'}" style="width: 14px; height: 14px; color:${p.isCamOn ? 'var(--color-success)' : 'var(--color-danger)'};"></i>
         ${p.isHandRaised ? '<i data-lucide="hand" style="width: 14px; height: 14px; color:#eab308;"></i>' : ''}
@@ -16218,6 +16229,18 @@ function renderNotificationsTab() {
 function openNotifAction(targetTab, notifId) {
   toggleNotifReadState(notifId, true);
   switchTab(targetTab);
+
+  // A call notification knows which room it belongs to, so join it rather than
+  // just dropping the user on the Meetings screen with nothing to click.
+  const notif = notificationsList.find(n => n.id === notifId);
+  const room = notif && notif.actionData && notif.actionData.room;
+  if (targetTab === "meetings" && room && !currentRoom) {
+    setTimeout(() => {
+      const input = document.getElementById("meeting-room-input");
+      const join = document.getElementById("btn-join-meeting");
+      if (input && join) { input.value = room; join.click(); }
+    }, 400);
+  }
 }
 
 function toggleNotifReadState(id, isRead) {

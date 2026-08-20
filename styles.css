@@ -5089,3 +5089,68 @@ tr:hover td {
 .workspace-wrapper .content-wrapper {
   scrollbar-gutter: stable;
 }
+
+
+/* ==========================================================================
+   SPEAKING INDICATOR
+   ========================================================================== */
+#video-grid>div,
+#meeting-pip-video-container>div {
+  transition: box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+#video-grid>div.mx-speaking,
+#meeting-pip-video-container>div.mx-speaking {
+  border-color: #10b981 !important;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.45), 0 0 18px rgba(16, 185, 129, 0.35) !important;
+}
+
+/* Animated bars next to whoever is talking in the participants list */
+.mx-speaking-row .mx-mic-bars {
+  opacity: 1;
+}
+
+.mx-mic-bars {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 12px;
+  opacity: 0.25;
+  transition: opacity 0.15s ease;
+}
+
+.mx-mic-bars span {
+  width: 3px;
+  border-radius: 2px;
+  background: #10b981;
+  height: 4px;
+}
+
+.mx-speaking-row .mx-mic-bars span {
+  animation: mxBar 0.55s ease-in-out infinite;
+}
+
+.mx-speaking-row .mx-mic-bars span:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.mx-speaking-row .mx-mic-bars span:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes mxBar {
+
+  0%,
+  100% {
+    height: 4px;
+  }
+
+  50% {
+    height: 12px;
+  }
+}
+
+.mx-speaking-row {
+  background: rgba(16, 185, 129, 0.08);
+  border-radius: 6px;
+}
