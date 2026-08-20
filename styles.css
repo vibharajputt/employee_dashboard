@@ -4807,9 +4807,39 @@ tr:hover td {
   border-color: var(--accent-color);
 }
 
-/* Keep the feed itself from growing without bound */
+/* Keep the feed itself from growing without bound.
+   The status icons sit at a negative offset so they can straddle the timeline
+   rule; once the container started scrolling they were clipped by its edge.
+   Draw the rule with a pseudo-element and pad enough room for the icons. */
 #activity-timeline-container {
+  position: relative;
   max-height: 460px;
   overflow-y: auto;
+  overflow-x: hidden;
+  padding-left: 46px;
   padding-right: 6px;
+  border-left: none;
+}
+
+#activity-timeline-container::before {
+  content: '';
+  position: absolute;
+  left: 15px;
+  top: 6px;
+  bottom: 6px;
+  border-left: 2px dashed var(--border-color);
+  pointer-events: none;
+}
+
+#activity-timeline-container .activity-icon-badge {
+  left: -46px;
+  top: 10px;
+}
+
+#activity-timeline-container .activity-item {
+  margin-bottom: 4px;
+}
+
+#activity-timeline-container .activity-toggle-btn {
+  margin-left: 0;
 }
