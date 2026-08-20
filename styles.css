@@ -5154,3 +5154,70 @@ tr:hover td {
   background: rgba(16, 185, 129, 0.08);
   border-radius: 6px;
 }
+
+
+/* ==========================================================================
+   RESPONSIVE VIDEO GRID
+   Tiles carried min-height:240px and a hard 16/9 ratio, so on a non-fullscreen
+   pane the computed height exceeded the grid and the bottom of the tile (and
+   the avatar) was clipped. Let the grid own the height and the tiles fill it.
+   ========================================================================== */
+#video-grid {
+  grid-auto-rows: minmax(0, 1fr);
+  align-content: stretch;
+  min-height: 0;
+}
+
+#video-grid>div {
+  min-height: 0 !important;
+  max-height: 100% !important;
+  height: 100% !important;
+  aspect-ratio: auto !important;
+  overflow: hidden;
+}
+
+#video-grid>div>video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* Avatar scales with the tile instead of a fixed 80px that overflowed */
+#video-grid [id^="video-avatar-"]>div,
+#video-avatar-local>div {
+  width: clamp(48px, 22%, 120px) !important;
+  height: auto !important;
+  aspect-ratio: 1 / 1;
+  font-size: clamp(1.1rem, 4.5cqw, 2.4rem) !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#video-grid>div {
+  container-type: size;
+}
+
+/* Two or more people: keep every tile square-ish and fully visible */
+#video-grid:has(> div:nth-child(2)) {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+/* ==========================================================================
+   LIVE MIC BUTTON — reacts to your voice like Meet's does
+   ========================================================================== */
+#btn-active-toggle-mic,
+#mx-pip-mic,
+#mx-pj-mic {
+  position: relative;
+  transition: box-shadow 0.08s linear;
+}
+
+#btn-active-toggle-mic.mx-mic-live,
+#mx-pip-mic.mx-mic-live,
+#mx-pj-mic.mx-mic-live {
+  box-shadow:
+    0 0 0 calc(var(--mx-level, 0) * 16px) rgba(16, 185, 129, 0.30),
+    0 0 calc(var(--mx-level, 0) * 26px) rgba(16, 185, 129, 0.55);
+}

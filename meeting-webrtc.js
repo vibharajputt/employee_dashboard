@@ -165,6 +165,7 @@
             // fires negotiationneeded on both sides and the polite/impolite rules
             // below settle any collision. Forcing offers here was the original glare.
             if (!peerConnections[peerId]) buildPeerConnection(peerId);
+            chimeJoin();
             if (typeof showToast === "function") {
                 showToast((event.username || "Someone") + " joined the meeting", "info");
             }
@@ -173,6 +174,7 @@
 
         if (type === "user-left") {
             cleanupPeer(peerId);
+            chimeLeave();
             return;
         }
 
@@ -276,6 +278,7 @@
 
             if (!audible) {
                 if (speaking) { speaking = false; paintSpeaking(id, false); }
+                if (id === "local") paintMicLevel(0, 1);
                 meters[id].raf = requestAnimationFrame(tick);
                 return;
             }
@@ -290,6 +293,8 @@
                 noiseFloor = noiseFloor * 0.95 + level * 0.05;
             }
             const threshold = Math.max(0.075, noiseFloor * 3.2);
+
+            if (id === "local") paintMicLevel(level, threshold);
 
             if (level > threshold) {
                 quietFrames = 0;
@@ -317,6 +322,56 @@
         delete meters[id];
         paintSpeaking(id, false);
     }
+
+    const MIC_BUTTONS = ["btn-active-toggle-mic", "mx-pip-mic", "mx-pj-mic"];
+
+    /** Grows a green halo around the mic buttons in proportion to your voice. */
+    function paintMicLevel(level, threshold) {
+        // Map the useful range onto 0..1 so the ring is calm at conversation volume
+        // and only maxes out when you are genuinely loud.
+        const norm = Math.max(0, Math.min(1, (level - threshold * 0.5) / 0.28));
+        MIC_BUTTONS.forEach((id) => {
+            const b = el(id);
+            if (!b) return;
+            b.style.setProperty("--mx-level", norm.toFixed(3));
+            b.classList.toggle("mx-mic-live", norm > 0.02);
+        });
+    }
+
+    // ------------------------------------------------------------------------
+    // Join / leave chimes
+    // ------------------------------------------------------------------------
+    let toneCtx = null;
+
+    function playTone(steps) {
+        try {
+            if (!toneCtx) toneCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (toneCtx.state === "suspended") toneCtx.resume();
+            let at = toneCtx.currentTime;
+            steps.forEach((s) => {
+                const osc = toneCtx.createOscillator();
+                const gain = toneCtx.createGain();
+                osc.type = "sine";
+                osc.frequency.setValueAtTime(s.f, at);
+                gain.gain.setValueAtTime(0, at);
+                gain.gain.linearRampToValueAtTime(s.v || 0.16, at + 0.02);
+                gain.gain.exponentialRampToValueAtTime(0.0001, at + s.d);
+                osc.connect(gain);
+                gain.connect(toneCtx.destination);
+                osc.start(at);
+                osc.stop(at + s.d + 0.02);
+                at += s.d * 0.72;
+            });
+        } catch (err) {
+            console.warn("[RTC] chime failed:", err.message);
+        }
+    }
+
+    // Rising pair for arrivals, falling pair for departures.
+    const chimeJoin = () => playTone([{ f: 587.33, d: 0.14 }, { f: 880.00, d: 0.22 }]);
+    const chimeLeave = () => playTone([{ f: 587.33, d: 0.14 }, { f: 392.00, d: 0.26 }]);
+
+    window.mxChime = { join: chimeJoin, leave: chimeLeave };
 
     function paintSpeaking(id, on) {
         const tile = el("video-container-" + id) ||
@@ -513,6 +568,31 @@
         };
 
         hookControls();
+
+        // Your own join / leave should be audible as well.
+        if (typeof window.joinMeetingRoom === "function" && !window.joinMeetingRoom.__mxChimed) {
+            const origJoin = window.joinMeetingRoom;
+            const wrappedJoin = async function () {
+                const result = await origJoin.apply(this, arguments);
+                chimeJoin();
+                return result;
+            };
+            wrappedJoin.__mxChimed = true;
+            window.joinMeetingRoom = wrappedJoin;
+        }
+
+        if (typeof window.leaveMeetingRoom === "function" && !window.leaveMeetingRoom.__mxChimed) {
+            const origLeave = window.leaveMeetingRoom;
+            const wrappedLeave = async function () {
+                chimeLeave();
+                Object.keys(meters).forEach(stopSpeaking);
+                paintMicLevel(0, 1);
+                return origLeave.apply(this, arguments);
+            };
+            wrappedLeave.__mxChimed = true;
+            window.leaveMeetingRoom = wrappedLeave;
+        }
+
         setInterval(() => {
             hookControls();
             watchLocalSpeaking();
