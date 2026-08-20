@@ -1494,6 +1494,12 @@ function syncMeetingPipWidget(activeTab) {
       pipVideoArea.appendChild(container);
     });
 
+    // Moving a <video> between containers can drop its playback; re-point it at
+    // the live stream so the mini window is not a blank box.
+    if (window.mxMedia && typeof window.mxMedia.refreshPreview === "function") {
+      setTimeout(window.mxMedia.refreshPreview, 50);
+    }
+
     const pipMinimizeBtn = document.getElementById("btn-pip-minimize");
     const pipExpandBtn = document.getElementById("btn-pip-expand");
 
@@ -1535,6 +1541,10 @@ function syncMeetingPipWidget(activeTab) {
       container.style.height = "";
       mainVideoGrid.appendChild(container);
     });
+
+    if (window.mxMedia && typeof window.mxMedia.refreshPreview === "function") {
+      setTimeout(window.mxMedia.refreshPreview, 50);
+    }
   }
 }
 

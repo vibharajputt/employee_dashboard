@@ -343,33 +343,66 @@
     // ------------------------------------------------------------------------
     let toneCtx = null;
 
+    function audioCtx() {
+        if (!toneCtx) {
+            try { toneCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+            catch (err) { return null; }
+        }
+        if (toneCtx.state === "suspended") toneCtx.resume();
+        return toneCtx;
+    }
+
+    // Browsers keep an AudioContext suspended until the page has been interacted
+    // with. Unlock it on the very first click so the join chime is never the one
+    // sound that gets swallowed.
+    ["click", "keydown", "touchstart"].forEach((evt) => {
+        window.addEventListener(evt, function unlock() {
+            audioCtx();
+            ["click", "keydown", "touchstart"].forEach((e2) =>
+                window.removeEventListener(e2, unlock));
+        }, { once: false });
+    });
+
     function playTone(steps) {
+        const ctx = audioCtx();
+        if (!ctx) return;
         try {
-            if (!toneCtx) toneCtx = new (window.AudioContext || window.webkitAudioContext)();
-            if (toneCtx.state === "suspended") toneCtx.resume();
-            let at = toneCtx.currentTime;
+            let at = ctx.currentTime + 0.01;
             steps.forEach((s) => {
-                const osc = toneCtx.createOscillator();
-                const gain = toneCtx.createGain();
-                osc.type = "sine";
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                // A touch of triangle gives the chime body; a pure sine is too thin to
+                // hear over a laptop speaker.
+                osc.type = s.type || "triangle";
                 osc.frequency.setValueAtTime(s.f, at);
-                gain.gain.setValueAtTime(0, at);
-                gain.gain.linearRampToValueAtTime(s.v || 0.16, at + 0.02);
+                if (s.to) osc.frequency.exponentialRampToValueAtTime(s.to, at + s.d);
+
+                gain.gain.setValueAtTime(0.0001, at);
+                gain.gain.exponentialRampToValueAtTime(s.v || 0.34, at + 0.015);
                 gain.gain.exponentialRampToValueAtTime(0.0001, at + s.d);
+
                 osc.connect(gain);
-                gain.connect(toneCtx.destination);
+                gain.connect(ctx.destination);
                 osc.start(at);
-                osc.stop(at + s.d + 0.02);
-                at += s.d * 0.72;
+                osc.stop(at + s.d + 0.03);
+                at += (s.gap !== undefined ? s.gap : s.d * 0.55);
             });
         } catch (err) {
             console.warn("[RTC] chime failed:", err.message);
         }
     }
 
-    // Rising pair for arrivals, falling pair for departures.
-    const chimeJoin = () => playTone([{ f: 587.33, d: 0.14 }, { f: 880.00, d: 0.22 }]);
-    const chimeLeave = () => playTone([{ f: 587.33, d: 0.14 }, { f: 392.00, d: 0.26 }]);
+    // Roughly a second long, like Meet: two rising notes on arrival, two falling
+    // notes with a short tail on departure.
+    const chimeJoin = () => playTone([
+        { f: 659.25, d: 0.16, v: 0.34, gap: 0.11 },   // E5
+        { f: 987.77, d: 0.34, v: 0.30 }               // B5
+    ]);
+
+    const chimeLeave = () => playTone([
+        { f: 659.25, d: 0.16, v: 0.32, gap: 0.11 },   // E5
+        { f: 392.00, d: 0.40, v: 0.30, to: 329.63 }   // G4 sliding down
+    ]);
 
     window.mxChime = { join: chimeJoin, leave: chimeLeave };
 
@@ -511,7 +544,9 @@
         intercept("btn-toggle-cam", async () => {
             const on = (typeof isCamOn !== "undefined") ? isCamOn : true;
             await setCamera(!on);
+            refreshLocalPreview();
             refreshLocalLabel();
+            repaintMediaButtons();
             emitStatus();
             if (typeof renderParticipantsList === "function") renderParticipantsList();
         });
@@ -520,13 +555,77 @@
             const on = (typeof isMicOn !== "undefined") ? isMicOn : true;
             setMic(!on);
             refreshLocalLabel();
+            repaintMediaButtons();
             emitStatus();
             if (typeof renderParticipantsList === "function") renderParticipantsList();
         });
 
-        intercept("btn-share-screen", () => {
-            if (screenStream) stopShare(); else startShare();
+        intercept("btn-share-screen", async () => {
+            if (screenStream) stopShare(); else await startShare();
+            refreshLocalPreview();
+            repaintMediaButtons();
         });
+    }
+
+    /**
+     * app.js paints #btn-active-toggle-cam immediately after clicking the hidden
+     * button, but our camera toggle is async (getUserMedia). It therefore read the
+     * OLD isCamOn and left the button stuck on red. Repaint once the real state is
+     * known, everywhere the control appears.
+     */
+    function repaintMediaButtons() {
+        const camOn = (typeof isCamOn !== "undefined") ? isCamOn : true;
+        const micOn = (typeof isMicOn !== "undefined") ? isMicOn : true;
+        const sharing = !!screenStream;
+
+        const paint = (id, on, onBg, offBg, onFg, offFg) => {
+            const b = el(id);
+            if (!b) return;
+            b.style.backgroundColor = on ? onBg : offBg;
+            b.style.color = on ? onFg : offFg;
+        };
+
+        paint("btn-active-toggle-cam", camOn, "var(--bg-primary)", "#ef4444", "var(--text-primary)", "#fff");
+        paint("btn-active-toggle-mic", micOn, "var(--bg-primary)", "#ef4444", "var(--text-primary)", "#fff");
+        paint("btn-active-share-screen", !sharing, "var(--bg-primary)", "#10b981", "var(--text-primary)", "#fff");
+
+        paint("mx-pip-cam", camOn, "rgba(255,255,255,.12)", "#ef4444", "#fff", "#fff");
+        paint("mx-pip-mic", micOn, "rgba(255,255,255,.12)", "#ef4444", "#fff", "#fff");
+        paint("mx-pip-share", !sharing, "rgba(255,255,255,.12)", "#10b981", "#fff", "#fff");
+
+        const swapIcon = (id, name) => {
+            const b = el(id);
+            if (!b) return;
+            const i = b.querySelector("i");
+            if (i) i.setAttribute("data-lucide", name);
+        };
+        swapIcon("btn-active-toggle-cam", camOn ? "video" : "video-off");
+        swapIcon("btn-active-toggle-mic", micOn ? "mic" : "mic-off");
+        swapIcon("mx-pip-cam", camOn ? "video" : "video-off");
+        swapIcon("mx-pip-mic", micOn ? "mic" : "mic-off");
+        if (typeof lucide !== "undefined") lucide.createIcons();
+    }
+
+    /**
+     * Re-point the local <video> at the current stream. The tile gets moved
+     * between the main grid, the mini widget and the Document PiP window; each
+     * move can leave the element without a live srcObject, which looked like
+     * "the camera light is on but no picture".
+     */
+    function refreshLocalPreview() {
+        const v = el("local-video-element");
+        if (!v) return;
+
+        const wanted = screenStream ||
+            ((typeof localStream !== "undefined") ? localStream : null);
+        if (!wanted) return;
+
+        const hasVideo = wanted.getVideoTracks && wanted.getVideoTracks().length > 0;
+        if (v.srcObject !== wanted) v.srcObject = wanted;
+        if (v.paused) v.play().catch(() => { });
+
+        const avatar = el("video-avatar-local");
+        if (avatar) avatar.classList.toggle("hidden", hasVideo);
     }
 
     /** Keep the "You 🎤 📹" chips on the local tile in step. */
@@ -564,6 +663,10 @@
             startShare: startShare,
             stopShare: stopShare,
             broadcastTrack: broadcastTrack,
+            refreshPreview: refreshLocalPreview,
+            repaintButtons: repaintMediaButtons,
+            chimeJoin: chimeJoin,
+            chimeLeave: chimeLeave,
             peers: () => Object.keys(peerConnections)
         };
 
@@ -596,6 +699,10 @@
         setInterval(() => {
             hookControls();
             watchLocalSpeaking();
+            if (typeof currentRoom !== "undefined" && currentRoom) {
+                refreshLocalPreview();
+                repaintMediaButtons();
+            }
             // Re-sync senders if the local stream was swapped out from under us.
             Object.keys(senders).forEach((peerId) => {
                 const s = senders[peerId];
