@@ -1760,6 +1760,9 @@ function getVisibleActivities(currentUser, users, activities) {
 
 
 }
+let activityShowAll = false;
+const ACTIVITY_PREVIEW_COUNT = 6;
+
 function renderActivitiesTimeline() {
   const timeline = document.getElementById("activity-timeline-container");
   if (!timeline) return;
@@ -1767,12 +1770,22 @@ function renderActivitiesTimeline() {
   timeline.innerHTML = "";
   const users = db.getUsers() || [];
   const activities = db.getActivities() || [];
-  const visibleActivities = getVisibleActivities(currentUser, users, activities);
+  let visibleActivities = getVisibleActivities(currentUser, users, activities);
+
+  // Drop the demo rows that ship with a fresh database — they reference people
+  // who are not in this workspace and only add noise.
+  visibleActivities = visibleActivities.filter(a =>
+    a.id !== "act-2" && !/Rohan Das/i.test(a.message || "")
+  );
+
+  const total = visibleActivities.length;
+  const shown = activityShowAll ? visibleActivities : visibleActivities.slice(0, ACTIVITY_PREVIEW_COUNT);
+  const hiddenCount = total - shown.length;
 
   if (visibleActivities.length === 0) {
     timeline.innerHTML = `<span class="text-muted" style="font-size:0.85rem; text-align:center; display:block; padding:16px;">No recent activities logged</span>`;
   } else {
-    visibleActivities.forEach(act => {
+    shown.forEach(act => {
       const actTime = new Date(act.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       const actDate = new Date(act.timestamp).toLocaleDateString([], { month: 'short', day: 'numeric' });
 
@@ -1824,7 +1837,21 @@ function renderActivitiesTimeline() {
       `;
       timeline.appendChild(div);
     });
+
+    // Show / hide the rest instead of dumping the whole audit history here.
+    if (hiddenCount > 0 || activityShowAll) {
+      const more = document.createElement("button");
+      more.type = "button";
+      more.className = "activity-toggle-btn";
+      more.innerHTML = activityShowAll
+        ? `<i data-lucide="chevron-up" style="width:13px;height:13px;"></i> Show recent only`
+        : `<i data-lucide="history" style="width:13px;height:13px;"></i> View full history (${hiddenCount} more)`;
+      more.onclick = () => { activityShowAll = !activityShowAll; renderActivitiesTimeline(); };
+      timeline.appendChild(more);
+    }
   }
+
+  if (typeof lucide !== "undefined") lucide.createIcons();
 }
 
 // Global chart variable to destroy before re-rendering

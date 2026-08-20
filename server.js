@@ -798,9 +798,10 @@ async function initDb() {
     const activitiesCount = await client.query('SELECT COUNT(*) FROM activities');
     if (parseInt(activitiesCount.rows[0].count) === 0) {
       console.log('[DB] Seeding default activities...');
+      // Only the genuine init line; the old sample task referenced "Rohan Das",
+      // who is not a member of this workspace.
       const defaultActivities = [
-        { id: "act-1", timestamp: "2026-06-25T10:00:00.000Z", type: "system", message: "MedAstraX portal database initialized successfully." },
-        { id: "act-2", timestamp: "2026-06-25T11:30:00.000Z", type: "success", message: "Task 'Onboard Internship Candidates' marked as Completed by Rohan Das." }
+        { id: "act-1", timestamp: new Date().toISOString(), type: "system", message: "MedAstraX portal database initialized successfully." }
       ];
 
       for (const a of defaultActivities) {
@@ -810,6 +811,9 @@ async function initDb() {
         );
       }
     }
+
+    // Remove the placeholder activity that shipped with earlier builds.
+    await client.query(`DELETE FROM activities WHERE "id" = 'act-2'`);
 
     // Create meetings table
     await client.query(`
@@ -1306,7 +1310,11 @@ app.post('/api/video/join', (req, res) => {
 });
 
 app.post('/api/video/leave', (req, res) => {
-  const { userId, room } = req.body;
+  // sendBeacon delivers a Blob; guard against an empty/unparsed body so a tab
+  // closing mid-call cannot 500 here.
+  const body = req.body || {};
+  const { userId, room } = body;
+  if (!userId) return res.json({ success: false, reason: 'missing userId' });
   const client = videoClients.find(c => c.userId === userId);
   if (client) {
     client.room = null;

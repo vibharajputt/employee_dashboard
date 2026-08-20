@@ -4561,3 +4561,255 @@ tr:hover td {
 #mx-pip-controls button:hover {
   filter: brightness(1.2);
 }
+
+
+/* ==========================================================================
+   FIXED SHELL LAYOUT
+   The wrapper used min-height:100vh, so the whole document scrolled and took
+   the sidebar and header with it — they appeared to blank out. Pin the shell to
+   the viewport and let only the content column scroll.
+   ========================================================================== */
+.workspace-wrapper {
+  height: 100vh;
+  max-height: 100vh;
+  overflow: hidden;
+}
+
+.workspace-wrapper .sidebar {
+  height: 100vh;
+  overflow: hidden;
+  padding: 16px 14px;
+}
+
+.workspace-wrapper .main-content {
+  height: 100vh;
+  overflow: hidden;
+  min-width: 0;
+}
+
+.workspace-wrapper .top-bar {
+  flex-shrink: 0;
+  padding: 14px 28px;
+}
+
+.workspace-wrapper .content-wrapper {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 24px 28px 32px;
+}
+
+/* ---------- Compact sidebar: everything visible without scrolling ---------- */
+:root {
+  --sidebar-width: 236px;
+}
+
+.sidebar-content {
+  width: calc(var(--sidebar-width) - 28px);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.sidebar-brand {
+  margin-bottom: 14px;
+  gap: 8px;
+}
+
+.sidebar-brand .brand-logo-small {
+  width: 28px;
+  height: 28px;
+}
+
+.sidebar-brand .brand-name {
+  font-size: 1.02rem;
+  letter-spacing: 0.06em;
+}
+
+.user-profile-summary {
+  padding: 9px 10px;
+  margin-bottom: 12px;
+  gap: 9px;
+  border-radius: var(--radius-sm);
+}
+
+.user-profile-summary .avatar-container {
+  width: 34px;
+  height: 34px;
+}
+
+.user-profile-summary .avatar-placeholder {
+  font-size: 0.95rem;
+}
+
+.user-details h4 {
+  font-size: 0.82rem;
+  margin-bottom: 2px;
+  max-width: 130px;
+}
+
+.user-details .badge {
+  font-size: 0.55rem;
+  padding: 2px 6px;
+}
+
+/* The nav is the only part allowed to scroll, and only if it truly overflows */
+.sidebar-nav {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  margin-bottom: 8px;
+}
+
+.sidebar-nav::-webkit-scrollbar {
+  width: 4px;
+}
+
+.sidebar-nav li {
+  margin-bottom: 2px;
+}
+
+.sidebar-nav .nav-link {
+  padding: 7px 11px;
+  font-size: 0.82rem;
+  gap: 9px;
+  border-radius: 7px;
+  line-height: 1.25;
+}
+
+.sidebar-nav .nav-link i {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+}
+
+.sidebar-nav .nav-link span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidebar-nav .nav-link.active {
+  border-left-width: 3px;
+}
+
+.nav-badge {
+  font-size: 0.62rem;
+  padding: 1px 5px;
+  min-width: 15px;
+}
+
+/* Logout / theme row must always stay visible at the bottom */
+.sidebar-footer {
+  flex-shrink: 0;
+  padding-top: 10px;
+  gap: 8px;
+}
+
+.sidebar-footer .btn-icon-only {
+  width: 34px;
+  height: 34px;
+}
+
+.sidebar-footer .btn-logout {
+  padding: 7px 12px;
+  font-size: 0.8rem;
+}
+
+.sidebar-footer .btn-logout i {
+  width: 15px;
+  height: 15px;
+}
+
+#sidebar-toggle-btn {
+  top: 16px;
+  left: calc(var(--sidebar-width) - 48px);
+  width: 30px;
+  height: 30px;
+}
+
+.workspace-wrapper.sidebar-collapsed #sidebar-toggle-btn {
+  left: 16px;
+}
+
+.workspace-wrapper.sidebar-collapsed .top-bar {
+  padding-left: 60px;
+}
+
+.welcome-message h2 {
+  font-size: 1.25rem;
+}
+
+/* Shorter viewports: shave a little more so nothing is cut off */
+@media (max-height: 760px) {
+  .sidebar-nav .nav-link {
+    padding: 5px 10px;
+    font-size: 0.78rem;
+  }
+
+  .user-profile-summary {
+    padding: 7px 9px;
+    margin-bottom: 9px;
+  }
+
+  .sidebar-brand {
+    margin-bottom: 10px;
+  }
+}
+
+/* The stacked mobile layout still needs normal document scrolling */
+@media (max-width: 1024px) {
+
+  .workspace-wrapper,
+  .workspace-wrapper .sidebar,
+  .workspace-wrapper .main-content {
+    height: auto;
+    max-height: none;
+    overflow: visible;
+  }
+
+  .workspace-wrapper .content-wrapper {
+    overflow: visible;
+  }
+
+  .sidebar-nav {
+    overflow: visible;
+  }
+}
+
+
+/* "View full history" control under the activity feed */
+.activity-toggle-btn {
+  margin-top: 4px;
+  margin-left: -12px;
+  align-self: flex-start;
+  background: transparent;
+  border: 1px dashed var(--border-color);
+  border-radius: var(--radius-sm);
+  color: var(--accent-color);
+  font-family: var(--font-body);
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 6px 12px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all var(--transition-fast);
+}
+
+.activity-toggle-btn:hover {
+  background: rgba(0, 168, 150, 0.08);
+  border-style: solid;
+  border-color: var(--accent-color);
+}
+
+/* Keep the feed itself from growing without bound */
+#activity-timeline-container {
+  max-height: 460px;
+  overflow-y: auto;
+  padding-right: 6px;
+}
