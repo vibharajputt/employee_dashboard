@@ -4052,15 +4052,15 @@ function renderEmployeesTab() {
 
 
 
-      <td><code>${u.id}</code></td>
+      <td title="${u.id}"><code>${u.id}</code></td>
 
 
 
-      <td><strong>${u.fullname}</strong></td>
+      <td title="${u.fullname}"><strong>${u.fullname}</strong></td>
 
 
 
-      <td>${u.gmail || "N/A"}</td>
+      <td title="${u.gmail || 'N/A'}">${u.gmail || "N/A"}</td>
 
 
 
@@ -4068,13 +4068,13 @@ function renderEmployeesTab() {
 
 
 
-      <td>${u.domain || "N/A"}</td>
+      <td title="${u.domain || 'N/A'}">${u.domain || "N/A"}</td>
       <td><code style="opacity:0.5;font-size:0.8em">Restricted</code></td>
       <td><span class="badge badge-${roleInfo.badgeClass}">${roleInfo.displayRole}</span></td>
 
 
 
-      <td>${reportingText}</td>
+      <td title="${reportingText}">${reportingText}</td>
 
 
 

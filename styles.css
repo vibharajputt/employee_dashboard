@@ -4843,3 +4843,218 @@ tr:hover td {
 #activity-timeline-container .activity-toggle-btn {
   margin-left: 0;
 }
+
+
+/* ==========================================================================
+   DIRECTORY TABLE
+   The old width rules were written for a 7-column table and a 1050px minimum,
+   so the 10-column directory forced a horizontal scrollbar and wrapped names
+   into tall stacks. Fit it to the pane instead.
+   ========================================================================== */
+#employees-table {
+  min-width: 0;
+  table-layout: fixed;
+  width: 100%;
+}
+
+#employees-table th {
+  padding: 10px 10px;
+  font-size: 0.68rem;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+#employees-table td {
+  padding: 9px 10px;
+  font-size: 0.78rem;
+  line-height: 1.35;
+  vertical-align: middle;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* One line per cell; the full value stays available as a tooltip */
+#employees-table td code,
+#employees-table td:nth-child(1),
+#employees-table td:nth-child(3),
+#employees-table td:nth-child(4),
+#employees-table td:nth-child(6) {
+  white-space: nowrap;
+}
+
+#employees-table td:nth-child(2) strong {
+  font-weight: 600;
+}
+
+#employees-table td code {
+  font-size: 0.72rem;
+}
+
+#employees-table .badge,
+#employees-table .status-pill {
+  font-size: 0.6rem;
+  padding: 2px 7px;
+  white-space: nowrap;
+}
+
+#employees-table td:nth-child(10) .btn {
+  width: 26px !important;
+  height: 26px !important;
+  padding: 4px !important;
+  margin-right: 4px !important;
+}
+
+/* Column widths tuned for: ID, Name, Gmail, Phone, Domain, Aadhar, Role,
+   Reporting Manager, Status, Actions */
+#employees-table th:nth-child(1),
+#employees-table td:nth-child(1) {
+  width: 8%;
+}
+
+#employees-table th:nth-child(2),
+#employees-table td:nth-child(2) {
+  width: 16%;
+}
+
+#employees-table th:nth-child(3),
+#employees-table td:nth-child(3) {
+  width: 17%;
+}
+
+#employees-table th:nth-child(4),
+#employees-table td:nth-child(4) {
+  width: 9%;
+}
+
+#employees-table th:nth-child(5),
+#employees-table td:nth-child(5) {
+  width: 9%;
+}
+
+#employees-table th:nth-child(6),
+#employees-table td:nth-child(6) {
+  width: 8%;
+  text-align: center;
+}
+
+#employees-table th:nth-child(7),
+#employees-table td:nth-child(7) {
+  width: 9%;
+  text-align: center;
+}
+
+#employees-table th:nth-child(8),
+#employees-table td:nth-child(8) {
+  width: 14%;
+}
+
+#employees-table th:nth-child(9),
+#employees-table td:nth-child(9) {
+  width: 6%;
+  text-align: center;
+}
+
+#employees-table th:nth-child(10),
+#employees-table td:nth-child(10) {
+  width: 4%;
+  text-align: center;
+}
+
+#tab-employees .table-wrapper {
+  overflow-x: auto;
+}
+
+#tab-employees .search-box {
+  width: 260px;
+}
+
+#tab-employees .search-box input {
+  font-size: 0.82rem;
+  padding: 7px 14px 7px 32px;
+}
+
+#tab-employees .section-header h2 {
+  font-size: 1.4rem;
+}
+
+#tab-employees .section-desc {
+  font-size: 0.85rem;
+}
+
+#tab-employees .table-actions {
+  padding: 14px 18px;
+}
+
+@media (max-width: 1400px) {
+  #employees-table td {
+    font-size: 0.74rem;
+    padding: 8px;
+  }
+
+  #employees-table th {
+    font-size: 0.63rem;
+    padding: 9px 8px;
+  }
+}
+
+/* ==========================================================================
+   SETTINGS PAGE — tighter cards, and make sure the pane really scrolls
+   ========================================================================== */
+.workspace-wrapper .main-content {
+  min-height: 0;
+}
+
+#tab-settings {
+  padding-bottom: 32px;
+}
+
+#tab-settings .section-header h2 {
+  font-size: 1.4rem;
+}
+
+#tab-settings .section-desc {
+  font-size: 0.85rem;
+}
+
+#tab-settings .overview-layout {
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  align-items: start;
+  gap: 18px;
+}
+
+#tab-settings .dashboard-card {
+  padding: 18px 20px;
+}
+
+#tab-settings .dashboard-card h3 {
+  font-size: 1rem;
+  margin-bottom: 10px;
+}
+
+#tab-settings .form-group {
+  margin-bottom: 13px;
+}
+
+#tab-settings .form-group label {
+  font-size: 0.78rem;
+  margin-bottom: 5px;
+}
+
+#tab-settings .form-group input,
+#tab-settings .form-group select {
+  padding: 9px 12px;
+  font-size: 0.85rem;
+}
+
+#tab-settings .btn {
+  padding: 9px 16px;
+  font-size: 0.85rem;
+}
+
+#tab-settings .text-muted {
+  font-size: 0.82rem !important;
+}
+
+#tab-settings .info-row {
+  padding-bottom: 8px;
+}
