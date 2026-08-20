@@ -4509,3 +4509,55 @@ tr:hover td {
   color: #f59e0b;
   border: 1px solid rgba(245, 158, 11, 0.3);
 }
+
+
+/* ==========================================================================
+   PICTURE-IN-PICTURE TILE SIZING
+   Video tiles carry min-height:240px and a 16/9 ratio so they render correctly
+   in the full meeting grid. Those same nodes get MOVED into the 280px mini
+   window, where that sizing makes them overflow. Reset it here rather than
+   duplicating the tile-building code.
+   ========================================================================== */
+#meeting-pip-video-container {
+  align-content: stretch;
+}
+
+#meeting-pip-video-container>div {
+  min-height: 0 !important;
+  aspect-ratio: auto !important;
+  height: 100% !important;
+  border-width: 1px !important;
+  border-radius: 6px !important;
+}
+
+/* Camera-off avatar: 80px circle is larger than the whole mini tile */
+#meeting-pip-video-container [id^="video-avatar-"]>div {
+  width: 42px !important;
+  height: 42px !important;
+  font-size: 1.05rem !important;
+  box-shadow: none !important;
+}
+
+/* Name/mic/cam label */
+#meeting-pip-video-container>div>div[style*="bottom"] {
+  bottom: 4px !important;
+  left: 4px !important;
+  padding: 2px 5px !important;
+  font-size: 0.58rem !important;
+  gap: 3px !important;
+}
+
+/* The per-tile ⋯ menu and raised-hand badge are unusable at this size */
+#meeting-pip-video-container>div>button,
+#meeting-pip-video-container [id^="video-hand-"] {
+  display: none !important;
+}
+
+/* Keep the control strip pinned and the video area flexible */
+#meeting-pip-widget {
+  min-height: 0;
+}
+
+#mx-pip-controls button:hover {
+  filter: brightness(1.2);
+}

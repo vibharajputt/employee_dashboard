@@ -1465,6 +1465,10 @@ function syncMeetingPipWidget(activeTab) {
     const videoContainers = mainVideoGrid.querySelectorAll("[id^='video-container-']");
     videoContainers.forEach(container => {
       container.style.borderRadius = "4px";
+      // Drop the full-grid sizing, otherwise the tile overflows the mini window.
+      container.style.minHeight = "0";
+      container.style.aspectRatio = "auto";
+      container.style.height = "100%";
       pipVideoArea.appendChild(container);
     });
 
@@ -1477,12 +1481,12 @@ function syncMeetingPipWidget(activeTab) {
         isPipMinimized = !isPipMinimized;
         if (isPipMinimized) {
           pipWidget.style.width = "180px";
-          pipWidget.style.height = "38px";
+          pipWidget.style.height = "74px";   // header + control strip stay usable
           pipVideoArea.style.display = "none";
           pipMinimizeBtn.innerHTML = '<i data-lucide="plus" style="width: 14px; height: 14px;"></i>';
         } else {
           pipWidget.style.width = "280px";
-          pipWidget.style.height = "180px";
+          pipWidget.style.height = "224px";
           pipVideoArea.style.display = "grid";
           pipMinimizeBtn.innerHTML = '<i data-lucide="minus" style="width: 14px; height: 14px;"></i>';
         }
@@ -1503,6 +1507,10 @@ function syncMeetingPipWidget(activeTab) {
     const videoContainers = pipVideoArea.querySelectorAll("[id^='video-container-']");
     videoContainers.forEach(container => {
       container.style.borderRadius = "8px";
+      // Restore full-grid sizing on the way back.
+      container.style.minHeight = "240px";
+      container.style.aspectRatio = "16 / 9";
+      container.style.height = "";
       mainVideoGrid.appendChild(container);
     });
   }
@@ -10414,9 +10422,12 @@ function initMeetingsPortal() {
       if (previewVideo) previewVideo.srcObject = null;
       if (lobbyModal) lobbyModal.classList.add("hidden");
 
-      // Set input code and start call join
+      // Set input code and start call join.
+      // The lobby already collected camera/mic choices, so skip the pre-join panel.
       document.getElementById("meeting-room-input").value = room;
+      window.__mxSkipPrejoin = true;
       document.getElementById("btn-join-meeting").click();
+      setTimeout(() => { window.__mxSkipPrejoin = false; }, 1500);
 
       // Show Welcome Invite Overlay modal inside the call
       setTimeout(() => {
@@ -11097,14 +11108,19 @@ function renderScheduledMeetings() {
 
   // ── TAB: RECORDINGS ─────────────────────────────────────────────────────────
   if (activeMeetingFilterTab === "recordings") {
-    listContainer.innerHTML = `
-      <div class="meetings-empty-sidebar">
-        <i data-lucide="video"></i>
-        <p>No meeting recordings found.</p>
-        <span style="font-size: 11px; color: var(--text-muted);">Recorded meeting sessions will be saved here.</span>
-      </div>
-    `;
-    if (typeof lucide !== "undefined") lucide.createIcons();
+    // meeting-extras.js owns this list (metadata from the API + blobs from IndexedDB).
+    if (window.mxRecordings && typeof window.mxRecordings.render === "function") {
+      window.mxRecordings.render();
+    } else {
+      listContainer.innerHTML = `
+        <div class="meetings-empty-sidebar">
+          <i data-lucide="video"></i>
+          <p>Recording module not loaded.</p>
+          <span style="font-size: 11px; color: var(--text-muted);">Refresh the page and try again.</span>
+        </div>
+      `;
+      if (typeof lucide !== "undefined") lucide.createIcons();
+    }
     return;
   }
 
@@ -11189,11 +11205,9 @@ function renderScheduledMeetings() {
           <button type="button" class="btn-edit-mtg-time" data-id="${m.id}" data-title="${m.title}" data-time="${m.time}" style="background: none; border: none; color: var(--primary-color); font-size: 10px; font-weight: 600; cursor: pointer; padding: 0; display: flex; align-items: center; gap: 2px;">
             <i data-lucide="edit-2" style="width: 9px; height: 9px;"></i> Time
           </button>
-          ${!m.isFixed ? `
-            <button type="button" class="btn-delete-mtg" data-id="${m.id}" style="background: none; border: none; color: var(--color-danger); font-size: 10px; font-weight: 600; cursor: pointer; padding: 0; display: flex; align-items: center; gap: 2px;">
-              <i data-lucide="trash-2" style="width: 9px; height: 9px;"></i> Delete
-            </button>
-          ` : ''}
+          <button type="button" class="btn-delete-mtg" data-id="${m.id}" data-title="${m.title}" data-fixed="${m.isFixed ? '1' : '0'}" style="background: none; border: none; color: var(--color-danger); font-size: 10px; font-weight: 600; cursor: pointer; padding: 0; display: flex; align-items: center; gap: 2px;">
+            <i data-lucide="trash-2" style="width: 9px; height: 9px;"></i> Delete
+          </button>
         </div>
       ` : ''}
     `;
@@ -11232,10 +11246,18 @@ function renderScheduledMeetings() {
     listContainer.querySelectorAll(".btn-delete-mtg").forEach(btn => {
       btn.onclick = async () => {
         const id = btn.getAttribute("data-id");
-        if (confirm("Are you sure you want to delete this custom meeting?")) {
-          await db.deleteMeeting(id);
-          showToast("Meeting deleted.", "info");
-        }
+        const title = btn.getAttribute("data-title") || "this meeting";
+        const isFixed = btn.getAttribute("data-fixed") === "1";
+
+        // Recurring/standing meetings affect the whole team, so ask more firmly.
+        const message = isFixed
+          ? `"${title}" is a standing team meeting.\n\nDeleting it removes it for everyone. Continue?`
+          : `Delete "${title}"?`;
+
+        if (!confirm(message)) return;
+        await db.deleteMeeting(id);
+        db.logActivity(`Meeting '${title}' was deleted by ${currentUser.fullname}.`, "danger");
+        showToast("Meeting deleted.", "info");
       };
     });
   }
@@ -13387,6 +13409,7 @@ let peerConnections = {}; // targetUserId -> RTCPeerConnection
 let isCamOn = true;
 let isMicOn = true;
 let isScreenSharing = false;
+let screenShareStream = null;   // kept so its tracks can actually be stopped
 
 function initVideoSse() {
   if (!currentUser) return;
@@ -13721,13 +13744,15 @@ function renderMeetingsTab() {
     if (!localStream) return;
     try {
       if (!isScreenSharing) {
-        const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+        const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
+        screenShareStream = screenStream;
         const screenTrack = screenStream.getVideoTracks()[0];
 
-        // Replace track in all peer connections
+        // Replace track in all peer connections.
+        // s.track can be null after a previous replaceTrack(null), so guard it.
         for (const pc of Object.values(peerConnections)) {
           const senders = pc.getSenders();
-          const videoSender = senders.find(s => s.track.kind === 'video');
+          const videoSender = senders.find(s => s.track && s.track.kind === 'video');
           if (videoSender) {
             videoSender.replaceTrack(screenTrack);
           }
@@ -13737,7 +13762,14 @@ function renderMeetingsTab() {
         const localVideo = document.getElementById("local-video-element");
         if (localVideo) {
           localVideo.srcObject = screenStream;
+          localVideo.play().catch(() => { });
         }
+
+        // With the camera off, the avatar overlay sits on top of the tile and
+        // completely hides the shared screen — which looked like "sharing only
+        // works when video is on". Hide it while sharing.
+        const shareAvatar = document.getElementById("video-avatar-local");
+        if (shareAvatar) shareAvatar.classList.add("hidden");
 
         screenTrack.onended = () => {
           stopScreenSharing();
@@ -14306,13 +14338,26 @@ function renderMeetingsTab() {
   }
 }
 
-function stopScreenSharing() {
-  if (!isScreenSharing) return;
+function stopScreenSharing(silent) {
+  if (!isScreenSharing && !screenShareStream) return;
   isScreenSharing = false;
+
+  // Actually release the capture, otherwise the browser keeps showing the
+  // "sharing your screen" bar long after the meeting has ended.
+  if (screenShareStream) {
+    screenShareStream.getTracks().forEach(t => { try { t.stop(); } catch (e) { } });
+    screenShareStream = null;
+  }
+
   const btnShare = document.getElementById("btn-share-screen");
   if (btnShare) {
     btnShare.style.backgroundColor = "var(--bg-secondary)";
     btnShare.style.color = "var(--text-primary)";
+  }
+  const btnActiveShare = document.getElementById("btn-active-share-screen");
+  if (btnActiveShare) {
+    btnActiveShare.style.backgroundColor = "var(--bg-primary)";
+    btnActiveShare.style.color = "var(--text-primary)";
   }
 
   // Switch back to camera video track
@@ -14320,7 +14365,7 @@ function stopScreenSharing() {
     const camTrack = localStream.getVideoTracks()[0];
     for (const pc of Object.values(peerConnections)) {
       const senders = pc.getSenders();
-      const videoSender = senders.find(s => s.track.kind === 'video');
+      const videoSender = senders.find(s => s.track && s.track.kind === 'video');
       if (videoSender && camTrack) {
         videoSender.replaceTrack(camTrack);
       }
@@ -14328,9 +14373,15 @@ function stopScreenSharing() {
     const localVideo = document.getElementById("local-video-element");
     if (localVideo) {
       localVideo.srcObject = localStream;
+      localVideo.play().catch(() => { });
     }
   }
-  showToast("Screen sharing stopped", "info");
+
+  // Restore the camera-off avatar if the camera is still muted.
+  const shareAvatar = document.getElementById("video-avatar-local");
+  if (shareAvatar && !isCamOn) shareAvatar.classList.remove("hidden");
+
+  if (!silent) showToast("Screen sharing stopped", "info");
 }
 
 async function joinMeetingRoom(room) {
@@ -14365,13 +14416,8 @@ async function joinMeetingRoom(room) {
     }
     addLocalVideo();
 
-    // Automatically trigger fullscreen mode on joining the call!
-    const activeView = document.getElementById("active-meeting-view");
-    if (activeView && !document.fullscreenElement) {
-      activeView.requestFullscreen().catch(err => {
-        console.warn("Automatic fullscreen request blocked by browser:", err.message);
-      });
-    }
+    // Fullscreen is opt-in: use the "Toggle Fullscreen" item in the ⋯ menu.
+    // Forcing it on join hijacked the whole screen unexpectedly.
 
     // Join room on signaling server
     const res = await fetch("/api/video/join", {
@@ -14398,7 +14444,34 @@ async function joinMeetingRoom(room) {
   }
 }
 
+function releaseAllMedia() {
+  // Belt and braces: stop the screen capture, the call stream, and anything still
+  // attached to a <video> tile (tiles can be moved into the PiP widget).
+  try { stopScreenSharing(true); } catch (e) { }
+
+  if (typeof localStream !== "undefined" && localStream) {
+    localStream.getTracks().forEach(t => { try { t.stop(); } catch (e) { } });
+    localStream = null;
+  }
+
+  ["video-grid", "meeting-pip-video-container"].forEach(id => {
+    const host = document.getElementById(id);
+    if (!host) return;
+    host.querySelectorAll("video").forEach(v => {
+      const s = v.srcObject;
+      if (s && s.getTracks) s.getTracks().forEach(t => { try { t.stop(); } catch (e) { } });
+      v.srcObject = null;
+    });
+  });
+
+  console.log("[Video] all local media released (camera/mic/screen off)");
+}
+
 async function leaveMeetingRoom() {
+  // Do this before any await so a slow or failing request can never leave the
+  // camera light on.
+  releaseAllMedia();
+
   if (activeCallStartTime || currentRoom) {
     const durationSec = activeCallStartTime ? Math.max(5, Math.round((Date.now() - activeCallStartTime) / 1000)) : 60;
     const now = new Date();
@@ -14428,25 +14501,24 @@ async function leaveMeetingRoom() {
   }
 
   if (currentRoom) {
-    await fetch("/api/video/leave", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId: currentUser.id, room: currentRoom })
-    });
+    try {
+      await fetch("/api/video/leave", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: currentUser.id, room: currentRoom })
+      });
+    } catch (err) {
+      // Never let a failed request block the rest of the teardown.
+      console.warn("[Video] leave notification failed:", err.message);
+    }
   }
 
   localStorage.removeItem("activeMeetingRoom");
   const pipWidget = document.getElementById("meeting-pip-widget");
   if (pipWidget) pipWidget.classList.add("hidden");
 
-  // Stop screen sharing if active
-  stopScreenSharing();
-
-  // Close and cleanup local stream
-  if (localStream) {
-    localStream.getTracks().forEach(track => track.stop());
-    localStream = null;
-  }
+  // Media was already released at the top of this function.
+  releaseAllMedia();
 
   // Close and cleanup peer connections
   for (const peerId of Object.keys(peerConnections)) {

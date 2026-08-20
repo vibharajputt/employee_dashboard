@@ -701,6 +701,25 @@ async function initDb() {
     `);
     await client.query(`ALTER TABLE user_chat_preferences ADD COLUMN IF NOT EXISTS "isPinned" BOOLEAN DEFAULT false;`);
 
+    // Recording METADATA only. The video blob lives in the recorder's IndexedDB:
+    // one 10-minute 720p capture is ~60-120 MB and Neon's free tier is 512 MB total,
+    // so storing media here would exhaust the database almost immediately.
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS recordings (
+        "id" VARCHAR(50) PRIMARY KEY,
+        "userId" VARCHAR(50),
+        "recordedBy" VARCHAR(100),
+        "title" VARCHAR(200),
+        "roomCode" VARCHAR(100),
+        "date" VARCHAR(50),
+        "time" VARCHAR(50),
+        "durationSec" INTEGER DEFAULT 0,
+        "sizeBytes" BIGINT DEFAULT 0,
+        "mimeType" VARCHAR(100),
+        "timestamp" TIMESTAMPTZ DEFAULT NOW()
+      )
+    `);
+
     // Create attendance table
     await client.query(`DROP TABLE IF EXISTS attendance CASCADE`);
     await client.query(`
@@ -812,9 +831,19 @@ async function initDb() {
       ALTER TABLE meetings ADD COLUMN IF NOT EXISTS recurrence JSONB DEFAULT '{}';
     `);
 
-    // Seed default meetings if empty
+    // Seed default meetings only on a genuinely fresh database.
+    // A marker row records that seeding already happened, so meetings an admin
+    // deletes are not silently recreated on the next restart.
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS app_flags (
+        "key" VARCHAR(50) PRIMARY KEY,
+        "value" VARCHAR(200),
+        "createdAt" TIMESTAMPTZ DEFAULT NOW()
+      )
+    `);
+    const seededFlag = await client.query(`SELECT 1 FROM app_flags WHERE "key" = 'meetings_seeded'`);
     const meetingsCount = await client.query('SELECT COUNT(*) FROM meetings');
-    if (parseInt(meetingsCount.rows[0].count) === 0) {
+    if (parseInt(meetingsCount.rows[0].count) === 0 && seededFlag.rowCount === 0) {
       console.log('[DB] Seeding default meetings...');
       const techTeamParticipants = ["usr-vibha", "usr-rashika", "usr-amit", "usr-naina", "usr-aryan", "usr-tanveer", "usr-saksham"];
       const marketingTeamParticipants = ["usr-prabhroop", "usr-mahakpreet", "usr-rudrakshi", "usr-dakshi", "usr-kiranveer", "usr-mehakdeep", "usr-aditi", "usr-harmandeep"];
@@ -832,6 +861,10 @@ async function initDb() {
           'mtg-mkt-eod', 'Marketing EOD Meeting', '20:00', JSON.stringify(marketingTeamParticipants), true, 'marketing-eod-meeting',
           'mtg-founders-eod', 'Founders & Data EOD Meeting', '18:00', JSON.stringify(foundersParticipants), true, 'founders-eod-meeting'
         ]
+      );
+      await client.query(
+        `INSERT INTO app_flags ("key", "value") VALUES ('meetings_seeded', 'true')
+         ON CONFLICT ("key") DO NOTHING`
       );
     }
 
@@ -1147,6 +1180,43 @@ app.post('/api/meeting-history', async (req, res) => {
       [h.id, h.userId, h.title, h.roomCode, h.date, h.time, h.duration, h.durationSec || 0, h.host || 'You', h.hostId, JSON.stringify(h.participants || []), h.timestamp || new Date().toISOString()]
     );
     res.status(201).json(h);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// RECORDINGS (metadata only)
+app.get('/api/recordings', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM recordings ORDER BY "timestamp" DESC');
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/recordings', async (req, res) => {
+  try {
+    const r = req.body;
+    if (!r || !r.id) return res.status(400).json({ error: 'Recording id is required' });
+    await pool.query(
+      `INSERT INTO recordings ("id", "userId", "recordedBy", "title", "roomCode", "date", "time", "durationSec", "sizeBytes", "mimeType", "timestamp")
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+       ON CONFLICT ("id") DO NOTHING`,
+      [r.id, r.userId, r.recordedBy, r.title, r.roomCode, r.date, r.time,
+      r.durationSec || 0, r.sizeBytes || 0, r.mimeType, r.timestamp || new Date().toISOString()]
+    );
+    io.emit('recordingAdded', { id: r.id, title: r.title });
+    res.status(201).json(r);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/recordings/:id', async (req, res) => {
+  try {
+    await pool.query('DELETE FROM recordings WHERE "id" = $1', [req.params.id]);
+    res.json({ message: 'Recording deleted' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
