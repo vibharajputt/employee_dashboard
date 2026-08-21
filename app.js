@@ -14501,6 +14501,9 @@ async function joinMeetingRoom(room) {
     });
   }
 
+  // Ensure SSE and media stream connections are alive
+  initVideoSse();
+
   // Remove placeholder
   const placeholder = document.getElementById("video-grid-placeholder");
   if (placeholder) placeholder.classList.add("hidden");
@@ -14508,12 +14511,20 @@ async function joinMeetingRoom(room) {
   try {
     // Get local media only if not already initialized (e.g. from pre-join lobby)
     if (!localStream) {
-      localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+      localStream = await navigator.mediaDevices.getUserMedia({
+        video: { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } },
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
+      });
     }
     addLocalVideo();
 
-    // Fullscreen is opt-in: use the "Toggle Fullscreen" item in the ⋯ menu.
-    // Forcing it on join hijacked the whole screen unexpectedly.
+    if (typeof socket !== 'undefined' && socket && socket.connected) {
+      socket.emit("webrtc-join", {
+        room: room,
+        userId: currentUser.id,
+        username: currentUser.fullname
+      });
+    }
 
     // Join room on signaling server
     const res = await fetch("/api/video/join", {
@@ -14524,13 +14535,17 @@ async function joinMeetingRoom(room) {
 
     const data = await res.json();
     const statusText = document.getElementById("meeting-status-text");
-    statusText.textContent = "Connected";
-    statusText.className = "badge badge-employee";
+    if (statusText) {
+      statusText.textContent = "Connected";
+      statusText.className = "badge badge-employee";
+    }
 
     // Establish connection with every existing user in room
-    if (data.existingUsers) {
+    if (data.existingUsers && Array.isArray(data.existingUsers)) {
       for (const user of data.existingUsers) {
-        createPeerConnection(user.userId, true);
+        if (user.userId && user.userId !== currentUser.id) {
+          createPeerConnection(user.userId, true);
+        }
       }
     }
   } catch (err) {
@@ -14993,10 +15008,14 @@ function createPeerConnection(peerId, initiator) {
 
 async function sendSignal(targetId, type, data) {
   try {
+    const room = (typeof currentRoom !== 'undefined') ? currentRoom : null;
+    if (typeof socket !== 'undefined' && socket && socket.connected) {
+      socket.emit("webrtc-signal", { senderId: currentUser.id, targetId, room, type, data });
+    }
     await fetch("/api/video/signal", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ senderId: currentUser.id, targetId, type, data })
+      body: JSON.stringify({ senderId: currentUser.id, targetId, room, type, data })
     });
   } catch (err) {
     console.error("Signaling error:", err);

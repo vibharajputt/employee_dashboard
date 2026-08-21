@@ -1295,34 +1295,42 @@ app.get('/api/video/events', (req, res) => {
 
 app.post('/api/video/join', (req, res) => {
   const { userId, username, room } = req.body;
-  const client = videoClients.find(c => c.userId === userId);
-  if (client) {
-    client.room = room;
-    client.username = username;
-
-    // Notify all other clients in the same room that a new user joined
-    broadcastToRoom(room, userId, {
-      type: 'user-joined',
-      userId,
-      senderId: userId,
-      username
-    });
-
-    // Send the list of existing users currently in the room back to the joiner
-    const existingUsers = videoClients
-      .filter(c => c.room === room && c.userId !== userId)
-      .map(c => ({ userId: c.userId, username: c.username }));
-
-    io.emit("employeeStatusChanged", { userId, status: 'in_meeting' });
-    res.json({ existingUsers });
-  } else {
-    res.status(404).json({ error: "Client event stream not found." });
+  let client = videoClients.find(c => c.userId === userId);
+  if (!client) {
+    client = { userId, username, res: null, room: null };
+    videoClients.push(client);
   }
+
+  client.room = room;
+  client.username = username;
+
+  // Notify all other clients in the same room via SSE
+  broadcastToRoom(room, userId, {
+    type: 'user-joined',
+    userId,
+    senderId: userId,
+    username
+  });
+
+  // Also broadcast via Socket.IO for 100% reliable real-time signaling
+  io.to(room).emit("webrtc-user-joined", {
+    type: 'user-joined',
+    userId,
+    senderId: userId,
+    username,
+    room
+  });
+
+  // Send the list of existing users currently in the room back to the joiner
+  const existingUsers = videoClients
+    .filter(c => c.room === room && c.userId !== userId)
+    .map(c => ({ userId: c.userId, username: c.username }));
+
+  io.emit("employeeStatusChanged", { userId, status: 'in_meeting' });
+  res.json({ existingUsers });
 });
 
 app.post('/api/video/leave', (req, res) => {
-  // sendBeacon delivers a Blob; guard against an empty/unparsed body so a tab
-  // closing mid-call cannot 500 here.
   const body = req.body || {};
   const { userId, room } = body;
   if (!userId) return res.json({ success: false, reason: 'missing userId' });
@@ -1335,23 +1343,35 @@ app.post('/api/video/leave', (req, res) => {
       senderId: userId
     });
   }
+  if (room) {
+    io.to(room).emit("webrtc-user-left", {
+      type: 'user-left',
+      userId,
+      senderId: userId,
+      room
+    });
+  }
   io.emit("employeeStatusChanged", { userId, status: 'free' });
   res.json({ success: true });
 });
 
 app.post('/api/video/signal', (req, res) => {
-  const { senderId, targetId, type, data } = req.body;
+  const { senderId, targetId, room, type, data } = req.body;
   const target = videoClients.find(c => c.userId === targetId);
-  if (target) {
+  if (target && target.res) {
     sendSseEvent(target.res, {
       type,
       senderId,
       data
     });
-    res.json({ success: true });
-  } else {
-    res.status(404).json({ error: "Target peer offline" });
   }
+  // Relay via Socket.IO
+  if (room) {
+    io.to(room).emit("webrtc-signal", { senderId, targetId, room, type, data });
+  } else {
+    io.emit("webrtc-signal", { senderId, targetId, type, data });
+  }
+  res.json({ success: true });
 });
 
 // --------------------------------------------------
@@ -1612,6 +1632,46 @@ io.on("connection", (socket) => {
       isCamOn: true,
       isJoined: true
     });
+
+    // Notify room of newcomer for WebRTC peer connection
+    socket.to(data.room).emit("webrtc-user-joined", {
+      type: "user-joined",
+      userId: data.userId,
+      senderId: data.userId,
+      username: data.fullname,
+      room: data.room
+    });
+  });
+
+  socket.on("webrtc-signal", (data) => {
+    if (data.room) {
+      socket.to(data.room).emit("webrtc-signal", data);
+    } else {
+      socket.broadcast.emit("webrtc-signal", data);
+    }
+  });
+
+  socket.on("webrtc-join", (data) => {
+    if (data.room) {
+      socket.to(data.room).emit("webrtc-user-joined", {
+        type: "user-joined",
+        userId: data.userId,
+        senderId: data.userId,
+        username: data.username,
+        room: data.room
+      });
+    }
+  });
+
+  socket.on("webrtc-leave", (data) => {
+    if (data.room) {
+      socket.to(data.room).emit("webrtc-user-left", {
+        type: "user-left",
+        userId: data.userId,
+        senderId: data.userId,
+        room: data.room
+      });
+    }
   });
 
   socket.on("meeting-chat-send", (data) => {

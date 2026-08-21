@@ -97,6 +97,26 @@
         }
     }
 
+    async function sendSignal(targetId, type, data) {
+        const myId = me();
+        if (!myId || !targetId) return;
+        const room = (typeof currentRoom !== "undefined") ? currentRoom : null;
+
+        // 1. Instant WebSocket Signaling via Socket.IO
+        if (typeof socket !== "undefined" && socket && socket.connected) {
+            socket.emit("webrtc-signal", { senderId: myId, targetId, room, type, data });
+        }
+
+        // 2. HTTP POST fallback for SSE
+        try {
+            fetch("/api/video/signal", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ senderId: myId, targetId, room, type, data })
+            }).catch(() => { });
+        } catch (e) { }
+    }
+
     // ------------------------------------------------------------------------
     // Peer Connection Management
     // ------------------------------------------------------------------------
@@ -854,6 +874,24 @@
             chimeLeave: chimeLeave,
             peers: () => (typeof peerConnections !== "undefined" ? Object.keys(peerConnections) : [])
         };
+
+        // Attach real-time WebRTC listeners to Socket.IO
+        if (typeof socket !== "undefined" && socket) {
+            socket.on("webrtc-signal", (event) => {
+                if (event.targetId && event.targetId !== me()) return;
+                handleEvent(event);
+            });
+            socket.on("webrtc-user-joined", (event) => {
+                if (event.userId && event.userId !== me()) {
+                    handleEvent(event);
+                }
+            });
+            socket.on("webrtc-user-left", (event) => {
+                if (event.userId && event.userId !== me()) {
+                    handleEvent(event);
+                }
+            });
+        }
 
         hookControls();
 
