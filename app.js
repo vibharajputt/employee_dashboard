@@ -14509,12 +14509,36 @@ async function joinMeetingRoom(room) {
   if (placeholder) placeholder.classList.add("hidden");
 
   try {
-    // Get local media only if not already initialized (e.g. from pre-join lobby)
-    if (!localStream) {
-      localStream = await navigator.mediaDevices.getUserMedia({
-        video: { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } },
-        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
-      });
+    // Acquire local media gracefully without hard crash
+    if (!localStream || !localStream.getTracks().some(t => t.readyState === "live")) {
+      try {
+        localStream = await navigator.mediaDevices.getUserMedia({
+          video: { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } },
+          audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
+        });
+      } catch (e1) {
+        console.warn("[Media] Ideal constraints failed, trying basic video+audio:", e1.message);
+        try {
+          localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        } catch (e2) {
+          console.warn("[Media] Video+audio failed, trying audio-only fallback:", e2.message);
+          try {
+            localStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            isCamOn = false;
+          } catch (e3) {
+            console.warn("[Media] Audio-only failed, trying video-only fallback:", e3.message);
+            try {
+              localStream = await navigator.mediaDevices.getUserMedia({ video: true });
+              isMicOn = false;
+            } catch (e4) {
+              console.error("[Media] All devices failed:", e4.message);
+              localStream = new MediaStream();
+              isCamOn = false;
+              isMicOn = false;
+            }
+          }
+        }
+      }
     }
     addLocalVideo();
 
@@ -14550,8 +14574,6 @@ async function joinMeetingRoom(room) {
     }
   } catch (err) {
     console.error("Error joining room:", err);
-    showToast("Failed to access camera/mic: " + err.message, "error");
-    leaveMeetingRoom();
   }
 }
 

@@ -805,8 +805,13 @@
                 previewStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
             } catch (err) {
                 console.warn("[PreJoin] camera/mic unavailable:", err.message);
-                previewStream = null;
-                el("mx-pj-error").classList.remove("hidden");
+                try {
+                    previewStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    wantCam = false;
+                } catch (e2) {
+                    previewStream = null;
+                    el("mx-pj-error").classList.remove("hidden");
+                }
             }
         }
 

@@ -120,7 +120,7 @@
     // ------------------------------------------------------------------------
     // Peer Connection Management
     // ------------------------------------------------------------------------
-    function buildPeerConnection(peerId) {
+    function buildPeerConnection(peerId, isInitiator) {
         if (!peerId) return null;
         if (typeof peerConnections === "undefined") window.peerConnections = {};
 
@@ -230,6 +230,24 @@
         };
 
         peerConnections[peerId] = pc;
+
+        // If explicitly initiated (e.g. newcomer connecting or answering join), trigger offer immediately
+        if (isInitiator) {
+            setTimeout(async () => {
+                try {
+                    const state = negotiation[peerId];
+                    if (state) state.makingOffer = true;
+                    await pc.setLocalDescription();
+                    sendSignal(peerId, "offer", pc.localDescription);
+                    log(peerId, "sent immediate offer as initiator");
+                } catch (err) {
+                    console.error("[RTC] immediate offer error:", err);
+                } finally {
+                    if (negotiation[peerId]) negotiation[peerId].makingOffer = false;
+                }
+            }, 80);
+        }
+
         return pc;
     }
 
@@ -239,8 +257,9 @@
         if (!pc) return;
 
         const stream = (typeof localStream !== "undefined") ? localStream : null;
-        const audioTrack = stream ? stream.getAudioTracks()[0] : null;
-        const videoTrack = (screenStream && screenStream.getVideoTracks()[0]) || (stream ? stream.getVideoTracks()[0] : null);
+        const audioTrack = stream ? stream.getAudioTracks().find(t => t.readyState === "live") : null;
+        const videoTrack = (screenStream && screenStream.getVideoTracks().find(t => t.readyState === "live")) ||
+            (stream ? stream.getVideoTracks().find(t => t.readyState === "live") : null);
 
         const s = senders[peerId];
         if (s) {
@@ -288,7 +307,7 @@
         if (type === "user-joined") {
             log("user joined:", peerId, event.username || "");
             if (!peerConnections[peerId]) {
-                buildPeerConnection(peerId);
+                buildPeerConnection(peerId, true);
             }
             chimeJoin();
             if (typeof showToast === "function") {
