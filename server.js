@@ -1276,7 +1276,8 @@ app.get('/api/video/events', (req, res) => {
     if (client.room) {
       broadcastToRoom(client.room, client.userId, {
         type: 'user-left',
-        userId: client.userId
+        userId: client.userId,
+        senderId: client.userId
       });
     }
     videoClients = videoClients.filter(c => c.userId !== userId);
@@ -1294,6 +1295,7 @@ app.post('/api/video/join', (req, res) => {
     broadcastToRoom(room, userId, {
       type: 'user-joined',
       userId,
+      senderId: userId,
       username
     });
 
@@ -1320,7 +1322,8 @@ app.post('/api/video/leave', (req, res) => {
     client.room = null;
     broadcastToRoom(room, userId, {
       type: 'user-left',
-      userId
+      userId,
+      senderId: userId
     });
   }
   io.emit("employeeStatusChanged", { userId, status: 'free' });

@@ -1,4 +1,4 @@
-﻿/**
+/**
 
 
 
@@ -14879,12 +14879,33 @@ function addRemoteVideo(peerId, stream) {
     hand.style.zIndex = "3";
     hand.innerHTML = `<i data-lucide="hand" style="width: 14px; height: 14px;"></i>`;
 
+    // Camera Off Avatar overlay
+    const avatar = document.createElement("div");
+    avatar.id = `video-avatar-${peerId}`;
+    const hasVideoTrack = stream && stream.getVideoTracks && stream.getVideoTracks().length > 0;
+    avatar.className = (peerIsCamOn && hasVideoTrack) ? "hidden" : "";
+    avatar.style.position = "absolute";
+    avatar.style.top = "0";
+    avatar.style.left = "0";
+    avatar.style.width = "100%";
+    avatar.style.height = "100%";
+    avatar.style.display = "flex";
+    avatar.style.alignItems = "center";
+    avatar.style.justifyContent = "center";
+    avatar.style.backgroundColor = "#1e293b";
+    avatar.style.color = "#fff";
+    avatar.style.zIndex = "1";
+
+    const char = (name || "U").trim().charAt(0).toUpperCase() || "U";
+    avatar.innerHTML = `<div style="width: 80px; height: 80px; border-radius: 50%; background: linear-gradient(135deg, var(--accent-secondary), var(--accent-color)); display: flex; align-items: center; justify-content: center; font-size: 2rem; font-weight: 700; box-shadow: 0 4px 12px rgba(0,0,0,0.2);">${char}</div>`;
+
     // Check if participant is already hand raised in state list
     if (meetingParticipantsList[peerId] && meetingParticipantsList[peerId].isHandRaised) {
       hand.classList.remove("hidden");
     }
 
     container.appendChild(video);
+    container.appendChild(avatar);
     container.appendChild(label);
     container.appendChild(menuBtn);
     container.appendChild(hand);
@@ -14894,7 +14915,17 @@ function addRemoteVideo(peerId, stream) {
     lucide.createIcons();
   } else {
     const video = container.querySelector("video");
-    if (video) video.srcObject = stream;
+    if (video) {
+      if (video.srcObject !== stream) video.srcObject = stream;
+      if (video.paused) video.play().catch(() => {});
+    }
+    const avatar = document.getElementById(`video-avatar-${peerId}`);
+    if (avatar) {
+      const hasVideoTrack = stream && stream.getVideoTracks && stream.getVideoTracks().length > 0;
+      const pState = meetingParticipantsList[peerId] || {};
+      const peerIsCamOn = pState.isCamOn !== false;
+      avatar.classList.toggle("hidden", !!(peerIsCamOn && hasVideoTrack));
+    }
   }
 }
 
@@ -14903,21 +14934,20 @@ function createPeerConnection(peerId, initiator) {
     iceServers: [
       { urls: 'stun:stun.l.google.com:19302' },
       { urls: 'stun:stun1.l.google.com:19302' },
-      // STUN alone fails whenever both peers sit behind symmetric NAT (common on
-      // home routers and mobile data). A TURN relay is required for those cases.
-      // These are the openrelay.metered.ca free relays — fine for a small team,
-      // but swap in a paid/self-hosted TURN service for anything critical.
+      { urls: 'stun:stun2.l.google.com:19302' },
+      { urls: 'stun:stun.cloudflare.com:3478' },
       { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
       { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
       { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' }
     ],
-    iceCandidatePoolSize: 4
+    iceCandidatePoolSize: 2
   });
 
   pc.oniceconnectionstatechange = () => {
     console.log(`[WebRTC] ${peerId} ICE state: ${pc.iceConnectionState}`);
     if (pc.iceConnectionState === 'failed') {
-      console.warn(`[WebRTC] Connection to ${peerId} failed — no usable network path.`);
+      console.warn(`[WebRTC] Connection to ${peerId} failed — restarting ICE.`);
+      try { pc.restartIce(); } catch (e) { }
     }
   };
 
@@ -14937,7 +14967,8 @@ function createPeerConnection(peerId, initiator) {
 
   // Handle remote track
   pc.ontrack = (event) => {
-    addRemoteVideo(peerId, event.streams[0]);
+    const stream = (event.streams && event.streams[0]) ? event.streams[0] : new MediaStream([event.track]);
+    addRemoteVideo(peerId, stream);
   };
 
   if (initiator) {
@@ -14965,7 +14996,9 @@ async function sendSignal(targetId, type, data) {
 }
 
 async function handleVideoSseEvent(event) {
-  const { type, senderId, data } = event;
+  const { type, data } = event;
+  const senderId = event.senderId || event.userId;
+  if (!senderId) return;
 
   switch (type) {
     case 'user-joined':
@@ -15003,7 +15036,11 @@ async function handleVideoSseEvent(event) {
     case 'ice-candidate':
       const pcIce = peerConnections[senderId];
       if (pcIce) {
-        await pcIce.addIceCandidate(new RTCIceCandidate(data));
+        try {
+          await pcIce.addIceCandidate(new RTCIceCandidate(data));
+        } catch (e) {
+          console.warn("[WebRTC] ICE candidate error:", e.message);
+        }
       }
       break;
   }
