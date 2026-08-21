@@ -5221,3 +5221,79 @@ tr:hover td {
     0 0 0 calc(var(--mx-level, 0) * 16px) rgba(16, 185, 129, 0.30),
     0 0 calc(var(--mx-level, 0) * 26px) rgba(16, 185, 129, 0.55);
 }
+
+
+/* Shared screen inside the mini window / floating PiP must be letterboxed,
+   not cropped, or the presenter only sees a zoomed corner of their desktop. */
+#meeting-pip-video-container video[style*="contain"],
+#video-grid video[style*="contain"] {
+  background: #000;
+}
+
+
+/* ==========================================================================
+   MEET-STYLE MINI CALL WINDOW
+   ========================================================================== */
+#meeting-pip-widget {
+  display: flex;
+  flex-direction: column;
+  height: 268px !important;
+}
+
+#mx-pip-strip::-webkit-scrollbar {
+  height: 0;
+}
+
+.mx-pip-chip {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 8px 3px 3px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1.5px solid transparent;
+  flex-shrink: 0;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.mx-pip-chip.talking {
+  border-color: #10b981;
+  background: rgba(16, 185, 129, 0.16);
+}
+
+.mx-pip-chip-avatar {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #052f5f, #00a896);
+  color: #fff;
+  font-size: 8.5px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.mx-pip-chip-name {
+  font-size: 10px;
+  font-weight: 600;
+  color: #cbd5e1;
+  white-space: nowrap;
+  max-width: 62px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#mx-pip-stage {
+  border-radius: 0;
+}
+
+#mx-pip-presenting.hidden {
+  display: none !important;
+}
+
+/* In the floating Document PiP window the mini call fills the whole frame */
+#meeting-pip-widget:not(.hidden) {
+  min-height: 0;
+}

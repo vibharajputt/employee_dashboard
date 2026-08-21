@@ -54,7 +54,26 @@
         { urls: "turn:openrelay.metered.ca:443?transport=tcp", username: "openrelayproject", credential: "openrelayproject" }
     ];
 
-    function el(id) { return document.getElementById(id); }
+    function el(id) {
+        // While the call is floating in a Document PiP window, the tile and its
+        // controls physically live in THAT document. Looking only at the main
+        // document returned null, so the preview was never re-attached (black box)
+        // and the buttons never repainted.
+        const pipDoc = window.mxDocPip && window.mxDocPip.doc;
+        return (pipDoc && pipDoc.getElementById(id)) || document.getElementById(id);
+    }
+
+    /** Every video tile, wherever it currently lives. */
+    function allVideos() {
+        const out = [];
+        const pipDoc = window.mxDocPip && window.mxDocPip.doc;
+        [document, pipDoc].forEach((d) => {
+            if (!d) return;
+            d.querySelectorAll("#video-grid video, #meeting-pip-video-container video")
+                .forEach((v) => out.push(v));
+        });
+        return out;
+    }
     function me() { return (typeof currentUser !== "undefined" && currentUser) ? currentUser.id : ""; }
     function log() { console.log.apply(console, ["[RTC]"].concat([].slice.call(arguments))); }
 
@@ -491,6 +510,7 @@
         if (avatar) avatar.classList.add("hidden");
 
         track.onended = () => stopShare();          // browser's own "Stop sharing"
+        emitStatus();
         if (typeof showToast === "function") showToast("Screen sharing started", "success");
         log("screen share started");
     }
@@ -510,6 +530,7 @@
         const avatar = el("video-avatar-local");
         if (avatar && !(typeof isCamOn !== "undefined" && isCamOn)) avatar.classList.remove("hidden");
 
+        emitStatus();
         if (!silent && typeof showToast === "function") showToast("Screen sharing stopped", "info");
         log("screen share stopped");
     }
@@ -536,6 +557,7 @@
             fullname: currentUser ? (currentUser.fullname || "").replace(/\s*\(.*\)\s*/g, "") : "",
             isMicOn: (typeof isMicOn !== "undefined") ? isMicOn : true,
             isCamOn: (typeof isCamOn !== "undefined") ? isCamOn : true,
+            isSharing: !!screenStream,
             isHandRaised: (typeof isHandRaised !== "undefined") ? isHandRaised : false
         });
     }
@@ -616,6 +638,8 @@
         const v = el("local-video-element");
         if (!v) return;
 
+        // While sharing, the local tile should show the shared screen — that is what
+        // Meet does, and it confirms to the presenter what everyone else can see.
         const wanted = screenStream ||
             ((typeof localStream !== "undefined") ? localStream : null);
         if (!wanted) return;
@@ -624,8 +648,17 @@
         if (v.srcObject !== wanted) v.srcObject = wanted;
         if (v.paused) v.play().catch(() => { });
 
+        // A shared screen must not be cropped the way a webcam feed is.
+        v.style.objectFit = screenStream ? "contain" : "cover";
+        v.style.background = screenStream ? "#000" : "";
+
         const avatar = el("video-avatar-local");
         if (avatar) avatar.classList.toggle("hidden", hasVideo);
+
+        // Remote tiles can pause after being moved between documents as well.
+        allVideos().forEach((el2) => {
+            if (el2.srcObject && el2.paused) el2.play().catch(() => { });
+        });
     }
 
     /** Keep the "You 🎤 📹" chips on the local tile in step. */
@@ -664,6 +697,14 @@
             stopShare: stopShare,
             broadcastTrack: broadcastTrack,
             refreshPreview: refreshLocalPreview,
+            isSharing: () => !!screenStream,
+            localStream: () => (screenStream || (typeof localStream !== "undefined" ? localStream : null)),
+            remoteStream: (peerId) => remoteStreams[peerId] || null,
+            remoteStreams: () => remoteStreams,
+            speakingIds: () => Object.keys(meters).filter((k) => {
+                const node = document.querySelector('[data-mx-participant="' + k + '"]');
+                return node && node.classList.contains("mx-speaking-row");
+            }),
             repaintButtons: repaintMediaButtons,
             chimeJoin: chimeJoin,
             chimeLeave: chimeLeave,

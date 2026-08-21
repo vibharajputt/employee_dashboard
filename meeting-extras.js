@@ -117,7 +117,12 @@
     // ------------------------------------------------------------------------
     // Helpers
     // ------------------------------------------------------------------------
-    function el(id) { return document.getElementById(id); }
+    function el(id) {
+        // Search the floating window first: the widget's buttons live there while
+        // Document PiP is open.
+        const pipDoc = window.mxDocPip && window.mxDocPip.doc;
+        return (pipDoc && pipDoc.getElementById(id)) || document.getElementById(id);
+    }
 
     function toast(msg, type) {
         if (typeof showToast === "function") showToast(msg, type || "info");
@@ -648,7 +653,12 @@
 (function () {
     "use strict";
 
-    function el(id) { return document.getElementById(id); }
+    function el(id) {
+        // Search the floating window first: the widget's buttons live there while
+        // Document PiP is open.
+        const pipDoc = window.mxDocPip && window.mxDocPip.doc;
+        return (pipDoc && pipDoc.getElementById(id)) || document.getElementById(id);
+    }
     function icons() { if (typeof lucide !== "undefined" && lucide.createIcons) lucide.createIcons(); }
     function toast(m, t) { if (typeof showToast === "function") showToast(m, t || "info"); }
 
@@ -976,7 +986,12 @@
 (function () {
     "use strict";
 
-    function el(id) { return document.getElementById(id); }
+    function el(id) {
+        // Search the floating window first: the widget's buttons live there while
+        // Document PiP is open.
+        const pipDoc = window.mxDocPip && window.mxDocPip.doc;
+        return (pipDoc && pipDoc.getElementById(id)) || document.getElementById(id);
+    }
     function icons() { if (typeof lucide !== "undefined" && lucide.createIcons) lucide.createIcons(); }
 
     // ------------------------------------------------------------------------
@@ -1396,7 +1411,12 @@
 (function () {
     "use strict";
 
-    function el(id) { return document.getElementById(id); }
+    function el(id) {
+        // Search the floating window first: the widget's buttons live there while
+        // Document PiP is open.
+        const pipDoc = window.mxDocPip && window.mxDocPip.doc;
+        return (pipDoc && pipDoc.getElementById(id)) || document.getElementById(id);
+    }
     function icons() { if (typeof lucide !== "undefined" && lucide.createIcons) lucide.createIcons(); }
     function toast(m, t) { if (typeof showToast === "function") showToast(m, t || "info"); }
 
@@ -1523,6 +1543,21 @@
         pipWindow.document.querySelectorAll("video").forEach((v) => v.play().catch(() => { }));
 
         pipWindow.addEventListener("pagehide", restoreWidget);
+
+        // Adopting a <video> into another document can pause it silently, which is
+        // what made the floating window show a black rectangle.
+        const keepPlaying = setInterval(() => {
+            if (!pipWindow) { clearInterval(keepPlaying); return; }
+            pipWindow.document.querySelectorAll("video").forEach((v) => {
+                if (v.srcObject && v.paused) v.play().catch(() => { });
+            });
+        }, 800);
+
+        if (window.mxMedia && window.mxMedia.refreshPreview) {
+            setTimeout(window.mxMedia.refreshPreview, 120);
+            setTimeout(window.mxMedia.repaintButtons, 160);
+        }
+
         console.log("[DocPiP] active call moved into a floating window");
         return true;
     }
@@ -1584,7 +1619,11 @@
         open: openDocumentPip,
         close: closeDocumentPip,
         supported: supported,
-        isOpen: () => !!pipWindow
+        isOpen: () => !!pipWindow,
+        // Nodes are MOVED into this document, so any getElementById against the
+        // main document stops finding them. Other modules look here first.
+        get doc() { return pipWindow ? pipWindow.document : null; },
+        get win() { return pipWindow; }
     };
 
     if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
@@ -1610,7 +1649,12 @@
 (function () {
     "use strict";
 
-    function el(id) { return document.getElementById(id); }
+    function el(id) {
+        // Search the floating window first: the widget's buttons live there while
+        // Document PiP is open.
+        const pipDoc = window.mxDocPip && window.mxDocPip.doc;
+        return (pipDoc && pipDoc.getElementById(id)) || document.getElementById(id);
+    }
     function icons() { if (typeof lucide !== "undefined" && lucide.createIcons) lucide.createIcons(); }
 
     // Pop-out is fully automatic now: Chrome's Media Session auto-PiP opens the
@@ -1665,7 +1709,12 @@
 (function () {
     "use strict";
 
-    function el(id) { return document.getElementById(id); }
+    function el(id) {
+        // Search the floating window first: the widget's buttons live there while
+        // Document PiP is open.
+        const pipDoc = window.mxDocPip && window.mxDocPip.doc;
+        return (pipDoc && pipDoc.getElementById(id)) || document.getElementById(id);
+    }
     function icons() { if (typeof lucide !== "undefined" && lucide.createIcons) lucide.createIcons(); }
 
     // ------------------------------------------------------------------------
@@ -1857,6 +1906,287 @@
         setInterval(reconcileCamera, 2000);
         const obs = new MutationObserver(() => { hookCameraToggle(); removePopoutButtons(); });
         obs.observe(document.body, { childList: true, subtree: true });
+    }
+
+    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
+    else init();
+})();
+
+/**
+ * ==========================================================================
+ * MEET-STYLE MINI CALL WINDOW
+ * ==========================================================================
+ * The old mini window borrowed the real video tiles by MOVING them out of the
+ * main grid. That is what caused the black rectangle: adopting a <video> into
+ * another document pauses it, and the main grid was left empty on the way back.
+ *
+ * A MediaStream can drive several <video> elements at once, so this builds its
+ * own compact layout instead and simply points it at the same streams:
+ *
+ *     ┌───────────────────────────────┐
+ *     │ ● Active Call            ✕    │
+ *     │ Rashika is presenting         │
+ *     │ [RP] [VR] [AK]                │   ← participant chips, speaker glows
+ *     │ ┌───────────────────────────┐ │
+ *     │ │   shared screen / video   │ │   ← stage
+ *     │ └───────────────────────────┘ │
+ *     │  🎤  📹  🖥  ⏺  ☎            │
+ *     └───────────────────────────────┘
+ * ==========================================================================
+ */
+(function () {
+    "use strict";
+
+    function el(id) {
+        const pipDoc = window.mxDocPip && window.mxDocPip.doc;
+        return (pipDoc && pipDoc.getElementById(id)) || document.getElementById(id);
+    }
+
+    function initials(name) {
+        const clean = (name || "?").replace(/\s*\(.*\)\s*/g, "").trim();
+        const parts = clean.split(/\s+/);
+        return ((parts[0] || "?")[0] + (parts.length > 1 ? parts[parts.length - 1][0] : "")).toUpperCase();
+    }
+
+    function shortName(name) {
+        return (name || "").replace(/\s*\(.*\)\s*/g, "").trim().split(/\s+/)[0] || "Guest";
+    }
+
+    function userName(id) {
+        if (typeof currentUser !== "undefined" && currentUser && id === currentUser.id) {
+            return currentUser.fullname || currentUser.username;
+        }
+        const p = (typeof meetingParticipantsList !== "undefined") ? meetingParticipantsList[id] : null;
+        if (p && p.fullname) return p.fullname;
+        const users = (typeof db !== "undefined" && db.getUsers) ? db.getUsers() : [];
+        const u = users.find((x) => x.id === id);
+        return u ? u.fullname : "Participant";
+    }
+
+    // ------------------------------------------------------------------------
+    // Build the layout once
+    // ------------------------------------------------------------------------
+    function buildLayout() {
+        const widget = el("meeting-pip-widget");
+        if (!widget || el("mx-pip-stage")) return;
+
+        // The old tile container stays in the DOM (app.js still references it) but
+        // is no longer used for display.
+        const oldArea = el("meeting-pip-video-container");
+        if (oldArea) oldArea.style.display = "none";
+
+        const banner = document.createElement("div");
+        banner.id = "mx-pip-presenting";
+        banner.className = "hidden";
+        banner.style.cssText =
+            "padding:4px 10px;font-size:10.5px;font-weight:600;color:#0ea5e9;" +
+            "background:rgba(14,165,233,.12);display:flex;align-items:center;gap:5px;flex-shrink:0;";
+
+        const strip = document.createElement("div");
+        strip.id = "mx-pip-strip";
+        strip.style.cssText =
+            "display:flex;gap:5px;padding:5px 8px;overflow-x:auto;flex-shrink:0;" +
+            "background:#0b1220;border-bottom:1px solid rgba(255,255,255,.06);";
+
+        const stage = document.createElement("div");
+        stage.id = "mx-pip-stage";
+        stage.style.cssText =
+            "flex:1;min-height:0;position:relative;background:#000;overflow:hidden;";
+        stage.innerHTML =
+            '<video id="mx-pip-stage-video" autoplay playsinline ' +
+            'style="width:100%;height:100%;object-fit:cover;display:block;"></video>' +
+            '<div id="mx-pip-stage-empty" style="position:absolute;inset:0;display:flex;' +
+            'align-items:center;justify-content:center;color:#64748b;font-size:11px;">Connecting…</div>' +
+            '<div id="mx-pip-stage-label" style="position:absolute;left:6px;bottom:6px;' +
+            'background:rgba(15,23,42,.8);color:#fff;font-size:10px;font-weight:600;' +
+            'padding:2px 7px;border-radius:4px;"></div>';
+
+        const controls = el("mx-pip-controls");
+        if (controls) {
+            widget.insertBefore(banner, controls);
+            widget.insertBefore(strip, controls);
+            widget.insertBefore(stage, controls);
+        } else {
+            widget.appendChild(banner);
+            widget.appendChild(strip);
+            widget.appendChild(stage);
+        }
+    }
+
+    // ------------------------------------------------------------------------
+    // Keep it in sync
+    // ------------------------------------------------------------------------
+    let lastStageStream = null;
+
+    function participants() {
+        const list = [];
+        if (typeof currentUser !== "undefined" && currentUser) {
+            list.push({
+                id: currentUser.id,
+                name: userName(currentUser.id),
+                isSelf: true,
+                sharing: !!(window.mxMedia && window.mxMedia.isSharing && window.mxMedia.isSharing()),
+                micOn: (typeof isMicOn !== "undefined") ? isMicOn : true
+            });
+        }
+        const roster = (typeof meetingParticipantsList !== "undefined") ? meetingParticipantsList : {};
+        Object.keys(roster).forEach((id) => {
+            if (typeof currentUser !== "undefined" && currentUser && id === currentUser.id) return;
+            const p = roster[id] || {};
+            list.push({
+                id: id,
+                name: userName(id),
+                isSelf: false,
+                sharing: !!p.isSharing,
+                micOn: p.isMicOn !== false
+            });
+        });
+        return list;
+    }
+
+    function renderStrip(people) {
+        const strip = el("mx-pip-strip");
+        if (!strip) return;
+
+        const signature = people.map((p) => p.id + (p.sharing ? "s" : "")).join("|");
+        if (strip.dataset.sig !== signature) {
+            strip.dataset.sig = signature;
+            strip.innerHTML = "";
+            people.forEach((p) => {
+                const chip = document.createElement("div");
+                chip.className = "mx-pip-chip";
+                chip.setAttribute("data-chip", p.id);
+                chip.title = p.name;
+                chip.innerHTML =
+                    '<span class="mx-pip-chip-avatar">' + initials(p.name) + "</span>" +
+                    '<span class="mx-pip-chip-name">' + (p.isSelf ? "You" : shortName(p.name)) + "</span>";
+                strip.appendChild(chip);
+            });
+        }
+
+        // Highlight whoever is talking right now.
+        const speaking = {};
+        (window.mxMedia && window.mxMedia.speakingIds ? window.mxMedia.speakingIds() : [])
+            .forEach((id) => { speaking[id] = true; });
+        if (typeof currentUser !== "undefined" && currentUser && speaking["local"]) {
+            speaking[currentUser.id] = true;
+        }
+        strip.querySelectorAll(".mx-pip-chip").forEach((chip) => {
+            chip.classList.toggle("talking", !!speaking[chip.getAttribute("data-chip")]);
+        });
+    }
+
+    /** Whoever is presenting wins the stage; otherwise show a remote peer, and
+     *  fall back to our own camera when we are the only one here. */
+    function pickStage(people) {
+        const media = window.mxMedia;
+        if (!media) return null;
+
+        const presenter = people.find((p) => p.sharing);
+        if (presenter) {
+            if (presenter.isSelf) {
+                return { stream: media.localStream(), label: "You are presenting", contain: true };
+            }
+            const s = media.remoteStream(presenter.id);
+            if (s && s.getVideoTracks().length) {
+                return { stream: s, label: shortName(presenter.name) + " is presenting", contain: true };
+            }
+        }
+
+        const remotes = media.remoteStreams ? media.remoteStreams() : {};
+        const withVideo = Object.keys(remotes).find(
+            (id) => remotes[id] && remotes[id].getVideoTracks().length
+        );
+        if (withVideo) {
+            return { stream: remotes[withVideo], label: shortName(userName(withVideo)), contain: false };
+        }
+
+        const own = media.localStream();
+        if (own && own.getVideoTracks && own.getVideoTracks().length) {
+            return { stream: own, label: "You", contain: false };
+        }
+        return null;
+    }
+
+    function renderStage(people) {
+        const video = el("mx-pip-stage-video");
+        const empty = el("mx-pip-stage-empty");
+        const label = el("mx-pip-stage-label");
+        if (!video) return;
+
+        const pick = pickStage(people);
+
+        if (!pick || !pick.stream) {
+            video.style.display = "none";
+            if (empty) {
+                empty.style.display = "flex";
+                empty.textContent = people.length > 1 ? "Cameras are off" : "Waiting for others…";
+            }
+            if (label) label.textContent = "";
+            lastStageStream = null;
+            return;
+        }
+
+        video.style.display = "block";
+        if (empty) empty.style.display = "none";
+
+        if (lastStageStream !== pick.stream || video.srcObject !== pick.stream) {
+            video.srcObject = pick.stream;
+            lastStageStream = pick.stream;
+        }
+        // A shared desktop is letterboxed; a webcam feed fills the frame.
+        video.style.objectFit = pick.contain ? "contain" : "cover";
+        video.muted = pick.label === "You" || pick.label === "You are presenting";
+        if (video.paused) video.play().catch(() => { });
+        if (label) label.textContent = pick.label;
+    }
+
+    function renderBanner(people) {
+        const banner = el("mx-pip-presenting");
+        if (!banner) return;
+        const presenter = people.find((p) => p.sharing);
+        if (!presenter) { banner.classList.add("hidden"); return; }
+        banner.classList.remove("hidden");
+        banner.textContent = (presenter.isSelf ? "You are" : shortName(presenter.name) + " is") + " presenting";
+    }
+
+    function tick() {
+        const inCall = (typeof currentRoom !== "undefined") && currentRoom;
+        const widget = el("meeting-pip-widget");
+        if (!widget || widget.classList.contains("hidden") || !inCall) return;
+
+        buildLayout();
+        const people = participants();
+        renderBanner(people);
+        renderStrip(people);
+        renderStage(people);
+    }
+
+    /**
+     * Stop app.js from relocating the real tiles. The mini window renders from the
+     * streams directly now, so moving DOM around only risked pausing playback and
+     * emptying the main grid.
+     */
+    function overrideSync() {
+        if (typeof window.syncMeetingPipWidget !== "function") return;
+        if (window.syncMeetingPipWidget.__mxOwned) return;
+
+        const replacement = function (activeTab) {
+            const pip = el("meeting-pip-widget");
+            if (!pip) return;
+            const inCall = (typeof currentRoom !== "undefined") && currentRoom;
+            const show = inCall && activeTab !== "meetings";
+            pip.classList.toggle("hidden", !show);
+            if (show) { buildLayout(); tick(); }
+        };
+        replacement.__mxOwned = true;
+        window.syncMeetingPipWidget = replacement;
+    }
+
+    function init() {
+        overrideSync();
+        setInterval(() => { overrideSync(); tick(); }, 700);
+        console.log("%c[MedAstraX] Meet-style mini call window ready", "color:#00a896;font-weight:600");
     }
 
     if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init);
