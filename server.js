@@ -338,6 +338,15 @@ class MockClient {
     }
 
     if (queryLower.startsWith('update users')) {
+      if (!values || !Array.isArray(values)) {
+        if (queryLower.includes('"workemail"')) {
+          dbData.users.forEach(u => {
+            if (!u.workEmail) u.workEmail = (u.username || '').toLowerCase() + '@medastrax.com';
+          });
+          saveMockDb(dbData);
+        }
+        return { rows: [] };
+      }
       // Password-only update (from /api/auth reset-password & change-password)
       if (queryLower.includes('set "password"')) {
         const pidx = dbData.users.findIndex(x => x.id === values[1]);
