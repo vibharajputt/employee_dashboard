@@ -3,7 +3,7 @@
  * MEDASTRAX MEETING MEDIA & WEBRTC LAYER
  * ==========================================================================
  * Multi-user video meeting engine with Perfect Negotiation, candidate queueing,
- * low-latency audio, and seamless camera/mic/screen-share switching.
+ * dedicated audio elements for guaranteed sound playback, and real-time screen sharing.
  * ==========================================================================
  */
 
@@ -55,6 +55,49 @@
     }
 
     // ------------------------------------------------------------------------
+    // Dedicated Remote Audio Management (Guarantees sound is always heard)
+    // ------------------------------------------------------------------------
+    function playRemoteAudio(peerId, stream) {
+        let audioEl = document.getElementById("remote-audio-" + peerId);
+        if (!audioEl) {
+            audioEl = document.createElement("audio");
+            audioEl.id = "remote-audio-" + peerId;
+            audioEl.autoplay = true;
+            audioEl.playsInline = true;
+            audioEl.style.display = "none";
+            document.body.appendChild(audioEl);
+        }
+
+        if (audioEl.srcObject !== stream) {
+            audioEl.srcObject = stream;
+        }
+
+        const tryPlay = () => {
+            audioEl.play().catch(() => {
+                const unlock = () => {
+                    audioEl.play().catch(() => { });
+                    document.removeEventListener("click", unlock);
+                    document.removeEventListener("keydown", unlock);
+                    document.removeEventListener("touchstart", unlock);
+                };
+                document.addEventListener("click", unlock, { once: true });
+                document.addEventListener("keydown", unlock, { once: true });
+                document.addEventListener("touchstart", unlock, { once: true });
+            });
+        };
+        tryPlay();
+    }
+
+    function removeRemoteAudio(peerId) {
+        const audioEl = document.getElementById("remote-audio-" + peerId);
+        if (audioEl) {
+            try { audioEl.pause(); } catch (e) { }
+            audioEl.srcObject = null;
+            audioEl.remove();
+        }
+    }
+
+    // ------------------------------------------------------------------------
     // Peer Connection Management
     // ------------------------------------------------------------------------
     function buildPeerConnection(peerId) {
@@ -81,7 +124,12 @@
         };
         pendingCandidates[peerId] = [];
 
-        // Attach local tracks directly to the connection
+        // Pre-create transceivers so slots always exist for audio and video
+        const audioTx = pc.addTransceiver("audio", { direction: "sendrecv" });
+        const videoTx = pc.addTransceiver("video", { direction: "sendrecv" });
+        senders[peerId] = { audio: audioTx.sender, video: videoTx.sender };
+
+        // Attach local tracks directly to the senders
         attachLocalTracks(peerId, pc);
 
         pc.onicecandidate = (e) => {
@@ -104,12 +152,17 @@
                 remoteStreams[peerId] = stream;
             }
 
-            // Render remote video / audio
+            // If audio track, ensure dedicated audio element is playing
+            if (e.track.kind === "audio") {
+                playRemoteAudio(peerId, stream);
+                watchSpeaking(peerId, stream);
+            }
+
+            // Render remote video / tile
             if (typeof addRemoteVideo === "function") {
                 addRemoteVideo(peerId, stream);
             }
             updateRemoteTile(peerId, stream);
-            watchSpeaking(peerId, stream);
 
             e.track.onended = () => {
                 try {
@@ -119,6 +172,7 @@
             };
 
             e.track.onunmute = () => {
+                if (e.track.kind === "audio") playRemoteAudio(peerId, stream);
                 if (typeof addRemoteVideo === "function") addRemoteVideo(peerId, stream);
                 updateRemoteTile(peerId, stream);
             };
@@ -159,7 +213,7 @@
         return pc;
     }
 
-    /** Attach current local audio and video tracks to the peer connection */
+    /** Attach current local audio and video tracks to the peer connection senders */
     function attachLocalTracks(peerId, targetPc) {
         const pc = targetPc || peerConnections[peerId];
         if (!pc) return;
@@ -168,38 +222,15 @@
         const audioTrack = stream ? stream.getAudioTracks()[0] : null;
         const videoTrack = (screenStream && screenStream.getVideoTracks()[0]) || (stream ? stream.getVideoTracks()[0] : null);
 
-        let audioSender = null;
-        let videoSender = null;
-
-        const existingSenders = pc.getSenders();
-        const existingAudio = existingSenders.find(s => s.track && s.track.kind === "audio");
-        const existingVideo = existingSenders.find(s => s.track && s.track.kind === "video");
-
-        if (existingAudio) {
-            audioSender = existingAudio;
-            if (audioTrack && existingAudio.track !== audioTrack) {
-                existingAudio.replaceTrack(audioTrack).catch(() => { });
+        const s = senders[peerId];
+        if (s) {
+            if (s.audio && audioTrack) {
+                s.audio.replaceTrack(audioTrack).catch(() => { });
             }
-        } else if (audioTrack && stream) {
-            audioSender = pc.addTrack(audioTrack, stream);
-        } else {
-            const audioTx = pc.addTransceiver("audio", { direction: "sendrecv" });
-            audioSender = audioTx.sender;
-        }
-
-        if (existingVideo) {
-            videoSender = existingVideo;
-            if (videoTrack && existingVideo.track !== videoTrack) {
-                existingVideo.replaceTrack(videoTrack).catch(() => { });
+            if (s.video) {
+                s.video.replaceTrack(videoTrack || null).catch(() => { });
             }
-        } else if (videoTrack && stream) {
-            videoSender = pc.addTrack(videoTrack, stream);
-        } else {
-            const videoTx = pc.addTransceiver("video", { direction: "sendrecv" });
-            videoSender = videoTx.sender;
         }
-
-        senders[peerId] = { audio: audioSender, video: videoSender };
     }
 
     /** Broadcast track replacement across all active peer connections */
@@ -218,17 +249,6 @@
                 sender.replaceTrack(track || null).catch((err) => {
                     console.warn("[RTC] replaceTrack", kind, peerId, err.message);
                 });
-            } else if (track) {
-                try {
-                    const stream = (typeof localStream !== "undefined") ? localStream : null;
-                    if (stream) {
-                        const newSender = pc.addTrack(track, stream);
-                        if (!senders[peerId]) senders[peerId] = {};
-                        senders[peerId][kind] = newSender;
-                    }
-                } catch (e) {
-                    console.warn("[RTC] addTrack on broadcast error:", e.message);
-                }
             }
         });
         log("broadcast", kind, track ? "track active" : "null", "to", Object.keys(peerConnections).length, "peer(s)");
@@ -340,6 +360,7 @@
         delete remoteStreams[peerId];
         delete pendingCandidates[peerId];
         stopSpeaking(peerId);
+        removeRemoteAudio(peerId);
 
         const tile = el("video-container-" + peerId);
         if (tile) tile.remove();
@@ -471,23 +492,31 @@
         const tile = el("video-container-" + peerId);
         if (!tile) return;
         const video = tile.querySelector("video");
+        const pState = (typeof meetingParticipantsList !== "undefined" && meetingParticipantsList[peerId]) || {};
+        const isSharing = !!pState.isSharing;
+        const peerCamOn = pState.isCamOn !== false;
+
         if (video) {
             if (video.srcObject !== stream) video.srcObject = stream;
+            video.style.objectFit = isSharing ? "contain" : "cover";
+            video.style.background = isSharing ? "#000" : "";
             if (video.paused) video.play().catch(() => { });
         }
 
         const avatar = el("video-avatar-" + peerId);
         if (avatar) {
             const hasVideo = stream && stream.getVideoTracks && stream.getVideoTracks().some(t => t.readyState === "live" && t.enabled);
-            const pState = (typeof meetingParticipantsList !== "undefined" && meetingParticipantsList[peerId]) || {};
-            const peerCamOn = pState.isCamOn !== false;
-            avatar.classList.toggle("hidden", !!(peerCamOn && hasVideo));
+            const showVideo = isSharing || (peerCamOn && hasVideo);
+            avatar.classList.toggle("hidden", !!showVideo);
         }
     }
 
     function ensureRemoteMediaPlaying(peerId) {
         const stream = remoteStreams[peerId];
-        if (stream) updateRemoteTile(peerId, stream);
+        if (stream) {
+            playRemoteAudio(peerId, stream);
+            updateRemoteTile(peerId, stream);
+        }
     }
 
     // ------------------------------------------------------------------------
@@ -575,6 +604,7 @@
             const avatar = el("video-avatar-local");
             if (avatar) avatar.classList.remove("hidden");
             log("camera off — device released");
+            emitStatus();
             return;
         }
 
@@ -596,6 +626,7 @@
             const avatar = el("video-avatar-local");
             if (avatar) avatar.classList.add("hidden");
             log("camera on — track active across all peers");
+            emitStatus();
         } catch (err) {
             if (typeof showToast === "function") showToast("Camera unavailable: " + err.message, "error");
         }
@@ -607,6 +638,7 @@
         if (typeof isMicOn !== "undefined") isMicOn = on;
         paintSpeaking("local", false);
         log("mic", on ? "on" : "muted");
+        emitStatus();
     }
 
     let screenStream = null;
@@ -627,7 +659,12 @@
         if (typeof isScreenSharing !== "undefined") isScreenSharing = true;
 
         const v = el("local-video-element");
-        if (v) { v.srcObject = screenStream; v.play().catch(() => { }); }
+        if (v) {
+            v.srcObject = screenStream;
+            v.style.objectFit = "contain";
+            v.style.background = "#000";
+            v.play().catch(() => { });
+        }
         const avatar = el("video-avatar-local");
         if (avatar) avatar.classList.add("hidden");
 
@@ -648,7 +685,12 @@
         broadcastTrack("video", cam || null);
 
         const v = el("local-video-element");
-        if (v && typeof localStream !== "undefined") { v.srcObject = localStream; v.play().catch(() => { }); }
+        if (v && typeof localStream !== "undefined") {
+            v.srcObject = localStream;
+            v.style.objectFit = "cover";
+            v.style.background = "";
+            v.play().catch(() => { });
+        }
         const avatar = el("video-avatar-local");
         if (avatar && !(typeof isCamOn !== "undefined" && isCamOn)) avatar.classList.remove("hidden");
 
@@ -848,7 +890,10 @@
             // Ensure any remote video with live stream is playing
             Object.keys(remoteStreams).forEach((peerId) => {
                 const s = remoteStreams[peerId];
-                if (s) updateRemoteTile(peerId, s);
+                if (s) {
+                    playRemoteAudio(peerId, s);
+                    updateRemoteTile(peerId, s);
+                }
             });
         }, 1200);
 

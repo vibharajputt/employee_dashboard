@@ -14399,14 +14399,21 @@ function renderMeetingsTab() {
             ...data
           };
 
-          // Update remote avatar overlay based on camera state
+          // Update remote avatar overlay based on camera and screen sharing state
           const remoteAvatar = document.getElementById(`video-avatar-${data.userId}`);
+          const remoteTile = document.getElementById(`video-container-${data.userId}`);
+          const remoteVideo = remoteTile ? remoteTile.querySelector("video") : null;
           if (remoteAvatar) {
-            if (data.isCamOn === false) {
-              remoteAvatar.classList.remove("hidden");
-            } else {
+            if (data.isSharing || data.isCamOn !== false) {
               remoteAvatar.classList.add("hidden");
+            } else {
+              remoteAvatar.classList.remove("hidden");
             }
+          }
+          if (remoteVideo) {
+            remoteVideo.style.objectFit = data.isSharing ? "contain" : "cover";
+            remoteVideo.style.background = data.isSharing ? "#000" : "";
+            if (remoteVideo.paused) remoteVideo.play().catch(() => {});
           }
 
           if (data.isJoined) {
@@ -14416,6 +14423,7 @@ function renderMeetingsTab() {
               fullname: currentUser.fullname.replace(/\s*\(.*\)\s*/g, ""),
               isMicOn: isMicOn,
               isCamOn: isCamOn,
+              isSharing: !!(typeof isScreenSharing !== "undefined" && isScreenSharing),
               isHandRaised: isHandRaised
             });
           }
