@@ -14993,6 +14993,10 @@ function addRemoteVideo(peerId, stream) {
 }
 
 function createPeerConnection(peerId, initiator) {
+  if (typeof window.mxMedia !== "undefined" && typeof window.createPeerConnection === "function") {
+    return window.createPeerConnection(peerId, initiator);
+  }
+
   const pc = new RTCPeerConnection({
     iceServers: [
       { urls: 'stun:stun.l.google.com:19302' },
@@ -15006,29 +15010,18 @@ function createPeerConnection(peerId, initiator) {
     iceCandidatePoolSize: 2
   });
 
-  pc.oniceconnectionstatechange = () => {
-    console.log(`[WebRTC] ${peerId} ICE state: ${pc.iceConnectionState}`);
-    if (pc.iceConnectionState === 'failed') {
-      console.warn(`[WebRTC] Connection to ${peerId} failed — restarting ICE.`);
-      try { pc.restartIce(); } catch (e) { }
-    }
-  };
-
   peerConnections[peerId] = pc;
 
-  // Add local stream tracks to pc
   if (localStream) {
     localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
   }
 
-  // Handle ICE candidates
   pc.onicecandidate = (event) => {
     if (event.candidate) {
       sendSignal(peerId, "ice-candidate", event.candidate);
     }
   };
 
-  // Handle remote track
   pc.ontrack = (event) => {
     const stream = (event.streams && event.streams[0]) ? event.streams[0] : new MediaStream([event.track]);
     addRemoteVideo(peerId, stream);
@@ -15063,53 +15056,8 @@ async function sendSignal(targetId, type, data) {
 }
 
 async function handleVideoSseEvent(event) {
-  const { type, data } = event;
-  const senderId = event.senderId || event.userId;
-  if (!senderId) return;
-
-  switch (type) {
-    case 'user-joined':
-      createPeerConnection(senderId, true);
-      showToast(`${event.username || "Someone"} joined the meeting!`, "info");
-      break;
-
-    case 'user-left':
-      if (peerConnections[senderId]) {
-        peerConnections[senderId].close();
-        delete peerConnections[senderId];
-      }
-      const videoEl = document.getElementById(`video-container-${senderId}`);
-      if (videoEl) videoEl.remove();
-      break;
-
-    case 'offer':
-      let pcOffer = peerConnections[senderId];
-      if (!pcOffer) {
-        pcOffer = createPeerConnection(senderId, false);
-      }
-      await pcOffer.setRemoteDescription(new RTCSessionDescription(data));
-      const answer = await pcOffer.createAnswer();
-      await pcOffer.setLocalDescription(answer);
-      sendSignal(senderId, "answer", pcOffer.localDescription);
-      break;
-
-    case 'answer':
-      const pcAnswer = peerConnections[senderId];
-      if (pcAnswer) {
-        await pcAnswer.setRemoteDescription(new RTCSessionDescription(data));
-      }
-      break;
-
-    case 'ice-candidate':
-      const pcIce = peerConnections[senderId];
-      if (pcIce) {
-        try {
-          await pcIce.addIceCandidate(new RTCIceCandidate(data));
-        } catch (e) {
-          console.warn("[WebRTC] ICE candidate error:", e.message);
-        }
-      }
-      break;
+  if (typeof window.handleVideoSseEvent === "function") {
+    return window.handleVideoSseEvent(event);
   }
 }
 
