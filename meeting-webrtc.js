@@ -307,7 +307,7 @@
         if (type === "user-joined") {
             log("user joined:", peerId, event.username || "");
             if (!peerConnections[peerId]) {
-                buildPeerConnection(peerId, true);
+                buildPeerConnection(peerId, false);
             }
             chimeJoin();
             if (typeof showToast === "function") {
@@ -324,15 +324,20 @@
         }
 
         let pc = peerConnections[peerId];
-        if (!pc) pc = buildPeerConnection(peerId);
+        if (!pc) pc = buildPeerConnection(peerId, false);
         const state = negotiation[peerId] || { polite: true, makingOffer: false, ignoreOffer: false };
 
         try {
-            if (type === "offer" || type === "answer") {
+            if (type === "offer") {
                 const description = new RTCSessionDescription(data);
-                const isOffer = description.type === "offer";
-                const collision = isOffer && (state.makingOffer || pc.signalingState !== "stable");
+                if (pc.remoteDescription && pc.remoteDescription.sdp === description.sdp) {
+                    return;
+                }
+                if (pc.signalingState === "have-remote-offer") {
+                    return;
+                }
 
+                const collision = state.makingOffer || pc.signalingState !== "stable";
                 state.ignoreOffer = !state.polite && collision;
                 if (state.ignoreOffer) {
                     log("ignoring colliding offer from", peerId, "(impolite peer)");
@@ -348,14 +353,25 @@
                     await pc.setRemoteDescription(description);
                 }
 
-                // Flush any queued ICE candidates received before remote description
                 await flushPendingCandidates(peerId, pc);
 
-                if (isOffer) {
-                    await pc.setLocalDescription();
-                    sendSignal(peerId, "answer", pc.localDescription);
-                    log(peerId, "sent answer description");
+                const answer = await pc.createAnswer();
+                await pc.setLocalDescription(answer);
+                sendSignal(peerId, "answer", pc.localDescription);
+                log(peerId, "sent answer description");
+                return;
+            }
+
+            if (type === "answer") {
+                if (!pc) return;
+                if (pc.signalingState !== "have-local-offer") {
+                    log("ignoring late/redundant answer in state", pc.signalingState);
+                    return;
                 }
+                const description = new RTCSessionDescription(data);
+                await pc.setRemoteDescription(description);
+                await flushPendingCandidates(peerId, pc);
+                log(peerId, "applied answer description");
                 return;
             }
 

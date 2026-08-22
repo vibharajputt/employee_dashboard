@@ -1304,7 +1304,7 @@ app.post('/api/video/join', (req, res) => {
   client.room = room;
   client.username = username;
 
-  // Notify all other clients in the same room via SSE
+  // Notify other clients in the same room via SSE
   broadcastToRoom(room, userId, {
     type: 'user-joined',
     userId,
@@ -1312,7 +1312,7 @@ app.post('/api/video/join', (req, res) => {
     username
   });
 
-  // Also broadcast via Socket.IO for 100% reliable real-time signaling
+  // Also broadcast via Socket.IO to other clients in the room
   io.to(room).emit("webrtc-user-joined", {
     type: 'user-joined',
     userId,
@@ -1321,7 +1321,7 @@ app.post('/api/video/join', (req, res) => {
     room
   });
 
-  // Send the list of existing users currently in the room back to the joiner
+  // Send list of existing users currently in the room back to the joiner
   const existingUsers = videoClients
     .filter(c => c.room === room && c.userId !== userId)
     .map(c => ({ userId: c.userId, username: c.username }));
@@ -1364,12 +1364,6 @@ app.post('/api/video/signal', (req, res) => {
       senderId,
       data
     });
-  }
-  // Relay via Socket.IO
-  if (room) {
-    io.to(room).emit("webrtc-signal", { senderId, targetId, room, type, data });
-  } else {
-    io.emit("webrtc-signal", { senderId, targetId, type, data });
   }
   res.json({ success: true });
 });
