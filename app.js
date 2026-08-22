@@ -14955,21 +14955,39 @@ function addRemoteVideo(peerId, stream) {
     container.appendChild(menuBtn);
     container.appendChild(hand);
     grid.appendChild(container);
-    // Remote streams carry audio; play() must be invoked after insertion.
-    video.play().catch(err => console.warn("[Video] remote play blocked:", err.message));
+    if (typeof updateRemoteTile === "function") {
+      updateRemoteTile(peerId, stream);
+    } else {
+      video.play().catch(() => { });
+    }
     lucide.createIcons();
   } else {
     const video = container.querySelector("video");
+    const videoTracks = stream ? stream.getVideoTracks() : [];
+    const hasLiveVideo = videoTracks.some(t => t.readyState === "live" && t.enabled);
+
     if (video) {
-      if (video.srcObject !== stream) video.srcObject = stream;
+      if (hasLiveVideo) {
+        const currentVideoTrack = video.srcObject && video.srcObject.getVideoTracks && video.srcObject.getVideoTracks()[0];
+        const wantedVideoTrack = videoTracks.find(t => t.readyState === "live" && t.enabled);
+        if (!currentVideoTrack || currentVideoTrack.id !== wantedVideoTrack.id || !video.srcObject) {
+          video.srcObject = new MediaStream(stream.getTracks());
+        }
+      } else if (!video.srcObject || video.srcObject.getTracks().length === 0) {
+        video.srcObject = stream;
+      }
+      video.playsInline = true;
+      video.autoplay = true;
       if (video.paused) video.play().catch(() => {});
     }
+
     const avatar = document.getElementById(`video-avatar-${peerId}`);
     if (avatar) {
-      const hasVideoTrack = stream && stream.getVideoTracks && stream.getVideoTracks().length > 0;
       const pState = meetingParticipantsList[peerId] || {};
       const peerIsCamOn = pState.isCamOn !== false;
-      avatar.classList.toggle("hidden", !!(peerIsCamOn && hasVideoTrack));
+      const isSharing = !!pState.isSharing;
+      const showVideo = (isSharing || peerIsCamOn) && hasLiveVideo;
+      avatar.classList.toggle("hidden", !!showVideo);
     }
   }
 }

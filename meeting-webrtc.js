@@ -68,11 +68,12 @@
             document.body.appendChild(audioEl);
         }
 
-        if (audioEl.srcObject !== stream) {
-            audioEl.srcObject = stream;
-        }
-
-        const tryPlay = () => {
+        const audioTracks = stream ? stream.getAudioTracks().filter(t => t.readyState === "live") : [];
+        if (audioTracks.length > 0) {
+            const currentAudioTrack = audioEl.srcObject && audioEl.srcObject.getAudioTracks && audioEl.srcObject.getAudioTracks()[0];
+            if (!currentAudioTrack || currentAudioTrack.id !== audioTracks[0].id) {
+                audioEl.srcObject = new MediaStream(audioTracks);
+            }
             audioEl.play().catch(() => {
                 const unlock = () => {
                     audioEl.play().catch(() => { });
@@ -84,8 +85,7 @@
                 document.addEventListener("keydown", unlock, { once: true });
                 document.addEventListener("touchstart", unlock, { once: true });
             });
-        };
-        tryPlay();
+        }
     }
 
     function removeRemoteAudio(peerId) {
@@ -534,18 +534,32 @@
         const pState = (typeof meetingParticipantsList !== "undefined" && meetingParticipantsList[peerId]) || {};
         const isSharing = !!pState.isSharing;
         const peerCamOn = pState.isCamOn !== false;
+        const videoTracks = stream ? stream.getVideoTracks() : [];
+        const hasLiveVideo = videoTracks.some(t => t.readyState === "live" && t.enabled);
 
         if (video) {
-            if (video.srcObject !== stream) video.srcObject = stream;
+            if (hasLiveVideo) {
+                const currentVideoTrack = video.srcObject && video.srcObject.getVideoTracks && video.srcObject.getVideoTracks()[0];
+                const wantedVideoTrack = videoTracks.find(t => t.readyState === "live" && t.enabled);
+                if (!currentVideoTrack || currentVideoTrack.id !== wantedVideoTrack.id || !video.srcObject) {
+                    video.srcObject = new MediaStream(stream.getTracks());
+                }
+            } else if (!video.srcObject || video.srcObject.getTracks().length === 0) {
+                video.srcObject = stream;
+            }
+
             video.style.objectFit = isSharing ? "contain" : "cover";
             video.style.background = isSharing ? "#000" : "";
-            if (video.paused) video.play().catch(() => { });
+            video.playsInline = true;
+            video.autoplay = true;
+            if (video.paused) {
+                video.play().catch(() => { });
+            }
         }
 
         const avatar = el("video-avatar-" + peerId);
         if (avatar) {
-            const hasVideo = stream && stream.getVideoTracks && stream.getVideoTracks().some(t => t.readyState === "live" && t.enabled);
-            const showVideo = isSharing || (peerCamOn && hasVideo);
+            const showVideo = (isSharing || peerCamOn) && hasLiveVideo;
             avatar.classList.toggle("hidden", !!showVideo);
         }
     }
