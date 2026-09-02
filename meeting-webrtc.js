@@ -288,6 +288,13 @@
                 sender.replaceTrack(track || null).catch((err) => {
                     console.warn("[RTC] replaceTrack", kind, peerId, err.message);
                 });
+            } else if (track) {
+                try {
+                    const st = (typeof localStream !== "undefined" && localStream) ? localStream : new MediaStream();
+                    const newSender = pc.addTrack(track, st);
+                    if (!senders[peerId]) senders[peerId] = {};
+                    senders[peerId][kind] = newSender;
+                } catch (e) { }
             }
         });
         log("broadcast", kind, track ? "track active" : "null", "to", Object.keys(peerConnections).length, "peer(s)");
@@ -564,6 +571,7 @@
                 video.srcObject = stream;
             }
 
+            video.muted = true;
             video.style.objectFit = isSharing ? "contain" : "cover";
             video.style.background = isSharing ? "#000" : "";
             video.playsInline = true;
