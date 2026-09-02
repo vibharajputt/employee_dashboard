@@ -329,6 +329,7 @@
         const data = event.data;
 
         if (!peerId || peerId === me()) return;
+        if (event.targetId && event.targetId !== me()) return;
 
         if (type === "user-joined") {
             log("user joined:", peerId, event.username || "");
