@@ -67,6 +67,8 @@
             audioEl.style.display = "none";
             document.body.appendChild(audioEl);
         }
+        audioEl.muted = false;
+        audioEl.volume = 1.0;
 
         const audioTracks = stream ? stream.getAudioTracks().filter(t => t.readyState === "live") : [];
         if (audioTracks.length > 0) {
@@ -74,19 +76,22 @@
             if (!currentAudioTrack || currentAudioTrack.id !== audioTracks[0].id) {
                 audioEl.srcObject = new MediaStream(audioTracks);
             }
-            audioEl.play().catch(() => {
-                const unlock = () => {
-                    audioEl.play().catch(() => { });
-                    document.removeEventListener("click", unlock);
-                    document.removeEventListener("keydown", unlock);
-                    document.removeEventListener("touchstart", unlock);
-                };
-                document.addEventListener("click", unlock, { once: true });
-                document.addEventListener("keydown", unlock, { once: true });
-                document.addEventListener("touchstart", unlock, { once: true });
-            });
+            if (audioEl.paused) {
+                audioEl.play().catch(() => { });
+            }
         }
     }
+
+    function unlockAllAudio() {
+        document.querySelectorAll("audio[id^='remote-audio-']").forEach(a => {
+            a.muted = false;
+            a.volume = 1.0;
+            if (a.paused) a.play().catch(() => { });
+        });
+    }
+    window.addEventListener("click", unlockAllAudio, true);
+    window.addEventListener("keydown", unlockAllAudio, true);
+    window.addEventListener("touchstart", unlockAllAudio, true);
 
     function removeRemoteAudio(peerId) {
         const audioEl = document.getElementById("remote-audio-" + peerId);
@@ -260,6 +265,10 @@
         const audioTrack = stream ? stream.getAudioTracks().find(t => t.readyState === "live") : null;
         const videoTrack = (screenStream && screenStream.getVideoTracks().find(t => t.readyState === "live")) ||
             (stream ? stream.getVideoTracks().find(t => t.readyState === "live") : null);
+
+        if (audioTrack) {
+            audioTrack.enabled = (typeof isMicOn === "undefined" || isMicOn !== false);
+        }
 
         const s = senders[peerId];
         if (s) {
