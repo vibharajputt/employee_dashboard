@@ -595,6 +595,103 @@
             const showVideo = (isSharing || peerCamOn) && hasLiveVideo;
             avatar.classList.toggle("hidden", !!showVideo);
         }
+
+        updateScreenShareLayout();
+    }
+
+    function updateScreenShareLayout() {
+        const grid = el("video-grid");
+        if (!grid) return;
+
+        let presenterId = null;
+        if (screenStream || (typeof isScreenSharing !== "undefined" && isScreenSharing)) {
+            presenterId = "local";
+        } else if (typeof meetingParticipantsList !== "undefined") {
+            const remoteSharer = Object.keys(meetingParticipantsList).find(id => meetingParticipantsList[id] && meetingParticipantsList[id].isSharing);
+            if (remoteSharer) presenterId = remoteSharer;
+        }
+
+        const allTiles = Array.from(grid.querySelectorAll(":scope > div:not(#video-grid-placeholder)"));
+
+        if (presenterId) {
+            grid.classList.add("mx-screen-sharing-active");
+            grid.style.display = "flex";
+            grid.style.flexDirection = "row";
+            grid.style.gap = "12px";
+            grid.style.alignItems = "stretch";
+            grid.style.height = "100%";
+            grid.style.minHeight = "460px";
+
+            const presenterTile = el("video-container-" + presenterId);
+            let filmstrip = el("mx-screen-sharing-filmstrip");
+            if (!filmstrip) {
+                filmstrip = document.createElement("div");
+                filmstrip.id = "mx-screen-sharing-filmstrip";
+                filmstrip.style.width = "200px";
+                filmstrip.style.display = "flex";
+                filmstrip.style.flexDirection = "column";
+                filmstrip.style.gap = "10px";
+                filmstrip.style.overflowY = "auto";
+                filmstrip.style.flexShrink = "0";
+                grid.appendChild(filmstrip);
+            }
+
+            allTiles.forEach(tile => {
+                if (tile.id === "mx-screen-sharing-filmstrip") return;
+                if (tile === presenterTile) {
+                    if (tile.parentElement !== grid) grid.insertBefore(tile, filmstrip);
+                    tile.style.flex = "1";
+                    tile.style.width = "100%";
+                    tile.style.height = "100%";
+                    tile.style.minHeight = "440px";
+                    tile.style.aspectRatio = "auto";
+                    const v = tile.querySelector("video");
+                    if (v) {
+                        v.style.objectFit = "contain";
+                        v.style.background = "#000";
+                        v.style.width = "100%";
+                        v.style.height = "100%";
+                    }
+                } else {
+                    if (tile.parentElement !== filmstrip) filmstrip.appendChild(tile);
+                    tile.style.flex = "none";
+                    tile.style.width = "100%";
+                    tile.style.height = "120px";
+                    tile.style.minHeight = "120px";
+                    tile.style.aspectRatio = "16 / 9";
+                }
+            });
+        } else {
+            grid.classList.remove("mx-screen-sharing-active");
+            grid.style.display = "grid";
+            grid.style.flexDirection = "";
+            grid.style.gridTemplateColumns = "repeat(auto-fit, minmax(240px, 1fr))";
+            grid.style.gap = "16px";
+            grid.style.height = "";
+            grid.style.minHeight = "";
+
+            const filmstrip = el("mx-screen-sharing-filmstrip");
+            if (filmstrip) {
+                Array.from(filmstrip.children).forEach(child => {
+                    grid.appendChild(child);
+                });
+                filmstrip.remove();
+            }
+
+            allTiles.forEach(tile => {
+                if (tile.id === "mx-screen-sharing-filmstrip") return;
+                tile.style.flex = "";
+                tile.style.width = "100%";
+                tile.style.height = "100%";
+                tile.style.minHeight = "240px";
+                tile.style.aspectRatio = "16 / 9";
+                const v = tile.querySelector("video");
+                if (v) {
+                    v.style.objectFit = "cover";
+                    v.style.background = "";
+                }
+            });
+        }
     }
 
     function ensureRemoteMediaPlaying(peerId) {
@@ -756,6 +853,7 @@
 
         track.onended = () => stopShare();
         emitStatus();
+        updateScreenShareLayout();
         if (typeof showToast === "function") showToast("Screen sharing started", "success");
         log("screen share started");
     }
@@ -781,6 +879,7 @@
         if (avatar && !(typeof isCamOn !== "undefined" && isCamOn)) avatar.classList.remove("hidden");
 
         emitStatus();
+        updateScreenShareLayout();
         if (!silent && typeof showToast === "function") showToast("Screen sharing stopped", "info");
         log("screen share stopped");
     }
@@ -999,6 +1098,7 @@
                     updateRemoteTile(peerId, s);
                 }
             });
+            updateScreenShareLayout();
         }, 1200);
 
         console.log("%c[MedAstraX] Meeting media layer ready — ultra-low latency & multi-user video active",
