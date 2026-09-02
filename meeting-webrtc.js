@@ -206,6 +206,7 @@
         pc.onnegotiationneeded = async () => {
             const state = negotiation[peerId];
             if (!state) return;
+            if (!isInitiator && !pc.remoteDescription) return;
             try {
                 state.makingOffer = true;
                 await pc.setLocalDescription();
@@ -611,37 +612,29 @@
             if (remoteSharer) presenterId = remoteSharer;
         }
 
+        const filmstrip = el("mx-screen-sharing-filmstrip");
+        if (filmstrip) {
+            Array.from(filmstrip.children).forEach(child => grid.appendChild(child));
+            filmstrip.remove();
+        }
+
         const allTiles = Array.from(grid.querySelectorAll(":scope > div:not(#video-grid-placeholder)"));
 
-        if (presenterId) {
+        if (presenterId && allTiles.length > 0) {
             grid.classList.add("mx-screen-sharing-active");
-            grid.style.display = "flex";
-            grid.style.flexDirection = "row";
+            grid.style.display = "grid";
+            grid.style.gridTemplateColumns = allTiles.length > 1 ? "1fr 220px" : "1fr";
+            grid.style.gridAutoRows = "130px";
             grid.style.gap = "12px";
-            grid.style.alignItems = "stretch";
             grid.style.height = "100%";
             grid.style.minHeight = "460px";
 
-            const presenterTile = el("video-container-" + presenterId);
-            let filmstrip = el("mx-screen-sharing-filmstrip");
-            if (!filmstrip) {
-                filmstrip = document.createElement("div");
-                filmstrip.id = "mx-screen-sharing-filmstrip";
-                filmstrip.style.width = "200px";
-                filmstrip.style.display = "flex";
-                filmstrip.style.flexDirection = "column";
-                filmstrip.style.gap = "10px";
-                filmstrip.style.overflowY = "auto";
-                filmstrip.style.flexShrink = "0";
-                grid.appendChild(filmstrip);
-            }
-
-            allTiles.forEach(tile => {
-                if (tile.id === "mx-screen-sharing-filmstrip") return;
-                if (tile === presenterTile) {
-                    if (tile.parentElement !== grid) grid.insertBefore(tile, filmstrip);
-                    tile.style.flex = "1";
-                    tile.style.width = "100%";
+            allTiles.forEach((tile) => {
+                const isPresenter = (tile.id === "video-container-" + presenterId);
+                if (isPresenter) {
+                    tile.classList.add("mx-presenter-tile");
+                    tile.style.gridColumn = "1";
+                    tile.style.gridRow = "1 / span " + Math.max(allTiles.length - 1, 3);
                     tile.style.height = "100%";
                     tile.style.minHeight = "440px";
                     tile.style.aspectRatio = "auto";
@@ -649,39 +642,34 @@
                     if (v) {
                         v.style.objectFit = "contain";
                         v.style.background = "#000";
-                        v.style.width = "100%";
-                        v.style.height = "100%";
                     }
                 } else {
-                    if (tile.parentElement !== filmstrip) filmstrip.appendChild(tile);
-                    tile.style.flex = "none";
-                    tile.style.width = "100%";
-                    tile.style.height = "120px";
-                    tile.style.minHeight = "120px";
+                    tile.classList.remove("mx-presenter-tile");
+                    tile.style.gridColumn = "2";
+                    tile.style.gridRow = "auto";
+                    tile.style.height = "125px";
+                    tile.style.minHeight = "125px";
                     tile.style.aspectRatio = "16 / 9";
+                    const v = tile.querySelector("video");
+                    if (v) {
+                        v.style.objectFit = "cover";
+                        v.style.background = "";
+                    }
                 }
             });
         } else {
             grid.classList.remove("mx-screen-sharing-active");
             grid.style.display = "grid";
-            grid.style.flexDirection = "";
             grid.style.gridTemplateColumns = "repeat(auto-fit, minmax(240px, 1fr))";
+            grid.style.gridAutoRows = "";
             grid.style.gap = "16px";
             grid.style.height = "";
             grid.style.minHeight = "";
 
-            const filmstrip = el("mx-screen-sharing-filmstrip");
-            if (filmstrip) {
-                Array.from(filmstrip.children).forEach(child => {
-                    grid.appendChild(child);
-                });
-                filmstrip.remove();
-            }
-
             allTiles.forEach(tile => {
-                if (tile.id === "mx-screen-sharing-filmstrip") return;
-                tile.style.flex = "";
-                tile.style.width = "100%";
+                tile.classList.remove("mx-presenter-tile");
+                tile.style.gridColumn = "";
+                tile.style.gridRow = "";
                 tile.style.height = "100%";
                 tile.style.minHeight = "240px";
                 tile.style.aspectRatio = "16 / 9";
