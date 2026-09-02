@@ -149,9 +149,18 @@
         };
         pendingCandidates[peerId] = [];
 
-        // Pre-create transceivers so slots always exist for audio and video
-        const audioTx = pc.addTransceiver("audio", { direction: "sendrecv" });
-        const videoTx = pc.addTransceiver("video", { direction: "sendrecv" });
+        const stream = (typeof localStream !== "undefined") ? localStream : null;
+        const audioTrack = stream ? stream.getAudioTracks().find(t => t.readyState === "live") : null;
+        const videoTrack = (screenStream && screenStream.getVideoTracks().find(t => t.readyState === "live")) ||
+            (stream ? stream.getVideoTracks().find(t => t.readyState === "live") : null);
+
+        if (audioTrack) {
+            audioTrack.enabled = (typeof isMicOn === "undefined" || isMicOn !== false);
+        }
+
+        // Pre-create transceivers bound directly to initial tracks
+        const audioTx = pc.addTransceiver(audioTrack || "audio", { direction: "sendrecv", streams: stream ? [stream] : [] });
+        const videoTx = pc.addTransceiver(videoTrack || "video", { direction: "sendrecv", streams: stream ? [stream] : [] });
         senders[peerId] = { audio: audioTx.sender, video: videoTx.sender };
 
         // Attach local tracks directly to the senders

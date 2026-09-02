@@ -180,31 +180,70 @@
         return !!recorder && recorder.state === "recording";
     }
 
-    /**
-     * Mixes the screen's own audio (if the user shared a tab with sound) together
-     * with the microphone, so the recording captures both sides of the call.
-     */
-    function buildMixedStream(display, mic) {
-        const videoTrack = display.getVideoTracks()[0];
-        const displayAudio = display.getAudioTracks();
-        const micAudio = mic ? mic.getAudioTracks() : [];
+    let canvasAnimationId = null;
+    let recCanvas = null;
 
-        if (displayAudio.length === 0 && micAudio.length === 0) {
-            return new MediaStream([videoTrack]);
+    function buildCompositeMeetingStream() {
+        if (!recCanvas) {
+            recCanvas = document.createElement("canvas");
+            recCanvas.width = 1280;
+            recCanvas.height = 720;
         }
-        if (displayAudio.length === 0) {
-            return new MediaStream([videoTrack, micAudio[0]]);
-        }
-        if (micAudio.length === 0) {
-            return new MediaStream([videoTrack, displayAudio[0]]);
-        }
+        const ctx = recCanvas.getContext("2d");
 
-        // Both present: mix through a Web Audio graph.
+        function drawFrame() {
+            if (!isRecording()) return;
+            ctx.fillStyle = "#111827";
+            ctx.fillRect(0, 0, recCanvas.width, recCanvas.height);
+
+            const grid = document.getElementById("video-grid");
+            const videos = grid ? Array.from(grid.querySelectorAll("video")).filter(v => v.srcObject && v.readyState >= 2) : [];
+
+            if (videos.length === 0) {
+                ctx.fillStyle = "#ffffff";
+                ctx.font = "bold 28px Inter, sans-serif";
+                ctx.textAlign = "center";
+                ctx.fillText("MedAstraX Meeting Recording", recCanvas.width / 2, recCanvas.height / 2);
+            } else if (videos.length === 1) {
+                ctx.drawImage(videos[0], 0, 0, recCanvas.width, recCanvas.height);
+            } else {
+                const cols = videos.length > 4 ? 3 : (videos.length > 1 ? 2 : 1);
+                const rows = Math.ceil(videos.length / cols);
+                const cellW = recCanvas.width / cols;
+                const cellH = recCanvas.height / rows;
+
+                videos.forEach((v, idx) => {
+                    const c = idx % cols;
+                    const r = Math.floor(idx / cols);
+                    try {
+                        ctx.drawImage(v, c * cellW + 4, r * cellH + 4, cellW - 8, cellH - 8);
+                    } catch (e) { }
+                });
+            }
+            canvasAnimationId = requestAnimationFrame(drawFrame);
+        }
+        drawFrame();
+
+        const canvasStream = recCanvas.captureStream(30);
+
+        // Mix all audio tracks (local mic + all remote audio streams)
         audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         const dest = audioCtx.createMediaStreamDestination();
-        audioCtx.createMediaStreamSource(new MediaStream([displayAudio[0]])).connect(dest);
-        audioCtx.createMediaStreamSource(new MediaStream([micAudio[0]])).connect(dest);
-        return new MediaStream([videoTrack, dest.stream.getAudioTracks()[0]]);
+
+        if (typeof localStream !== "undefined" && localStream && localStream.getAudioTracks().length) {
+            try { audioCtx.createMediaStreamSource(new MediaStream([localStream.getAudioTracks()[0]])).connect(dest); } catch (e) { }
+        }
+        document.querySelectorAll("audio[id^='remote-audio-']").forEach(a => {
+            if (a.srcObject && a.srcObject.getAudioTracks().length) {
+                try { audioCtx.createMediaStreamSource(new MediaStream([a.srcObject.getAudioTracks()[0]])).connect(dest); } catch (e) { }
+            }
+        });
+
+        const tracks = [canvasStream.getVideoTracks()[0]];
+        const audioTracks = dest.stream.getAudioTracks();
+        if (audioTracks.length > 0) tracks.push(audioTracks[0]);
+
+        return new MediaStream(tracks);
     }
 
     function updateRecordButton() {
@@ -266,39 +305,8 @@
             toast("This browser cannot record. Try Chrome or Edge.", "error");
             return;
         }
-        if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
-            toast("Screen capture is unavailable in this browser.", "error");
-            return;
-        }
 
-        try {
-            toast("Select this tab or screen in the popup to capture recording.", "info");
-            displayStream = await navigator.mediaDevices.getDisplayMedia({
-                video: { frameRate: 30 },
-                audio: true
-            });
-        } catch (err) {
-            if (err && err.name === "NotAllowedError") {
-                toast("Recording cancelled.", "info");
-            } else {
-                toast("Could not start capture: " + err.message, "error");
-            }
-            return;
-        }
-
-        // Microphone is best-effort: reuse the call's stream if we already have it.
-        try {
-            if (typeof localStream !== "undefined" && localStream && localStream.getAudioTracks().length) {
-                micStream = new MediaStream([localStream.getAudioTracks()[0]]);
-            } else {
-                micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            }
-        } catch (err) {
-            micStream = null;
-            console.warn("[Recording] microphone unavailable:", err.message);
-        }
-
-        recStream = buildMixedStream(displayStream, micStream);
+        recStream = buildCompositeMeetingStream();
 
         const mimeType = pickMimeType();
         try {
@@ -317,13 +325,6 @@
         };
         recorder.onstop = finalizeRecording;
 
-        // If user hits browser's "Stop sharing" bar, finish recording cleanly.
-        if (displayStream.getVideoTracks()[0]) {
-            displayStream.getVideoTracks()[0].onended = () => {
-                if (isRecording()) stopRecording();
-            };
-        }
-
         recorder.start(1000);
         startedAt = Date.now();
         recordingRoom = (typeof currentRoom !== "undefined" && currentRoom) || "room";
@@ -331,27 +332,26 @@
 
         timerInterval = setInterval(updateRecordButton, 1000);
         updateRecordButton();
-        toast("🔴 Recording started! Click the red button anytime to stop and save.", "success");
+        toast("🔴 Meeting recording started instantly!", "success");
     }
 
     function stopRecording() {
         if (!recorder) return;
         if (recorder.state !== "inactive") recorder.stop();
         if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+        if (canvasAnimationId) { cancelAnimationFrame(canvasAnimationId); canvasAnimationId = null; }
         updateRecordButton();
     }
 
     function cleanupStreams() {
-        [displayStream, micStream].forEach((s) => {
-            if (s) s.getTracks().forEach((t) => {
-                // Never kill the live call's microphone track.
+        if (canvasAnimationId) { cancelAnimationFrame(canvasAnimationId); canvasAnimationId = null; }
+        if (recStream) {
+            recStream.getTracks().forEach((t) => {
                 const isCallTrack = typeof localStream !== "undefined" && localStream &&
                     localStream.getTracks().indexOf(t) !== -1;
                 if (!isCallTrack) t.stop();
             });
-        });
-        displayStream = null;
-        micStream = null;
+        }
         recStream = null;
         if (audioCtx) { try { audioCtx.close(); } catch (e) { } audioCtx = null; }
     }
