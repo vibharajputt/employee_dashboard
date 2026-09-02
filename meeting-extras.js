@@ -209,22 +209,53 @@
 
     function updateRecordButton() {
         const btn = el("btn-active-record");
-        if (!btn) return;
+        let indicator = el("mx-recording-banner-indicator");
+
         if (isRecording()) {
             const secs = Math.round((Date.now() - startedAt) / 1000);
-            btn.style.backgroundColor = "#ef4444";
-            btn.style.color = "#fff";
-            btn.title = "Stop recording";
-            btn.innerHTML =
-                `<span style="display:flex;align-items:center;gap:5px;font-size:11px;font-weight:700;">` +
-                `<span style="width:8px;height:8px;border-radius:50%;background:#fff;"></span>` +
-                `${fmtDuration(secs)}</span>`;
+            if (btn) {
+                btn.style.backgroundColor = "#ef4444";
+                btn.style.color = "#fff";
+                btn.title = "Click to Stop Recording";
+                btn.innerHTML =
+                    `<span style="display:flex;align-items:center;gap:5px;font-size:11px;font-weight:700;">` +
+                    `<span style="width:8px;height:8px;border-radius:50%;background:#fff;animation:ringPulse 1s infinite;"></span>` +
+                    `REC ${fmtDuration(secs)}</span>`;
+            }
+
+            // Top screen live indicator
+            const grid = el("video-grid");
+            if (grid && !indicator) {
+                indicator = document.createElement("div");
+                indicator.id = "mx-recording-banner-indicator";
+                indicator.style.position = "absolute";
+                indicator.style.top = "16px";
+                indicator.style.left = "16px";
+                indicator.style.backgroundColor = "rgba(239, 68, 68, 0.92)";
+                indicator.style.color = "#fff";
+                indicator.style.padding = "6px 14px";
+                indicator.style.borderRadius = "20px";
+                indicator.style.fontSize = "12px";
+                indicator.style.fontWeight = "700";
+                indicator.style.display = "flex";
+                indicator.style.alignItems = "center";
+                indicator.style.gap = "8px";
+                indicator.style.zIndex = "50";
+                indicator.style.boxShadow = "0 4px 12px rgba(239, 68, 68, 0.4)";
+                grid.appendChild(indicator);
+            }
+            if (indicator) {
+                indicator.innerHTML = `<span style="width:8px;height:8px;border-radius:50%;background:#fff;animation:ringPulse 1s infinite;"></span> Recording Meeting: ${fmtDuration(secs)}`;
+            }
         } else {
-            btn.style.backgroundColor = "var(--bg-primary)";
-            btn.style.color = "var(--text-primary)";
-            btn.title = "Record meeting";
-            btn.innerHTML = `<i data-lucide="circle-dot" style="width:18px;height:18px;"></i>`;
-            icons();
+            if (btn) {
+                btn.style.backgroundColor = "var(--bg-primary)";
+                btn.style.color = "var(--text-primary)";
+                btn.title = "Record meeting";
+                btn.innerHTML = `<i data-lucide="circle-dot" style="width:18px;height:18px;"></i>`;
+                icons();
+            }
+            if (indicator) indicator.remove();
         }
     }
 
@@ -241,8 +272,7 @@
         }
 
         try {
-            // Capturing the screen (rather than individual peer streams) records
-            // everyone's tiles exactly as they appear, without canvas compositing.
+            toast("Select this tab or screen in the popup to capture recording.", "info");
             displayStream = await navigator.mediaDevices.getDisplayMedia({
                 video: { frameRate: 30 },
                 audio: true
@@ -251,7 +281,7 @@
             if (err && err.name === "NotAllowedError") {
                 toast("Recording cancelled.", "info");
             } else {
-                toast("Could not start screen capture: " + err.message, "error");
+                toast("Could not start capture: " + err.message, "error");
             }
             return;
         }
@@ -287,25 +317,28 @@
         };
         recorder.onstop = finalizeRecording;
 
-        // If the user hits the browser's own "Stop sharing" bar, end cleanly.
-        displayStream.getVideoTracks()[0].onended = () => {
-            if (isRecording()) stopRecording();
-        };
+        // If user hits browser's "Stop sharing" bar, finish recording cleanly.
+        if (displayStream.getVideoTracks()[0]) {
+            displayStream.getVideoTracks()[0].onended = () => {
+                if (isRecording()) stopRecording();
+            };
+        }
 
-        recorder.start(1000); // 1s chunks so a crash still leaves usable data
+        recorder.start(1000);
         startedAt = Date.now();
         recordingRoom = (typeof currentRoom !== "undefined" && currentRoom) || "room";
         recordingTitle = (typeof currentMeetingTitle !== "undefined" && currentMeetingTitle) || "Meeting";
 
         timerInterval = setInterval(updateRecordButton, 1000);
         updateRecordButton();
-        toast("Recording started.", "success");
+        toast("🔴 Recording started! Click the red button anytime to stop and save.", "success");
     }
 
     function stopRecording() {
         if (!recorder) return;
         if (recorder.state !== "inactive") recorder.stop();
         if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
+        updateRecordButton();
     }
 
     function cleanupStreams() {
@@ -355,14 +388,13 @@
             timestamp: now.toISOString()
         };
 
+        // Automatically download the recording file
+        downloadBlob(blob, `${meta.title || "Meeting"}-${meta.date}.webm`);
+
         try {
             await idbPut(id, blob, meta);
         } catch (err) {
             console.error("[Recording] IndexedDB write failed:", err);
-            // Storage failed, so at least hand the file to the user directly.
-            downloadBlob(blob, `${meta.title}-${meta.date}.webm`);
-            toast("Could not store locally — file downloaded instead.", "warning");
-            return;
         }
 
         try {
@@ -372,12 +404,11 @@
                 body: JSON.stringify(meta)
             });
         } catch (err) {
-            console.warn("[Recording] metadata save failed (entry still stored locally):", err.message);
+            console.warn("[Recording] metadata save failed:", err.message);
         }
 
-        toast(`Recording saved (${fmtDuration(durationSec)}, ${fmtBytes(blob.size)}). See the Recordings tab.`, "success");
+        toast(`✅ Recording saved & downloaded (${fmtDuration(durationSec)}, ${fmtBytes(blob.size)})!`, "success");
 
-        // Jump straight to the Recordings tab so the new entry is visible.
         const recBtn = el("filter-recordings-meetings");
         if (recBtn) recBtn.click();
         else if (typeof renderScheduledMeetings === "function") renderScheduledMeetings();
