@@ -14564,13 +14564,41 @@ async function joinMeetingRoom(room) {
       statusText.className = "badge badge-employee";
     }
 
-    // Establish connection with every existing user in room
+    // Establish connection with every existing user in room.
+    // Guard: if a connection is already being negotiated (because the remote peer
+    // responded to our webrtc-join socket event faster than this HTTP response arrived),
+    // do NOT tear it down by calling createPeerConnection again.
     if (data.existingUsers && Array.isArray(data.existingUsers)) {
       for (const user of data.existingUsers) {
         if (user.userId && user.userId !== currentUser.id) {
-          createPeerConnection(user.userId, true);
+          const existingPc = (typeof peerConnections !== 'undefined') ? peerConnections[user.userId] : null;
+          const alreadyConnecting = existingPc &&
+            existingPc.signalingState !== 'closed' &&
+            existingPc.connectionState !== 'failed' &&
+            existingPc.connectionState !== 'disconnected';
+          if (!alreadyConnecting) {
+            createPeerConnection(user.userId, true);
+          } else {
+            console.log('[Video] skipping duplicate peer connection for', user.userId, '(already negotiating)');
+          }
         }
       }
+    }
+    // Announce our mic/cam status so the remote tile shows correct icons immediately
+    if (typeof window.mxMedia !== 'undefined' && typeof window.mxMedia.repaintButtons === 'function') {
+      window.mxMedia.repaintButtons();
+    }
+    // Broadcast our current mic/cam state so all peers see correct status indicators
+    if (typeof socket !== 'undefined' && socket && socket.connected) {
+      socket.emit("meeting-status-update", {
+        room: room,
+        userId: currentUser.id,
+        fullname: currentUser.fullname.replace(/\s*\(.*\)\s*/g, ""),
+        isMicOn: (typeof isMicOn !== 'undefined') ? isMicOn : true,
+        isCamOn: (typeof isCamOn !== 'undefined') ? isCamOn : true,
+        isSharing: false,
+        isHandRaised: (typeof isHandRaised !== 'undefined') ? isHandRaised : false
+      });
     }
   } catch (err) {
     console.error("Error joining room:", err);

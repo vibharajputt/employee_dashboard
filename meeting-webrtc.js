@@ -356,9 +356,10 @@
 
         if (type === "user-joined") {
             log("user joined:", peerId, event.username || "");
-            if (!peerConnections[peerId]) {
-                buildPeerConnection(peerId, false);
-            }
+            // Existing user must be the initiator — they send the offer to the newcomer.
+            // Perfect negotiation in buildPeerConnection handles any offer collision
+            // if the remote peer also sends an offer simultaneously.
+            buildPeerConnection(peerId, true);
             chimeJoin();
             if (typeof showToast === "function") {
                 showToast((event.username || "A colleague") + " joined the meeting", "info");
@@ -1089,9 +1090,9 @@
                 handleEvent(event);
             });
             socket.on("webrtc-user-joined", (event) => {
-                if (event.userId && event.userId !== me()) {
-                    handleEvent(event);
-                }
+                // Ignore events about ourselves — we handle our own join via joinMeetingRoom
+                if (event.userId && event.userId === me()) return;
+                handleEvent(event);
             });
             socket.on("webrtc-user-left", (event) => {
                 if (event.userId && event.userId !== me()) {

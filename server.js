@@ -1304,7 +1304,7 @@ app.post('/api/video/join', (req, res) => {
   client.room = room;
   client.username = username;
 
-  // Notify other clients in the same room via SSE
+  // Notify other clients in the same room via SSE (legacy fallback for non-socket clients)
   broadcastToRoom(room, userId, {
     type: 'user-joined',
     userId,
@@ -1312,14 +1312,10 @@ app.post('/api/video/join', (req, res) => {
     username
   });
 
-  // Also broadcast via Socket.IO to other clients in the room
-  io.to(room).emit("webrtc-user-joined", {
-    type: 'user-joined',
-    userId,
-    senderId: userId,
-    username,
-    room
-  });
+  // NOTE: Do NOT emit webrtc-user-joined via Socket.IO here.
+  // The client already emits "webrtc-join" via socket before calling this HTTP endpoint,
+  // which triggers the same broadcast on the server. Emitting it again here would cause
+  // existing peers to rebuild the connection twice, breaking the WebRTC handshake.
 
   // Send list of existing users currently in the room back to the joiner
   const existingUsers = videoClients
