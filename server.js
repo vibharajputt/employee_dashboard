@@ -1607,6 +1607,9 @@ app.post("/api/messages", async (req, res) => {
   }
 });
 
+// userId -> socket mapping for targeted WebRTC signaling
+const userSocketMap = {};
+
 // Socket.IO Connection
 io.on("connection", (socket) => {
   console.log("User connected:", socket.id);
@@ -1617,7 +1620,11 @@ io.on("connection", (socket) => {
     socket.userId = data.userId;
     socket.fullname = data.fullname;
 
+    // Track user -> socket mapping for targeted WebRTC signaling
+    if (data.userId) userSocketMap[data.userId] = socket.id;
+
     // Broadcast status to let others know a new user joined
+    // (webrtc-join will separately trigger the WebRTC peer connection setup)
     io.to(data.room).emit("meeting-status-update", {
       room: data.room,
       userId: data.userId,
@@ -1626,19 +1633,15 @@ io.on("connection", (socket) => {
       isCamOn: true,
       isJoined: true
     });
-
-    // Notify room of newcomer for WebRTC peer connection
-    socket.to(data.room).emit("webrtc-user-joined", {
-      type: "user-joined",
-      userId: data.userId,
-      senderId: data.userId,
-      username: data.fullname,
-      room: data.room
-    });
   });
 
   socket.on("webrtc-signal", (data) => {
-    if (data.room) {
+    // Route signal ONLY to the specific target peer, not the entire room.
+    // This prevents peers from processing signals not meant for them.
+    if (data.targetId && userSocketMap[data.targetId]) {
+      io.to(userSocketMap[data.targetId]).emit("webrtc-signal", data);
+    } else if (data.room) {
+      // Fallback: broadcast to room (filtered by targetId on receiving end)
       socket.to(data.room).emit("webrtc-signal", data);
     } else {
       socket.broadcast.emit("webrtc-signal", data);
@@ -1725,12 +1728,22 @@ io.on("connection", (socket) => {
 
   socket.on("disconnect", () => {
     console.log("User disconnected:", socket.id);
+    if (socket.userId && userSocketMap[socket.userId] === socket.id) {
+      delete userSocketMap[socket.userId];
+    }
     if (socket.room && socket.userId) {
       io.to(socket.room).emit("meeting-status-update", {
         room: socket.room,
         userId: socket.userId,
         fullname: socket.fullname,
         isLeft: true
+      });
+      // Notify peers to clean up the WebRTC connection
+      socket.to(socket.room).emit("webrtc-user-left", {
+        type: "user-left",
+        userId: socket.userId,
+        senderId: socket.userId,
+        room: socket.room
       });
     }
   });

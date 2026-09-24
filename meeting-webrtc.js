@@ -77,7 +77,10 @@
                 audioEl.srcObject = new MediaStream(audioTracks);
             }
             if (audioEl.paused) {
-                audioEl.play().catch(() => { });
+                audioEl.play().catch(err => {
+                    // Autoplay blocked — will retry on next user interaction
+                    console.warn("[RTC] audio autoplay blocked for", peerId, err.message);
+                });
             }
         }
     }
@@ -163,6 +166,14 @@
         const videoTx = pc.addTransceiver(videoTrack || "video", { direction: "sendrecv", streams: stream ? [stream] : [] });
         senders[peerId] = { audio: audioTx.sender, video: videoTx.sender };
 
+        // If mic is off, ONLY disable locally — the transceiver must still send
+        // the track so the remote peer can receive and play it. Enabling/disabling
+        // the track.enabled only affects the local audio captured; it does NOT
+        // affect whether the RTP stream is sent to the remote peer.
+        if (audioTrack) {
+            audioTrack.enabled = (typeof isMicOn === "undefined" || isMicOn !== false);
+        }
+
         // Attach local tracks directly to the senders
         attachLocalTracks(peerId, pc);
 
@@ -184,12 +195,19 @@
                 }
             } else {
                 remoteStreams[peerId] = stream;
+                // Ensure the track is in the stored stream (it should be, but guard)
+                if (!stream.getTracks().some(t => t.id === e.track.id)) {
+                    stream.addTrack(e.track);
+                }
             }
 
-            // If audio track, ensure dedicated audio element is playing
+            // If audio track, play it using the track directly — do NOT wait for
+            // the stream reference to be fully populated, which can race.
             if (e.track.kind === "audio") {
-                playRemoteAudio(peerId, stream);
-                watchSpeaking(peerId, stream);
+                // Build a dedicated audio-only stream from this exact track
+                const audioOnlyStream = new MediaStream([e.track]);
+                playRemoteAudio(peerId, audioOnlyStream);
+                watchSpeaking(peerId, audioOnlyStream);
             }
 
             // Render remote video / tile
@@ -206,7 +224,12 @@
             };
 
             e.track.onunmute = () => {
-                if (e.track.kind === "audio") playRemoteAudio(peerId, stream);
+                if (e.track.kind === "audio") {
+                    // Track was initially muted (browser holds it until data flows) —
+                    // now it's live, force the audio element to play.
+                    const audioOnlyStream = new MediaStream([e.track]);
+                    playRemoteAudio(peerId, audioOnlyStream);
+                }
                 if (typeof addRemoteVideo === "function") addRemoteVideo(peerId, stream);
                 updateRemoteTile(peerId, stream);
             };
@@ -695,7 +718,22 @@
     function ensureRemoteMediaPlaying(peerId) {
         const stream = remoteStreams[peerId];
         if (stream) {
-            playRemoteAudio(peerId, stream);
+            // Try to play audio from the cached stream first
+            const cachedAudioTracks = stream.getAudioTracks().filter(t => t.readyState === "live");
+            if (cachedAudioTracks.length > 0) {
+                playRemoteAudio(peerId, new MediaStream(cachedAudioTracks));
+            } else {
+                // Fallback: grab audio directly from the RTCRtpReceiver
+                const pc = (typeof peerConnections !== "undefined") ? peerConnections[peerId] : null;
+                if (pc) {
+                    const receivers = pc.getReceivers();
+                    const audioReceiver = receivers.find(r => r.track && r.track.kind === "audio" && r.track.readyState === "live");
+                    if (audioReceiver) {
+                        const audioOnlyStream = new MediaStream([audioReceiver.track]);
+                        playRemoteAudio(peerId, audioOnlyStream);
+                    }
+                }
+            }
             updateRemoteTile(peerId, stream);
         }
     }
@@ -1038,6 +1076,12 @@
             peers: () => (typeof peerConnections !== "undefined" ? Object.keys(peerConnections) : [])
         };
 
+        // Expose buildPeerConnection so app.js createPeerConnection can delegate here
+        // without the circular-reference problem.
+        window._mxBuildPeer = function(peerId, isInitiator) {
+            return buildPeerConnection(peerId, isInitiator !== false);
+        };
+
         // Attach real-time WebRTC listeners to Socket.IO
         if (typeof socket !== "undefined" && socket) {
             socket.on("webrtc-signal", (event) => {
@@ -1088,14 +1132,26 @@
                 refreshLocalPreview();
                 repaintMediaButtons();
             }
-            // Ensure any remote video with live stream is playing
+            // Ensure any remote audio is playing — uses RTCRtpReceiver fallback
+            // if the cached stream doesn't have a live audio track yet.
             Object.keys(remoteStreams).forEach((peerId) => {
-                const s = remoteStreams[peerId];
-                if (s) {
-                    playRemoteAudio(peerId, s);
-                    updateRemoteTile(peerId, s);
-                }
+                ensureRemoteMediaPlaying(peerId);
             });
+            // Also scan peer connections for audio receivers not yet in remoteStreams
+            if (typeof peerConnections !== "undefined") {
+                Object.keys(peerConnections).forEach((peerId) => {
+                    const pc = peerConnections[peerId];
+                    if (!pc) return;
+                    const audioEl = document.getElementById("remote-audio-" + peerId);
+                    if (!audioEl || audioEl.paused || !audioEl.srcObject) {
+                        const receivers = pc.getReceivers();
+                        const audioReceiver = receivers.find(r => r.track && r.track.kind === "audio" && r.track.readyState === "live");
+                        if (audioReceiver) {
+                            playRemoteAudio(peerId, new MediaStream([audioReceiver.track]));
+                        }
+                    }
+                });
+            }
             updateScreenShareLayout();
         }, 1200);
 

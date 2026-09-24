@@ -14994,8 +14994,17 @@ function addRemoteVideo(peerId, stream) {
 }
 
 function createPeerConnection(peerId, initiator) {
-  if (typeof window.mxMedia !== "undefined" && typeof window.createPeerConnection === "function") {
-    return window.createPeerConnection(peerId, initiator);
+  // Delegate to the WebRTC layer (meeting-webrtc.js) if it's loaded.
+  // IMPORTANT: check for mxMedia (not window.createPeerConnection) to avoid
+  // calling ourselves recursively.
+  if (typeof window.mxMedia !== "undefined") {
+    // meeting-webrtc.js installs window.createPeerConnection itself
+    // but at this point we ARE window.createPeerConnection, so we call
+    // buildPeerConnection indirectly via the mxMedia peers helper which
+    // ensures the correct stack is used.
+    if (typeof window._mxBuildPeer === "function") {
+      return window._mxBuildPeer(peerId, initiator !== false);
+    }
   }
 
   const pc = new RTCPeerConnection({
@@ -15041,6 +15050,11 @@ function createPeerConnection(peerId, initiator) {
 }
 
 async function sendSignal(targetId, type, data) {
+  // Note: meeting-webrtc.js has its own sendSignal that handles both
+  // Socket.IO and HTTP fallback. This legacy function is only used by
+  // the old createPeerConnection fallback path and is a no-op when
+  // the WebRTC layer is active (window.mxMedia is defined).
+  if (typeof window.mxMedia !== "undefined") return;
   try {
     const room = (typeof currentRoom !== 'undefined') ? currentRoom : null;
     if (typeof socket !== 'undefined' && socket && socket.connected) {
